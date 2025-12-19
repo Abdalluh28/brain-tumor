@@ -1,0 +1,156 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =========================================================
+   SHADCN → TAILWIND TOKEN BRIDGE (DO NOT EDIT FREQUENTLY)
+   ========================================================= */
+@theme inline {
+    /* Radius scale */
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
+    --radius-3xl: calc(var(--radius) + 12px);
+    --radius-4xl: calc(var(--radius) + 16px);
+
+    /* Core UI tokens */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    /* Sidebar */
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-active-background: var(--sidebar-active-background);
+    --color-sidebar-background: var(--sidebar-background);
+
+    /* Charts */
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+}
+
+/* =========================================================
+   GLOBAL DESIGN TOKENS (APP-WIDE)
+   ========================================================= */
+:root {
+    --radius: 0.625rem;
+
+    /* Base */
+    --background: #f8fafc;
+    --foreground: #020617;
+
+    /* Primary UI */
+    --primary: #155dfc;
+    --primary-foreground: #ffffff;
+
+    /* Secondary UI */
+    --secondary: #e5e7eb;
+    --secondary-foreground: #020617;
+
+    /* Accent */
+    --accent: #ad46ff;
+    --accent-foreground: #ffffff;
+
+    /* Borders & inputs */
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: #155dfc;
+
+    /* Sidebar */
+    --sidebar: #ffffff;
+    --sidebar-foreground: #020617;
+    --sidebar-primary: #155dfc;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #eff6ff;
+    --sidebar-accent-foreground: #155dfc;
+    --sidebar-border: #e5e7eb;
+    --sidebar-ring: #155dfc;
+    --sidebar-active-background: #eff6ff;
+    --sidebar-background: #f8fafc;
+
+    /* Charts */
+    --chart-1: #10b981;
+    --chart-2: #ef4444;
+    --chart-3: #f59e0b;
+    --chart-4: #8b5cf6;
+}
+
+/* =========================================================
+   DASHBOARD-SPECIFIC TOKENS (SCOPED)
+   ========================================================= */
+.dashboard {
+    --dashboard-card-1: #155dfc;
+    --dashboard-card-2: #00c950;
+    --dashboard-card-3: #ad46ff;
+    --dashboard-card-4: #ff6900;
+    --dashboard-numbers: #f0fdf4;
+    --dashboard-table-bg: #ffffff;
+}
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+.dark {
+    --background: #0f172b;
+    --foreground: #f8fafc;
+
+    --primary: #155dfc;
+    --primary-foreground: #ffffff;
+
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+
+    --accent: #7c3aed;
+    --accent-foreground: #ffffff;
+
+    --border: #334155;
+    --input: #334155;
+    --ring: #155dfc;
+
+    --sidebar: #1d293d;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-border: #334155;
+    --sidebar-primary: hsl(224.3 76.3% 48%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(240 3.7% 15.9%);
+    --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+    --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --sidebar-active-background: #121d3e;
+    --sidebar-background: #1d293d;
+}
+
+.dark .dashboard {
+    --dashboard-table-bg: #1d293d;
+    --dashboard-numbers: #052e16;
+}
+
+/* =========================================================
+   BASE STYLES
+   ========================================================= */
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
