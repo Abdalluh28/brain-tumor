@@ -13,6 +13,7 @@ import {
 
 import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import { NavLink } from "react-router-dom";
 
 export default function AppSidebar() {
     return (
@@ -41,33 +42,27 @@ export default function AppSidebar() {
 
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton isActive={true}>
-                                    <LayoutDashboard className="mr-1 h-5! w-5!" />
-                                    Dashboard
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
 
-                            <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Upload className="mr-1 h-5! w-5!" />
-                                    Upload MRI
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            {/* array of objects of name, path, and icon */}
+                            {[
+                                { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+                                { name: 'Upload Scan', path: '/uploadScan', icon: Upload },
+                                { name: 'History', path: '/history', icon: History },
+                                { name: 'Settings', path: '/settings', icon: Settings }
+                            ].map(item => (
+                                <SidebarMenuItem key={item.name}>
+                                    <NavLink to={item.path} end>
+                                        {({ isActive }) => (
+                                            <SidebarMenuButton isActive={isActive}>
+                                                <item.icon className="mr-1 h-5! w-5!" />
+                                                {item.name}
+                                            </SidebarMenuButton>
+                                        )}
+                                    </NavLink>
+                                </SidebarMenuItem>
+                            ))}
 
-                            <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <History className="mr-1 h-5! w-5!" />
-                                    History
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
 
-                            <SidebarMenuItem>
-                                <SidebarMenuButton>
-                                    <Settings className="mr-1 h-5! w-5!" />
-                                    Settings
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

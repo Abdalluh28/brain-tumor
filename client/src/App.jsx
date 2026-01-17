@@ -1,6 +1,10 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./layouts/AppLayout";
 import { RouterProvider } from "react-router";
+import Dashboard from "./pages/Dashboard";
+import UploadScan from "./pages/UploadScan";
+import History from "./pages/History";
+import Settings from "./pages/Settings";
 
 export default function App() {
 
@@ -11,19 +15,19 @@ export default function App() {
             children: [
                 {
                     path: '/',
-                    element: <div>Home Page</div>
+                    element: <Dashboard />
                 },
                 {
-                    path: '/uploadMRI',
-                    element: <div>UploadMRI Page</div>
+                    path: '/uploadScan',
+                    element: <UploadScan />
                 },
                 {
                     path: '/history',
-                    element: <div>History Page</div>
+                    element: <History />
                 },
                 {
                     path: '/settings',
-                    element: <div>Settings Page</div>
+                    element: <Settings />
                 }
             ]
         },
