@@ -39,6 +39,8 @@
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-active-background: var(--sidebar-active-background);
     --color-sidebar-background: var(--sidebar-background);
+    --color-sidebar-theme-toggle: var(--sidebar-theme-toggle);
+    --color-sidebar-theme-toggle-hover: var(--sidebar-theme-toggle-hover);
 
     /* Charts */
     --color-chart-1: var(--chart-1);
@@ -85,6 +87,8 @@
     --sidebar-ring: #155dfc;
     --sidebar-active-background: #eff6ff;
     --sidebar-background: #f8fafc;
+    --sidebar-theme-toggle: #f3f4f6;
+    --sidebar-theme-toggle-hover: #e5e7eb;
 
     /* Charts */
     --chart-1: #10b981;
@@ -125,16 +129,18 @@
     --input: #334155;
     --ring: #155dfc;
 
-    --sidebar: #1d293d;
+    --sidebar: #0f172b;
     --sidebar-foreground: #f8fafc;
     --sidebar-border: #334155;
     --sidebar-primary: hsl(224.3 76.3% 48%);
     --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(240 3.7% 15.9%);
-    --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+    --sidebar-accent: #121d3e;
+    --sidebar-accent-foreground: rgb(28, 63, 198);
     --sidebar-ring: hsl(217.2 91.2% 59.8%);
     --sidebar-active-background: #121d3e;
     --sidebar-background: #1d293d;
+    --sidebar-theme-toggle: #1d293d;
+    --sidebar-theme-toggle-hover: #314158;
 }
 
 .dark .dashboard {

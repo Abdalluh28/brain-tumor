@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X } from "lucide-react";
-import ThemeToggle from "./ThemeToggle";
+import ThemeToggle from "../features/theme/ThemeToggle";
 import { NavLink } from "react-router-dom";
 
 export default function AppSidebar() {
@@ -72,7 +72,7 @@ export default function AppSidebar() {
             <SidebarFooter>
                 <div className="flex justify-around items-center mb-4 border-t-2 border-slate-200 pt-6">
                     <div className="flex gap-2 items-center">
-                        <span className="bg-slate-200 rounded-full p-2 text-slate">DR</span>
+                        <span className="bg-sidebar-theme-toggle dark:bg-sidebar-theme-toggle rounded-full p-2 text-slate">DR</span>
                         <div className="flex flex-col">
                             {/* name */}
                             <p className="text-md">Dr. John Doe</p>

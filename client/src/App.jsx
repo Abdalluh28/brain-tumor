@@ -5,8 +5,23 @@ import Dashboard from "./pages/Dashboard";
 import UploadScan from "./pages/UploadScan";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
 
 export default function App() {
+
+    const theme = useSelector(state => state.theme.mode);
+
+    useEffect(() => {
+        const root = document.documentElement;
+
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+    }, [theme]);
+
 
     // router configuration
     const router = createBrowserRouter([
