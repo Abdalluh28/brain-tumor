@@ -47,6 +47,15 @@
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
     --color-chart-4: var(--chart-4);
+
+    /* Dashboard */
+    --color-dashboard-card-1: var(--dashboard-card-1);
+    --color-dashboard-card-2: var(--dashboard-card-2);
+    --color-dashboard-card-3: var(--dashboard-card-3);
+    --color-dashboard-card-4: var(--dashboard-card-4);
+    --color-dashboard-numbers: var(--dashboard-numbers);
+    --color-dashboard-numbers-bg: var(--dashboard-numbers-bg);
+    --color-dashboard-table-bg: var(--dashboard-table-bg);
 }
 
 /* =========================================================
@@ -95,6 +104,15 @@
     --chart-2: #ef4444;
     --chart-3: #f59e0b;
     --chart-4: #8b5cf6;
+
+    /* Dashboard */
+    --dashboard-card-1: #155dfc;
+    --dashboard-card-2: #00c950;
+    --dashboard-card-3: #ad46ff;
+    --dashboard-card-4: #ff6900;
+    --dashboard-numbers: #27a75b;
+    --dashboard-numbers-bg: #f0fdf4;
+    --dashboard-table-bg: #ffffff;
 }
 
 /* =========================================================
@@ -105,7 +123,8 @@
     --dashboard-card-2: #00c950;
     --dashboard-card-3: #ad46ff;
     --dashboard-card-4: #ff6900;
-    --dashboard-numbers: #f0fdf4;
+    --dashboard-numbers: #27a75b;
+    --dashboard-numbers-bg: #f0fdf4;
     --dashboard-table-bg: #ffffff;
 }
 

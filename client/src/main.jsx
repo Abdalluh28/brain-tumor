@@ -7,6 +7,7 @@ import { Provider } from "react-redux";
 import { persistor } from "./store";
 import store from "./store";
 import { PersistGate } from "redux-persist/integration/react";
+import './lib/chart';
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>

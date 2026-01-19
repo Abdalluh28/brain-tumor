@@ -1,22 +1,15 @@
-import React from 'react'
-import AppSidebar from '@/components/AppSidebar'
-import { SidebarTrigger } from '@/components/ui/sidebar'
-import { Menu } from 'lucide-react'
-import { Outlet } from 'react-router-dom'
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import AppSidebar from "@/components/AppSidebar"
+import { Outlet } from "react-router-dom"
 
 export default function AppLayout() {
-    return (
-        <div className="flex min-h-screen">
-            <AppSidebar />
+  return (
+    <SidebarProvider>
+      <AppSidebar />
 
-            <main className="flex-1 p-6">
-                <div className='block md:hidden'>
-                    <SidebarTrigger>
-                        <Menu />
-                    </SidebarTrigger>
-                </div>
-                <Outlet />
-            </main>
-        </div>
-    )
+      <SidebarInset className="bg-gray-100 dark:bg-gray-900 min-h-screen ">
+        <Outlet />
+      </SidebarInset>
+    </SidebarProvider>
+  )
 }
