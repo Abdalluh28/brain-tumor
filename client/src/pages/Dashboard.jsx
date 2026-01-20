@@ -1,6 +1,7 @@
 import DashboardCards from '@/features/dashboard/DashboardCards'
 import DashboardCharts from '@/features/dashboard/DashboardCharts'
 import DashboardHeader from '@/features/dashboard/DashboardHeader'
+import DashboardTable from '@/features/dashboard/DashboardTable'
 import React from 'react'
 
 export default function Dashboard() {
@@ -9,6 +10,7 @@ export default function Dashboard() {
             <DashboardHeader />
             <DashboardCards />
             <DashboardCharts />
+            <DashboardTable />
         </>
     )
 }
