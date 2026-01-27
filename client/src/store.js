@@ -3,17 +3,19 @@ import storage from "redux-persist/lib/storage"; // defaults to localStorage for
 import { persistReducer } from "redux-persist";
 import themeReducer from "@/features/theme/ThemeSlice";
 import persistStore from "redux-persist/es/persistStore";
+import scanReducer from "@/features/scan/scanSlice";
 
 // Persisted reducer configuration
 const persistConfig = {
     key: "root",
     storage,
-    whiteList: ["theme"], // only theme will be persisted
+    whitelist: ["theme"], // only theme will be persisted
 };
 
 // Combine reducers if there are multiple slices
 const rootReducer = combineReducers({
     theme: themeReducer,
+    scan: scanReducer
 });
 
 // Create a persisted reducer

@@ -46,7 +46,7 @@ export default function AppSidebar() {
                             {/* array of objects of name, path, and icon */}
                             {[
                                 { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-                                { name: 'Upload Scan', path: '/uploadScan', icon: Upload },
+                                { name: 'Upload Scan', path: '/scan', icon: Upload },
                                 { name: 'History', path: '/history', icon: History },
                                 { name: 'Settings', path: '/settings', icon: Settings }
                             ].map(item => (

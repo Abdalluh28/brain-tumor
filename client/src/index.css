@@ -20,6 +20,7 @@
     --color-foreground: var(--foreground);
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-accent: var(--accent);
@@ -56,6 +57,9 @@
     --color-dashboard-numbers: var(--dashboard-numbers);
     --color-dashboard-numbers-bg: var(--dashboard-numbers-bg);
     --color-dashboard-table-bg: var(--dashboard-table-bg);
+
+    --color-upload-label-bg: var(--upload-label-bg);
+    --color-upload-icon-bg: var(--upload-icon-bg);
 }
 
 /* =========================================================
@@ -71,6 +75,7 @@
     /* Primary UI */
     --primary: #155dfc;
     --primary-foreground: #ffffff;
+    --primary-hover: #1447e6;
 
     /* Secondary UI */
     --secondary: #e5e7eb;
@@ -165,6 +170,11 @@
 .dark .dashboard {
     --dashboard-table-bg: #1d293d;
     --dashboard-numbers: #052e16;
+}
+
+.dark .scan {
+    --upload-label-bg: #151f33;
+    --upload-icon-bg: #172445;
 }
 
 /* =========================================================

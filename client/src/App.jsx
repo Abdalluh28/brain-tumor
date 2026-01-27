@@ -1,12 +1,13 @@
+import { useEffect } from "react";
+import { useSelector } from "react-redux";
+import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./layouts/AppLayout";
-import { RouterProvider } from "react-router";
 import Dashboard from "./pages/Dashboard";
-import UploadScan from "./pages/UploadScan";
+import Scan from "./pages/Scan";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
-import { useSelector } from "react-redux";
-import { useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 
 export default function App() {
 
@@ -33,8 +34,8 @@ export default function App() {
                     element: <Dashboard />
                 },
                 {
-                    path: '/uploadScan',
-                    element: <UploadScan />
+                    path: '/scan',
+                    element: <Scan />
                 },
                 {
                     path: '/history',
@@ -58,6 +59,9 @@ export default function App() {
 
 
     return (
-        <RouterProvider router={router} />
+        <>
+            <RouterProvider router={router} />
+            <Toaster />
+        </>
     );
 }
