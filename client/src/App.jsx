@@ -8,6 +8,7 @@ import Scan from "./pages/Scan";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import { Toaster } from "react-hot-toast";
+import ScanId from "./pages/ScanId";
 
 export default function App() {
 
@@ -36,6 +37,10 @@ export default function App() {
                 {
                     path: '/scan',
                     element: <Scan />
+                },
+                {
+                    path: '/scan/:scanId',
+                    element: <ScanId />
                 },
                 {
                     path: '/history',

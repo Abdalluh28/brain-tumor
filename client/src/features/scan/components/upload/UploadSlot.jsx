@@ -48,7 +48,7 @@ const UploadSlot = memo(({ index, image, onUpload, onDelete, disabled }) => {
                         type="file"
                         id={`upload-view-${index}`}
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*, .nii, .nii.gz, .dcm"
                         onChange={onUpload}
                         disabled={disabled}
                     />

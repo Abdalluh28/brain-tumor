@@ -1,10 +1,11 @@
 // Importing icons and libraries
-import { CircleAlert, CircleCheckBig, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useDispatch, useSelector } from 'react-redux'
-import { removeImage, uploadImage as uploadImageRedux } from './scanSlice'
-import UploadSlot from './UploadSlot'
+import { removeImage, uploadImage as uploadImageRedux } from '../../scanSlice'
+import StartAnalysisCard from '../analysis/StartAnalysisCard'
 import UploadBanner from './UploadBanner'
+import UploadSlot from './UploadSlot'
 
 export default function UploadScanCard() {
 
@@ -76,15 +77,24 @@ export default function UploadScanCard() {
             </div>
 
             {/* Main Upload Button */}
-            <div className='w-fit self-center'>
-                <label htmlFor='upload' className={`bg-primary flex items-center justify-center gap-2 py-4 px-20 text-lg text-white rounded-2xl hover:bg-primary-hover transition duration-300 ${images.length === 4 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <Upload size={20} />
-                    <p>Select files to upload</p>
-                </label>
-                <input type='file' id='upload' multiple accept='image/*' className='hidden'
-                    onChange={(e) => handleUpload(e)}
-                    disabled={images.length === 4} />
-            </div>
+            {uploadedSlots < 4 ? (
+                <div className='w-fit self-center'>
+                    <label htmlFor='upload' className={`bg-primary flex items-center justify-center gap-2 py-4 px-20 text-lg text-white rounded-2xl hover:bg-primary-hover transition duration-300 ${images.length === 4 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <Upload size={20} />
+                        <p>
+                            {uploadedSlots === 0 ? 'Select files to upload'
+                                : uploadedSlots < 4 ? `Add More Files (${emptySlots} remaining)`
+                                    : 'Start Analysis'}
+                        </p>
+                    </label>
+                    {/* images or nifti files */}
+                    <input type='file' id='upload' multiple accept='image/*, .nii, .nii.gz, .dcm' className='hidden'
+                        onChange={(e) => handleUpload(e)}
+                        disabled={images.length === 4} />
+                </div>
+            ) : (
+                <StartAnalysisCard />
+            )}
         </div >
     )
 }

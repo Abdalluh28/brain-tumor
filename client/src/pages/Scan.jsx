@@ -1,6 +1,6 @@
 import ScanCards from '@/features/scan/ScanCards'
 import ScanHeader from '@/features/scan/ScanHeader'
-import UploadScanCard from '@/features/scan/UploadScanCard'
+import UploadScanCard from '@/features/scan/components/upload/UploadScanCard'
 import React from 'react'
 
 export default function Scan() {
