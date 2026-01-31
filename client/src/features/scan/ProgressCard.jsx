@@ -1,7 +1,7 @@
 import { Progress } from "@/components/ui/progress";
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
-import { useScanProgress } from '../../hooks/useScanProgress';
+import { useScanProgress } from './useScanProgress';
 
 export default function ProgressCard() {
     const [progressValue, setProgressValue] = useState(0);

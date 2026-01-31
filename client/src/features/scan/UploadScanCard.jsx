@@ -2,8 +2,8 @@
 import { Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useDispatch, useSelector } from 'react-redux'
-import { removeImage, uploadImage as uploadImageRedux } from '../../scanSlice'
-import StartAnalysisCard from '../analysis/StartAnalysisCard'
+import { removeImage, uploadImage as uploadImageRedux } from './scanSlice'
+import StartAnalysisCard from './StartAnalysisCard'
 import UploadBanner from './UploadBanner'
 import UploadSlot from './UploadSlot'
 
