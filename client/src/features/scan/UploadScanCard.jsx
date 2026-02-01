@@ -1,67 +1,77 @@
-// Importing icons and libraries
 import { Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useDispatch, useSelector } from 'react-redux'
-import { removeImage, uploadImage as uploadImageRedux } from './scanSlice'
+import { removeFile, uploadFile } from './scanSlice'
 import StartAnalysisCard from './StartAnalysisCard'
 import UploadBanner from './UploadBanner'
 import UploadSlot from './UploadSlot'
 
 export default function UploadScanCard() {
 
-    // Getting the uploaded images from Redux store
-    const images = useSelector(state => state.scan.images)
-    const uploadedSlots = images.length       // number of uploaded images
-    const emptySlots = 4 - uploadedSlots      // remaining slots
+    const files = useSelector(state => state.scan.files)
+    const uploadedSlots = files.length
+    const emptySlots = 4 - uploadedSlots
     const dispatch = useDispatch()
 
-    // Function to validate uploaded files
     const validateFile = (file) => {
-        const allowedFiles = ['image/jpeg', 'image/png', 'image/jpg'];
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        const imageTypes = ['image/jpeg', 'image/png', 'image/jpg']
+        const medicalExtensions = ['.nii', '.nii.gz', '.dcm']
+        const maxSize = 50 * 1024 * 1024 // 50MB for MRI files
 
-        if (!allowedFiles.includes(file.type)) {
-            toast.error('Invalid file type. Please upload a JPEG, PNG, or JPG file.');
-            return false;
+        const isImage = imageTypes.includes(file.type)
+        const isMedical =
+            medicalExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+
+        if (!isImage && !isMedical) {
+            toast.error('Unsupported file type')
+            return false
         }
 
         if (file.size > maxSize) {
-            toast.error('File size exceeds the maximum limit of 5MB.');
-            return false;
+            toast.error('File size exceeds 50MB')
+            return false
         }
 
-        return true;
+        return true
     }
 
-    // Handles file upload
     const handleUpload = (e) => {
-        const files = e.target.files;
-        const remainingSlots = 4 - images.length;
-        const filesToAdd = Array.from(files).slice(0, remainingSlots); // limit uploads to remaining slots
+        const selectedFiles = Array.from(e.target.files)
+        const remainingSlots = 4 - files.length
 
-        filesToAdd.forEach(file => {
-            if (!validateFile(file)) return;
+        selectedFiles.slice(0, remainingSlots).forEach(file => {
+            if (!validateFile(file)) return
 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                dispatch(uploadImageRedux({
-                    previewURL: reader.result,
+            const isImage = file.type.startsWith('image/')
+
+            if (isImage) {
+                const reader = new FileReader()
+                reader.onloadend = () => {
+                    dispatch(uploadFile({
+                        name: file.name,
+                        size: file.size,
+                        type: 'image',
+                        previewURL: reader.result,
+                        rawFile: file,
+                    }))
+                }
+                reader.readAsDataURL(file)
+            } else {
+                dispatch(uploadFile({
                     name: file.name,
-                    size: file.size
+                    size: file.size,
+                    type: file.name.endsWith('.dcm') ? 'dicom' : 'nifti',
+                    rawFile: file,
                 }))
             }
-            reader.readAsDataURL(file);
         })
 
-        e.target.value = null; // reset input
+        e.target.value = null
     }
 
-    // Deletes image from Redux store
-    const deleteImage = (index) => {
-        const imageToDelete = images[index - 1];
-        if (imageToDelete) {
-            dispatch(removeImage(imageToDelete.id));
-        }
+    const deleteFile = (index) => {
+        const file = files[index - 1]
+        if (file) dispatch(removeFile(file.id))
     }
 
     return (
@@ -72,14 +82,20 @@ export default function UploadScanCard() {
             {/* Upload Slots Grid */}
             <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6'>
                 {[1, 2, 3, 4].map(item => (
-                    <UploadSlot key={item} index={item} image={images[item - 1]} onUpload={handleUpload} onDelete={deleteImage} disabled={images.length === 4} />
+                    <UploadSlot
+                        key={item}
+                        index={item}
+                        file={files[item - 1]}
+                        onUpload={handleUpload}
+                        onDelete={deleteFile}
+                        disabled={files.length === 4} />
                 ))}
             </div>
 
             {/* Main Upload Button */}
             {uploadedSlots < 4 ? (
                 <div className='w-fit self-center'>
-                    <label htmlFor='upload' className={`bg-primary flex items-center justify-center gap-2 py-4 px-20 text-lg text-white rounded-2xl hover:bg-primary-hover transition duration-300 ${images.length === 4 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <label htmlFor='upload' className={`bg-primary flex items-center justify-center gap-2 py-4 px-20 text-lg text-white rounded-2xl hover:bg-primary-hover transition duration-300 ${files.length === 4 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                         <Upload size={20} />
                         <p>
                             {uploadedSlots === 0 ? 'Select files to upload'
@@ -90,7 +106,7 @@ export default function UploadScanCard() {
                     {/* images or nifti files */}
                     <input type='file' id='upload' multiple accept='image/*, .nii, .nii.gz, .dcm' className='hidden'
                         onChange={(e) => handleUpload(e)}
-                        disabled={images.length === 4} />
+                        disabled={files.length === 4} />
                 </div>
             ) : (
                 <StartAnalysisCard />

@@ -2,14 +2,14 @@ import { Upload, X } from 'lucide-react'
 import { memo } from 'react'
 
 // Each upload slot component
-const UploadSlot = memo(({ index, image, onUpload, onDelete, disabled }) => {
+const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
     return (
         <div className="rounded-lg shadow-md bg-white border border-dashed border-slate-300 p-4 flex flex-col gap-2 dark:bg-background dark:border-slate-700">
 
             {/* Slot header */}
             <div className="flex justify-between">
                 <p className='text-slate-400'>View {index}</p>
-                {image && (
+                {file && (
                     <button className="text-gray-500 cursor-pointer bg-gray-50 p-1 rounded-2xl hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white transition duration-300"
                         onClick={() => onDelete(index)} aria-label={`Remove MRI view ${index}`}>
                         <X size={16} />
@@ -17,21 +17,27 @@ const UploadSlot = memo(({ index, image, onUpload, onDelete, disabled }) => {
                 )}
             </div>
 
-            {/* Display uploaded image or upload input */}
-            {image ? (
-                <div className="flex flex-col gap-4">
-                    <img
-                        className="w-full h-48 object-contain"
-                        src={image.previewURL}
-                        alt={`view-${index}`}
-                    />
+            {/* Display uploaded file or upload input */}
+            {file ? (
+                <>
+                    {file.type === 'image' ? (
+                        <img
+                            className="w-full h-48 object-contain"
+                            src={file.previewURL}
+                            alt={`view-${index}`}
+                        />
+                    ) : (
+                        <>
+                        </>
+                    )}
                     <div className='flex flex-col gap-1'>
-                        <p className="text-sm truncate dark:text-slate-300">{image.name}</p>
+                        <p className="text-sm truncate dark:text-slate-300">{file.name}</p>
                         <p className="text-xs text-gray-500 dark:text-slate-400">
-                            {(image.size / 1024).toFixed(2)} KB
+                            {(file.size / 1024).toFixed(2)} KB
                         </p>
                     </div>
-                </div>
+                </>
+
             ) : (
                 <>
                     <label
