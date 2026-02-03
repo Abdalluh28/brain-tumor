@@ -17,6 +17,7 @@ export const scanSlice = createSlice({
                 type: action.payload.type,
                 previewURL: action.payload.previewURL || null,
                 rawFile: action.payload.rawFile || null,
+                processedAt: new Date().toISOString(),
             });
         },
         removeFile: (state, action) => {

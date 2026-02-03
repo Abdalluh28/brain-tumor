@@ -25,7 +25,7 @@ export default function AppSidebar() {
                 </SidebarTrigger>
             </div>
             <SidebarHeader>
-                <div className="flex gap-2 items-center justify-center border-b border-slate-200 pb-4">
+                <div className="flex gap-2 items-center justify-center dark:border-b dark:border-b-slate-600 pb-4">
                     <span className="bg-primary rounded-2xl py-2">
                         <Brain color="white" />
                     </span>
@@ -70,7 +70,7 @@ export default function AppSidebar() {
 
             {/* Footer */}
             <SidebarFooter>
-                <div className="flex justify-around items-center mb-4 border-t-2 border-slate-200 pt-6">
+                <div className="flex justify-around items-center mb-4 dark:border-t dark:border-t-slate-600 pt-6">
                     <div className="flex gap-2 items-center">
                         <span className="bg-sidebar-theme-toggle dark:bg-sidebar-theme-toggle rounded-full p-2 text-slate">DR</span>
                         <div className="flex flex-col">

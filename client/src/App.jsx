@@ -5,10 +5,10 @@ import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Scan from "./pages/Scan";
+import ScanId from "./pages/ScanId";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import { Toaster } from "react-hot-toast";
-import ScanId from "./pages/ScanId";
 
 export default function App() {
 
