@@ -11,7 +11,7 @@ export default function ScanHeader() {
                     </SidebarTrigger>
                 </div>
                 <div className='flex flex-col gap-2'>
-                    <h1 className='text-2xl font-bold'>Upload MRI Scan</h1>
+                    <h1 className='text-3xl font-semibold'>Upload MRI Scan</h1>
                     <p className='text-slate-600 dark:text-slate-400'>Upload a brain MRI scan for AI-powered tumor classification</p>
                 </div>
             </div>

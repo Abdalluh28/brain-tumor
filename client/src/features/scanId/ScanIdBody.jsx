@@ -10,6 +10,8 @@ import ScanIdFooter from './ScanIdFooter'
 export default function ScanIdBody() {
 
     // TODO: Get the predicted classification from the backend and display it here
+    // think about using the loader functionality from router 6 for this
+    // to render the UI in the pages folder (I don't know this will work or not yet)
     const scanResult = data[0]
     const {
         scanId,
@@ -27,7 +29,7 @@ export default function ScanIdBody() {
     return (
         <>
             <ScanIdHeader scanId={scanId} date={date} time={time} />
-            <div className='scan flex flex-col lg:grid lg:grid-cols-3 gap-8 mt-8 mb-8 mx-12'>
+            <div className='scan flex flex-col lg:grid lg:grid-cols-3 gap-8 m-8'>
                 <ScanIdResult
                     prediction={prediction}
                     confidence={confidence}
