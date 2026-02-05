@@ -13,7 +13,7 @@ export default function ThemeToggle() {
 
 
     return (
-        <button className='rounded-xl p-2 text-sidebar-foreground bg-sidebar-theme-toggle hover:bg-sidebar-theme-toggle-hover dark:bg-sidebar-theme-toggle transition duration-300'
+        <button className='rounded-xl cursor-pointer p-2 text-sidebar-foreground bg-sidebar-theme-toggle hover:bg-sidebar-theme-toggle-hover dark:bg-sidebar-theme-toggle transition duration-300'
             onClick={handleToggle}>
             {theme === 'light' ? <Moon /> : <Sun />}
         </button>

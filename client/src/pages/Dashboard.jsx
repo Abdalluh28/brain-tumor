@@ -10,7 +10,9 @@ export default function Dashboard() {
             <DashboardHeader />
             <DashboardCards />
             <DashboardCharts />
-            <DashboardTable />
+            <div className='grid lg:grid-cols-3 grid-cols-1'>
+                <DashboardTable />
+            </div>
         </>
     )
 }

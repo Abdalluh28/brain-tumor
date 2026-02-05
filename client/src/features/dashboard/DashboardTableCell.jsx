@@ -12,7 +12,7 @@ export default function DashboardTableCell({ data }) {
 
     return (
         <>
-            <td className='py-3 px-2 text-slate-800 dark:text-slate-100'>{data.id}</td>
+            <td className='py-3 px-2 text-slate-800 dark:text-slate-100'>{data.scanId}</td>
             <td className='py-3 px-2 text-slate-800 dark:text-slate-100'>{data.patientName}</td>
             <td className='py-3 px-2 text-slate-800 dark:text-slate-100 hidden md:table-cell'>{data.date} {data.time}</td>
             <td className={`py-3 px-2`}>

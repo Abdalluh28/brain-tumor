@@ -9,7 +9,7 @@ export default function DashboardTable() {
     const navigate = useNavigate();
 
     return (
-        <div className='bg-white shadow rounded-lg p-4 m-4 dark:bg-gray-800'>
+        <div className='bg-white shadow rounded-lg p-4 m-4 dark:bg-gray-800 lg:col-span-3'>
             <div className="flex justify-between items-center">
                 <p className='text-xl font-semibold'>Recent Scans</p>
                 <button className='bg-primary text-white px-4 py-2 rounded-lg text-lg hover:bg-primary/90 transition duration-300 hover:cursor-pointer'

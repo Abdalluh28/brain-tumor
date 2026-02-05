@@ -198,7 +198,7 @@
     --dashboard-numbers: #052e16;
 }
 
-.dark .scan {
+.dark .scan, .dark .history{
     --upload-label-bg: #151f33;
     --upload-icon-bg: #172445;
 
