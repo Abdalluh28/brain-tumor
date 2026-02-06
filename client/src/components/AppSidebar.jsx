@@ -14,6 +14,7 @@ import {
 import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X } from "lucide-react";
 import ThemeToggle from "../features/theme/ThemeToggle";
 import { NavLink } from "react-router-dom";
+import { SettingsModal } from "@/features/settings/SettingsModal";
 
 export default function AppSidebar() {
     return (
@@ -48,7 +49,6 @@ export default function AppSidebar() {
                                 { name: 'Dashboard', path: '/', icon: LayoutDashboard },
                                 { name: 'Upload Scan', path: '/scan', icon: Upload },
                                 { name: 'History', path: '/history', icon: History },
-                                { name: 'Settings', path: '/settings', icon: Settings }
                             ].map(item => (
                                 <SidebarMenuItem key={item.name}>
                                     <NavLink to={item.path} end>
@@ -83,12 +83,15 @@ export default function AppSidebar() {
                     <ThemeToggle />
                 </div>
 
-                <SidebarMenuItem >
-                    <SidebarMenuButton>
-                        <LogOut className="mr-1 h-5! w-5!" />
-                        Sign Out
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
+                <div className="w-full p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition duration-300 rounded-lg">
+                    <div className="w-full flex justify-between items-center px-4 py-2">
+                        <div className="flex items-center gap-2 w-2/3 py-2 cursor-pointer hover:text-red-500 transition duration-300">
+                            <LogOut className="mr-1 h-5! w-5!" />
+                            <p>Sign Out</p>
+                        </div>
+                        <SettingsModal />
+                    </div>
+                </div>
 
             </SidebarFooter>
         </Sidebar>
