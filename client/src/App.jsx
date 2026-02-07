@@ -1,14 +1,16 @@
 import { useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
+import Login from "./features/auth/Login";
+import Register from "./features/auth/Register";
 import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import History from "./pages/History";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
-import History from "./pages/History";
-import Settings from "./pages/Settings";
-import { Toaster } from "react-hot-toast";
+import ResetPassword from "./features/auth/ResetPassword";
 
 export default function App() {
 
@@ -45,20 +47,20 @@ export default function App() {
                 {
                     path: '/history',
                     element: <History />
-                },
-                {
-                    path: '/settings',
-                    element: <Settings />
                 }
             ]
         },
         {
             path: 'login',
-            element: <div>Login Page</div>
+            element: <Login />
         },
         {
             path: 'register',
-            element: <div>Register Page</div>
+            element: <Register />
+        },
+        {
+            path: 'reset',
+            element: <ResetPassword />
         }
     ])
 
