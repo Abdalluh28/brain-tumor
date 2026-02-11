@@ -18,14 +18,13 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 
-
 // Routes
-app.use('/', require('./routes/root'));
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/user', require('./routes/userRoutes'));
+app.use("/", require("./routes/root"));
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/user", require("./routes/userRoutes"));
 
 // Start server after MongoDB connection is established
-mongoose.connection.once('open', () => {
+mongoose.connection.once("open", () => {
     app.listen(port, () => {
         console.log(`Server is running on port ${port}`);
     });
