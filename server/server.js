@@ -22,6 +22,7 @@ app.use(express.json());
 app.use("/", require("./routes/root"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/user", require("./routes/userRoutes"));
+app.use('/api/password', require('./routes/passwordRoutes'));
 
 // Start server after MongoDB connection is established
 mongoose.connection.once("open", () => {

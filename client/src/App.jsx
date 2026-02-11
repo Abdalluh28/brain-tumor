@@ -59,7 +59,7 @@ export default function App() {
             element: <Register />
         },
         {
-            path: 'reset',
+            path: 'password/reset/:id/:accessToken',
             element: <ResetPassword />
         }
     ])
