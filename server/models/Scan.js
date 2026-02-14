@@ -2,11 +2,11 @@ const mongoose = require("mongoose");
 
 const scanFileSchema = new mongoose.Schema(
     {
-        modality: {
-            type: String,
-            enum: ["T1", "T1CE", "T2", "FLAIR"],
-            required: true,
-        },
+        // modality: {
+        //     type: String,
+        //     enum: ["T1", "T1CE", "T2", "FLAIR"],
+        //     required: true,
+        // },
 
         // rawPath is the path to the original MRI file
         rawPath: {
