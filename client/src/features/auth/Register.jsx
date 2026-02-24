@@ -24,7 +24,7 @@ export default function Register() {
 
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='name' className='text-sm text-slate-600 dark:text-slate-400'>Name</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200  dark:border-slate-600'>
                                 <label htmlFor='name'>
                                     <User className='text-slate-600 dark:text-slate-400' />
                                 </label>
@@ -36,7 +36,7 @@ export default function Register() {
 
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='email' className='text-sm text-slate-600 dark:text-slate-400'>Email Address</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200  dark:border-slate-600'>
                                 <label htmlFor='email'>
                                     <Mail className='text-slate-600 dark:text-slate-400' />
                                 </label>
@@ -48,7 +48,7 @@ export default function Register() {
 
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='password' className='text-sm text-slate-600 dark:text-slate-400'>Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200  dark:border-slate-600'>
                                 <label htmlFor='password'>
                                     <Lock className='text-slate-600 dark:text-slate-400' />
                                 </label>
@@ -60,7 +60,7 @@ export default function Register() {
 
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='confirmPassword' className='text-sm text-slate-600 dark:text-slate-400'>Confirm Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200  dark:border-slate-600'>
                                 <label htmlFor='confirmPassword'>
                                     <Lock className='text-slate-600 dark:text-slate-400' />
                                 </label>

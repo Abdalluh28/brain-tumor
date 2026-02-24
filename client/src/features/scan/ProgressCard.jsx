@@ -2,6 +2,7 @@ import { Progress } from "@/components/ui/progress";
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useScanProgress } from './useScanProgress';
+import Spinner from "@/components/Spinner";
 
 export default function ProgressCard() {
     const [progressValue, setProgressValue] = useState(0);
@@ -11,7 +12,7 @@ export default function ProgressCard() {
     return (
         <div className='flex flex-col gap-4 shadow-md rounded-lg bg-white dark:bg-background dark:border dark:border-slate-700 p-4'>
             <div className='flex gap-2 items-center'>
-                <LoaderCircle size={32} className="animate-spin text-primary" />
+                <Spinner />
                 <span>Processing 4-view MRI scan</span>
             </div>
 

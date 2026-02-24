@@ -1,14 +1,35 @@
-import authImg from '@/assets/auth.png'
-import { Brain, Lock, Mail } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import authImg from '@/assets/auth.png';
+import Spinner from '@/components/Spinner';
+import { Brain, Lock, Mail } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { useLogin } from './useLogin';
 
 
 export default function Login() {
 
     const navigate = useNavigate();
 
+    // login hook
+    const { login, isLoading } = useLogin()
+
+    // form hook to handle form submission
+    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+
+    // form submit handler
+    const handleFormSubmit = (data) => {
+        login(data, {
+            onSuccess: () => {
+                reset();
+                navigate('/', { replace: true });
+            }
+        });
+    }
+
+
     return (
-        <div className='w-full flex items-center'>
+        <form className='w-full flex items-center'
+            onSubmit={handleSubmit(handleFormSubmit)}>
             <div className='lg:w-1/2 w-full flex justify-center'>
                 <div className='flex flex-col gap-8 xl:w-2/3 lg:w-3/4 sm:w-2/3 w-[90%]'>
                     <div className="flex gap-2 items-center">
@@ -27,34 +48,52 @@ export default function Login() {
                     <div className='flex flex-col gap-4'>
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='email' className='text-sm text-slate-600 dark:text-slate-400'>Email Address</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600'>
                                 <label htmlFor='email'>
                                     <Mail className='text-slate-600 dark:text-slate-400' />
                                 </label>
-                                <input type="text" id='email'
+                                <input type="email" id='email'
+                                    {...register('email', {
+                                        required: 'Email is required',
+                                        pattern: {
+                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                            message: 'Invalid email address'
+                                        }
+                                    })}
                                     placeholder='Doctor@gmail.com'
                                     className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
                             </div>
+                            {errors.email && <span className='text-xs text-red-500'>{errors.email.message}</span>}
                         </div>
 
                         <div className='flex flex-col gap-1'>
                             <label htmlFor='password' className='text-sm text-slate-600 dark:text-slate-400'>Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
+                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600'>
                                 <label htmlFor='password'>
                                     <Lock className='text-slate-600 dark:text-slate-400' />
                                 </label>
                                 <input type="password" id='password'
+                                    {...register('password', {
+                                        required: 'Password is required',
+                                        minLength: {
+                                            value: 8,
+                                            message: 'Password must be at least 8 characters'
+                                        }
+                                    })}
                                     placeholder='••••••••'
                                     className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
                             </div>
+                            {errors.password && <span className='text-xs text-red-500'>{errors.password.message}</span>}
                         </div>
 
                         {/* handle forgot by enter email to reset password (not have to navigate to custom page) */}
                         <div className='text-right text-sm text-primary hover:text-primary-hover transition duration-300 cursor-pointer'>
                             Forgot Password?
                         </div>
-                        <button className='bg-primary text-white py-3 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300'>
-                            Login
+                        <button className='bg-primary text-white py-3 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300 flex justify-center items-center'
+                            type='submit'
+                            disabled={isLoading}>
+                            {isLoading ? <Spinner color="text-white" /> : 'Login'}
                         </button>
                         <div className='flex items-center gap-2'>
                             <span>Don't have an account?</span>
@@ -78,7 +117,7 @@ export default function Login() {
                     </p>
                 </div>
             </div>
-        </div>
+        </form>
     )
 }
 

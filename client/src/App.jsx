@@ -1,16 +1,27 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Toaster } from "react-hot-toast";
 import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
+import { DismissableToaster } from "./components/DismissableToaster";
 import Login from "./features/auth/Login";
 import Register from "./features/auth/Register";
+import ResetPassword from "./features/auth/ResetPassword";
 import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
-import ResetPassword from "./features/auth/ResetPassword";
+
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            // staleTime: 60 * 1000
+            staleTime: 0,
+        }
+    }
+})
 
 export default function App() {
 
@@ -67,8 +78,11 @@ export default function App() {
 
     return (
         <>
-            <RouterProvider router={router} />
-            <Toaster />
+            <QueryClientProvider client={queryClient} >
+                <RouterProvider router={router} />
+                <DismissableToaster />
+            </QueryClientProvider>
         </>
     );
 }
+
