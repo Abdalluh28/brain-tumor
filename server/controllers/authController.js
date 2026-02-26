@@ -31,12 +31,11 @@ const register = asyncHandler(async (req, res) => {
         lastLogin: new Date(),
     });
 
-    const { accessToken, refreshToken } = await createTokens(newUser, res);
+    const { accessToken } = await createTokens(newUser, res);
 
     try {
         return res.json({
             accessToken,
-            refreshToken,
             name: newUser.name,
             email: newUser.email,
             role: newUser.role,
@@ -72,22 +71,16 @@ const login = asyncHandler(async (req, res) => {
     existingUser.lastLogin = new Date();
     await existingUser.save();
 
-    const { accessToken, refreshToken } = await createTokens(existingUser, res);
+    const { accessToken } = await createTokens(existingUser, res);
     try {
         const userInfo = {
             accessToken,
-            refreshToken,
             name: existingUser.name,
             email: existingUser.email,
             role: existingUser.role,
             lastLogin: existingUser.lastLogin,
             id: existingUser._id,
         };
-        res.cookie("userInfo", JSON.stringify(userInfo), {
-            httpOnly: true,
-            sameSite: "None",
-            secure: process.env.NODE_ENV === "production",
-        });
         return res.json(userInfo);
     } catch (error) {
         return res.status(500).json({ message: error.message });

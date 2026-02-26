@@ -1,10 +1,14 @@
+import { setAccessToken } from "@/utils/tokenManager";
 import { api } from "./api";
 
 // api calls for authentication
 
 export async function loginApi(data) {
     const res = await api.post("/auth/login", data);
-    return res;
+
+    setAccessToken(res.data.accessToken);
+
+    return res.data;
 }
 
 export async function registerApi(data) {
