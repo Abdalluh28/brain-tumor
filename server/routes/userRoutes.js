@@ -4,6 +4,8 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const { verifyJWT } = require("../middleware/authMiddleware");
 
+router.route("/").get(verifyJWT, userController.getUser);
+
 router.route("/profile").post(verifyJWT, userController.updateUserProfile);
 
 router.route("/:id").delete(verifyJWT, userController.deleteUser);

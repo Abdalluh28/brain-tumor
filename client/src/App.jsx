@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
+import ProtectedRoutes from "./components/ProtectedRoutes";
+import AuthRoutes from "./components/authRoutes";
 
 
 const queryClient = new QueryClient({
@@ -40,33 +42,43 @@ export default function App() {
     // router configuration
     const router = createBrowserRouter([
         {
-            element: <AppLayout />,
+            element: <ProtectedRoutes />,
             children: [
                 {
-                    path: '/',
-                    element: <Dashboard />
-                },
-                {
-                    path: '/scan',
-                    element: <Scan />
-                },
-                {
-                    path: '/scan/:scanId',
-                    element: <ScanId />
-                },
-                {
-                    path: '/history',
-                    element: <History />
+                    element: <AppLayout />,
+                    children: [
+                        {
+                            path: '/',
+                            element: <Dashboard />
+                        },
+                        {
+                            path: '/scan',
+                            element: <Scan />
+                        },
+                        {
+                            path: '/scan/:scanId',
+                            element: <ScanId />
+                        },
+                        {
+                            path: '/history',
+                            element: <History />
+                        }
+                    ]
                 }
             ]
         },
         {
-            path: 'login',
-            element: <Login />
-        },
-        {
-            path: 'register',
-            element: <Register />
+            element: <AuthRoutes />,
+            children: [
+                {
+                    path: 'login',
+                    element: <Login />
+                },
+                {
+                    path: 'register',
+                    element: <Register />
+                }
+            ]
         },
         {
             path: 'password/reset/:id/:accessToken',

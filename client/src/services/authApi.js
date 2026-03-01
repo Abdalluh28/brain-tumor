@@ -1,4 +1,4 @@
-import { setAccessToken } from "@/utils/tokenManager";
+import { setAccessToken, clearAccessToken } from "@/utils/tokenManager";
 import { api } from "./api";
 
 // api calls for authentication
@@ -23,6 +23,7 @@ export async function refreshApi() {
 
 export async function logoutApi(data) {
     const res = await api.post("/auth/logout", data);
+    clearAccessToken();
     return res;
 }
 

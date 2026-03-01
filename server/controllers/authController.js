@@ -90,43 +90,39 @@ const login = asyncHandler(async (req, res) => {
 const refresh = asyncHandler(async (req, res) => {
     const cookies = req.cookies;
 
-    // check if refresh token exists
     if (!cookies?.jwt) {
         return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // check if refresh token is valid
     const refreshToken = cookies.jwt;
-    const userInfo = cookies.userInfo;
-    jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET,
-        async (err, decoded) => {
-            if (err) {
-                // Refresh token is invalid or expired
-                return res.status(403).json({ message: "Forbidden" });
-            }
 
-            const existingUser = await User.findById(decoded.userInfo.id);
+    let decoded;
+    try {
+        decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+        return res.status(403).json({ message: "Forbidden" });
+    }
 
-            if (!existingUser) {
-                return res.status(404).json({ message: "User not found" });
-            }
+    const existingUser = await User.findById(decoded.userInfo.id);
+    if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+    }
 
-            // Create new access token
-            const accessToken = jwt.sign(
-                {
-                    userInfo: {
-                        id: existingUser._id,
-                    },
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: "15m" },
-            );
-
-            return res.json({ accessToken, userInfo });
-        },
+    const accessToken = jwt.sign(
+        { userInfo: { id: existingUser._id, role: existingUser.role } },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "15m" },
     );
+
+    const userInfo = {
+        id: existingUser._id,
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role,
+        lastLogin: existingUser.lastLogin,
+    };
+
+    return res.json({ accessToken, userInfo });
 });
 
 const logout = asyncHandler(async (req, res) => {

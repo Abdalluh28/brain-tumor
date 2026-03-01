@@ -5,7 +5,7 @@ const createTokens = async (user, res) => {
         {
             userInfo: {
                 id: user._id,
-                isAdmin: user.isAdmin,
+                role: user.role,
             },
         },
         process.env.ACCESS_TOKEN_SECRET,
@@ -16,7 +16,7 @@ const createTokens = async (user, res) => {
         {
             userInfo: {
                 id: user._id,
-                isAdmin: user.isAdmin,
+                role: user.role,
             },
         },
         process.env.REFRESH_TOKEN_SECRET,

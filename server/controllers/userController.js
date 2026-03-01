@@ -2,9 +2,24 @@ const User = require("../models/User");
 const asyncHandler = require("../middleware/asyncHandler");
 const bcrypt = require("bcryptjs");
 
+const getUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        lastLogin: user.lastLogin,
+    });
+});
+
 const updateUserProfile = asyncHandler(async (req, res) => {
-    const userInfo = JSON.parse(req.cookies.userInfo);
-    const user = await User.findById(userInfo.id);
+    const user = await User.findById(req.user.id);
     console.log("userInfo: ", user);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -61,4 +76,4 @@ const deleteUser = asyncHandler(async (req, res) => {
     return res.status(200).json({ message: "User deleted" });
 });
 
-module.exports = { updateUserProfile, deleteUser };
+module.exports = { getUser, updateUserProfile, deleteUser };

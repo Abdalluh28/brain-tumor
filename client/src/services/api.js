@@ -1,4 +1,4 @@
-import { getAccessToken, setAccessToken } from "@/utils/tokenManager";
+import { getAccessToken, setAccessToken, clearAccessToken } from "@/utils/tokenManager";
 import axios from "axios";
 
 export const api = axios.create({
@@ -23,7 +23,8 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Try refresh on 401 (no token) or 403 (expired/invalid token)
+        if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
@@ -38,6 +39,7 @@ api.interceptors.response.use(
 
                 return api(originalRequest);
             } catch (err) {
+                clearAccessToken();
                 return Promise.reject(err);
             }
         }

@@ -1,25 +1,25 @@
-// authMiddleware.js
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
 
 const verifyJWT = (req, res, next) => {
     const authHeader = req.headers.authorization || req.headers.Authorization;
-    if (!authHeader) {
-        return res.status(401).send({ message: "Unauthorized" });
-    }
 
-    if (!authHeader.startsWith("Bearer ")) {
-        return res.status(401).send({ message: "Unauthorized" });
+    if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "Unauthorized" });
     }
 
     const token = authHeader.split(" ")[1];
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(401).send({ message: "Forbidden" });
+            return res.status(403).json({ message: "Forbidden" });
         }
 
-        // Attach decoded token to request object if needed
-        req.user = await User.findById(decoded.userInfo.id);
+        // Attach only ID (not full user document)
+        req.user = {
+            id: decoded.userInfo.id,
+            role: decoded.userInfo.role,
+        };
+
         next();
     });
 };

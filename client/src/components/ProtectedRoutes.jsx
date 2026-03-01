@@ -1,10 +1,17 @@
+import { useUser } from '@/features/settings/useUser'
 import React from 'react'
+import Spinner from './Spinner';
+import { Navigate, Outlet } from 'react-router-dom';
 
-export default function ProtectedRoutes({ children }) {
+export default function ProtectedRoutes() {
+    const { user, isLoading } = useUser();
 
-    // implement useUser using useQuery to get the user 
-    // const {user, isLoading} = useUser();
+    // if loading, show spinner
+    if (isLoading) return <Spinner />
 
+    // if not logged in, redirect to login
+    if (!user) return <Navigate to="/login" replace />
 
-    return children
+    // if logged in, render the matched child route
+    return <Outlet />
 }
