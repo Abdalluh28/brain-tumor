@@ -130,6 +130,10 @@ const logout = asyncHandler(async (req, res) => {
 
     const { id } = req.body;
 
+    if (!id) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const existingUser = await User.findById(id);
 
     if (!existingUser) {
@@ -146,7 +150,7 @@ const logout = asyncHandler(async (req, res) => {
         secure: process.env.NODE_ENV === "production",
     });
 
-    return res.json({ message: "Cookie cleared" });
+    return res.json({ message: "Logout successful" });
 });
 
 module.exports = {

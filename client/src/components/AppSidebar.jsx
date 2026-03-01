@@ -15,8 +15,20 @@ import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X } from "lu
 import ThemeToggle from "../features/theme/ThemeToggle";
 import { NavLink } from "react-router-dom";
 import { SettingsModal } from "@/features/settings/SettingsModal";
+import { useLogout } from "@/features/auth/useLogout";
+import Spinner from "./Spinner";
+import { useUser } from "@/features/settings/useUser";
 
 export default function AppSidebar() {
+
+    const { user } = useUser();
+    const { logout, isLoading } = useLogout();
+
+    const handleLogout = () => {
+        console.log(user)
+        logout({ id: user?.id });
+    }
+
     return (
         <Sidebar>
             {/* Header */}
@@ -85,9 +97,17 @@ export default function AppSidebar() {
 
                 <div className="w-full p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition duration-300 rounded-lg">
                     <div className="w-full flex justify-between items-center px-4 py-2">
-                        <div className="flex items-center gap-2 w-2/3 py-2 cursor-pointer hover:text-red-500 transition duration-300">
-                            <LogOut className="mr-1 h-5! w-5!" />
-                            <p>Sign Out</p>
+                        <div className="flex items-center gap-2 w-2/3 py-2 cursor-pointer hover:text-red-500 transition duration-300"
+                            onClick={handleLogout}>
+                            {isLoading ?
+                                (
+                                    <Spinner />
+                                ) : (
+                                    <>
+                                        <LogOut className="mr-1 h-5! w-5!" />
+                                        <p>Sign Out</p>
+                                    </>
+                                )}
                         </div>
                         <SettingsModal />
                     </div>
