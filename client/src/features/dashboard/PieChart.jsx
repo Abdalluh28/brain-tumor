@@ -40,7 +40,7 @@ export default function PieChart() {
     }
 
     return (
-        <div className="w-full max-w-2xl bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">
+        <div className="w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">
             <h1 className="text-xl font-bold mb-4">
                 Classification Distribution
             </h1>

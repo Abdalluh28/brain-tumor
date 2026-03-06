@@ -72,6 +72,7 @@ export default function LineChart() {
 
     const options = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -111,14 +112,15 @@ export default function LineChart() {
                 },
             },
         },
-        
     };
 
 
     return (
-        <div className="w-full max-w-2xl bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <div className="w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">
             <h1 className="text-xl font-bold mb-4">Monthly Scan Volume</h1>
-            <Line data={chartData} options={options} />
+            <div className="relative w-full h-80">
+                <Line data={chartData} options={options} />
+            </div>
         </div>
     );
 }

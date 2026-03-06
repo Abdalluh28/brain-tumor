@@ -9,7 +9,7 @@ const createTokens = async (user, res) => {
             },
         },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "15m" },
+        { expiresIn: "1m" },
     );
 
     const refreshToken = jwt.sign(
@@ -26,7 +26,7 @@ const createTokens = async (user, res) => {
     res.cookie("jwt", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "None",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
         maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 

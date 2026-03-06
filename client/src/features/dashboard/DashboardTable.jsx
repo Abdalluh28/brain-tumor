@@ -30,7 +30,7 @@ export default function DashboardTable() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-600">
                         {recentData.map(item => (
                             <tr
-                                key={item.id}
+                                key={item.scanId}
                                 className="hover:bg-slate-50 dark:hover:bg-slate-700 transition hover:cursor-pointer duration-300"
                             >
                                 <DashboardTableCell data={item} />
