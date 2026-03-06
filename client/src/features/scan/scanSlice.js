@@ -9,7 +9,7 @@ export const scanSlice = createSlice({
     initialState,
     reducers: {
         uploadFile: (state, action) => {
-            console.log(action.payload)
+            console.log(action.payload);
             state.files.push({
                 id: Date.now(),
                 name: action.payload.name,
@@ -25,9 +25,12 @@ export const scanSlice = createSlice({
                 (file) => file.id !== action.payload,
             );
         },
+        clearFiles: (state) => {
+            state.files = [];
+        },
     },
 });
 
-export const { uploadFile, removeFile } = scanSlice.actions;
+export const { uploadFile, removeFile, clearFiles } = scanSlice.actions;
 
 export default scanSlice.reducer;

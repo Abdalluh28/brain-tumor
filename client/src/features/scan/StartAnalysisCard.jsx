@@ -1,13 +1,24 @@
-import { CircleCheckBig } from 'lucide-react'
-import React, { useState } from 'react'
-import ProgressCard from './ProgressCard'
+import { CircleCheckBig } from 'lucide-react';
+import ProgressCard from './ProgressCard';
+import { useCreateScan } from './useCreateScan';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearFiles } from './scanSlice';
 
 export default function StartAnalysisCard() {
 
-    // TODO: Add functionality to button to start analysis process
-    const [startAnalysis, setStartAnalysis] = useState(false)
+    const { createScan, isLoading } = useCreateScan();
+    const files = useSelector(state => state.scan.files);
+    const dispatch = useDispatch();
 
-    if (startAnalysis) {
+    const handleCreateScan = () => {
+        createScan(files, {
+            onSuccess: () => {
+                dispatch(clearFiles());
+            }
+        });
+    }
+
+    if (isLoading) {
         return <ProgressCard />
     }
 
@@ -39,7 +50,7 @@ export default function StartAnalysisCard() {
                 </ul>
             </div>
             <button className='bg-primary rounded-xl p-4 text-white cursor-pointer hover:bg-primary-hover transition duration-300 text-lg'
-                onClick={() => setStartAnalysis(true)}>
+                onClick={handleCreateScan}>
                 Run Multi-View Classification Analysis
             </button>
         </div>

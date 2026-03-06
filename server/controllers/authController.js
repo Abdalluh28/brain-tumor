@@ -40,7 +40,7 @@ const register = asyncHandler(async (req, res) => {
             email: newUser.email,
             role: newUser.role,
             lastLogin: newUser.lastLogin,
-            id: newUser._id,
+            id: newUser.id,
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -79,7 +79,7 @@ const login = asyncHandler(async (req, res) => {
             email: existingUser.email,
             role: existingUser.role,
             lastLogin: existingUser.lastLogin,
-            id: existingUser._id,
+            id: existingUser.id,
         };
         return res.json(userInfo);
     } catch (error) {
@@ -109,13 +109,13 @@ const refresh = asyncHandler(async (req, res) => {
     }
 
     const accessToken = jwt.sign(
-        { userInfo: { id: existingUser._id, role: existingUser.role } },
+        { userInfo: { id: existingUser.id, role: existingUser.role } },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" },
     );
 
     const userInfo = {
-        id: existingUser._id,
+        id: existingUser.id,
         name: existingUser.name,
         email: existingUser.email,
         role: existingUser.role,

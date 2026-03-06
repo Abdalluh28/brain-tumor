@@ -16,7 +16,12 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 20 * 1024 * 1024, // 20MB per file
+    },
+});
 const uploadFiles = upload.array("files", 4);
 
 // ------------------
@@ -44,7 +49,7 @@ const createScan = asyncHandler(async (req, res) => {
         }));
 
         const scan = await Scan.create({
-            userId: req.user._id,
+            userId: req.user.id,
             files,
             status: "review",
         });
@@ -66,10 +71,10 @@ const getScans = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const total = await Scan.countDocuments({
-        userId: req.user._id,
+        userId: req.user.id,
     });
 
-    const scans = await Scan.find({ userId: req.user._id })
+    const scans = await Scan.find({ userId: req.user.id })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
