@@ -21,8 +21,8 @@ export async function refreshApi() {
     return res;
 }
 
-export async function logoutApi(data) {
-    const res = await api.post("/auth/logout", data);
+export async function logoutApi() {
+    const res = await api.post("/auth/logout");
     clearAccessToken();
     return res;
 }

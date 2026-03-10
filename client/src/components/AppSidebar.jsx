@@ -17,16 +17,13 @@ import { NavLink } from "react-router-dom";
 import { SettingsModal } from "@/features/settings/SettingsModal";
 import { useLogout } from "@/features/auth/useLogout";
 import Spinner from "./Spinner";
-import { useUser } from "@/features/settings/useUser";
 
 export default function AppSidebar() {
 
-    const { user } = useUser();
     const { logout, isLoading } = useLogout();
 
     const handleLogout = () => {
-        console.log(user)
-        logout({ id: user?.id });
+        logout();
     }
 
     return (
