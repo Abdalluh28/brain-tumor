@@ -1,8 +1,10 @@
 import { api } from "./api";
 
 export async function createScanApi(files) {
+    // Create a FormData object to hold the files
     const formData = new FormData();
 
+    // Append files to FormData
     files.forEach((file) => {
         formData.append("files", file.rawFile);
     });
@@ -17,6 +19,7 @@ export async function createScanApi(files) {
 
 export async function getScansApi() {
     const res = await api.get("/scan");
+    console.log(res.data)
     return res.data;
 }
 
