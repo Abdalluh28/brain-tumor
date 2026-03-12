@@ -2,14 +2,60 @@ import Spinner from '@/components/Spinner'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import HistoryTableCell from './HistoryTableCell'
 import { useScans } from './useScans'
+import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 
 export default function HistoryTable() {
 
+    const [_, setSearchParams] = useSearchParams();
     const { scans, currentPage, totalPages, totalScans, start, end, isLoading } = useScans()
 
+    // handle pagination
+
+    // helper function to update the page number
+    // useCallback is used to prevent unnecessary re-renders as this function is used in useEffect
+    const updateParams = useCallback((page) => {
+        setSearchParams(prev => {
+            const params = new URLSearchParams(prev);
+            params.set("page", page);
+            return params
+        })
+    }, [setSearchParams]);
+    
+
+    // get the previous page and update the url
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            updateParams(currentPage - 1);
+        }
+    }
+
+    // get the next page and update the url (update the search params)
+    const handleNextPage = () => {
+        if (currentPage < totalPages) {
+            updateParams(currentPage + 1);
+        }
+    }
+
+    // handle if current page is greater than total pages
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            updateParams(totalPages);
+        }
+    }, [currentPage, totalPages, updateParams]);
+
+    // handle if loading
     if (isLoading) return (
         <div className='flex justify-center items-center lg:col-span-3'>
             <Spinner />
+        </div>
+    )
+
+
+    // handle if no scans
+    if (scans.length === 0) return (
+        <div className='flex justify-center items-center lg:col-span-3'>
+            <p className='text-slate-600 dark:text-slate-400'>No scans found</p>
         </div>
     )
 
@@ -39,11 +85,15 @@ export default function HistoryTable() {
                 {/* Pagination */}
                 <p>Showing {start} to {end} of {totalScans} scans</p>
                 <div className='flex gap-2 items-center'>
-                    <button className='cursor-pointer p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-300'>
+                    <button className={`p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-300 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}>
                         <ChevronLeft />
                     </button>
                     <p>Page {currentPage} of {totalPages}</p>
-                    <button className='cursor-pointer p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-300'>
+                    <button className={`p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-300 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}>
                         <ChevronRight />
                     </button>
                 </div>

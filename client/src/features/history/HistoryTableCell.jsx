@@ -15,7 +15,8 @@ export default function HistoryTableCell({ scan }) {
 
     // data and time
     const date = scan.createdAt.split('T')[0];
-    const time = scan.createdAt.split('T')[1];
+    const time = scan.createdAt.split('T')[1].split('.')[0];
+    const confidence = scan.confidenceScores[scan.prediction] || 0;
 
     return (
         <>
@@ -29,7 +30,7 @@ export default function HistoryTableCell({ scan }) {
                     {scan.prediction || 'Healthy'}
                 </p>
             </td>
-            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{scan.confidence || 0}</td>
+            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{confidence}</td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>
                 <p className={`px-2 py-1 text-sm rounded-lg text-center capitalize ${scan.status === 'completed' ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>{scan.status}</p>
             </td>

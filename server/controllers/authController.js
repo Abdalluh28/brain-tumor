@@ -126,28 +126,14 @@ const refresh = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-    const cookies = req.cookies;
-
-    const { id } = req.body;
-
-    if (!id) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const existingUser = await User.findById(id);
-
-    if (!existingUser) {
-        return res.status(404).json({ message: "User not found" });
-    }
-
-    if (!cookies?.jwt) {
+    if (!req.cookies?.jwt) {
         return res.sendStatus(204);
     }
 
     res.clearCookie("jwt", {
         httpOnly: true,
-        sameSite: "None",
         secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     });
 
     return res.json({ message: "Logout successful" });

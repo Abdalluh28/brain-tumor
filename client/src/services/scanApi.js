@@ -17,9 +17,8 @@ export async function createScanApi(files) {
     return res.data;
 }
 
-export async function getScansApi() {
-    const res = await api.get("/scan");
-    console.log(res.data)
+export async function getScansApi({ page = 1 }) {
+    const res = await api.get(`/scan?page=${page}`);
     return res.data;
 }
 

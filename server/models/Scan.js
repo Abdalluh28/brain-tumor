@@ -46,7 +46,7 @@ const scanSchema = new mongoose.Schema(
             },
         },
 
-        tumorType: {
+        prediction: {
             type: String,
             enum: ["GBM", "LGG", "Metastasis", "Healthy"],
         },
@@ -64,8 +64,12 @@ const scanSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["review", "completed", "failed"],
-            default: "review",
+            enum: ["pending", "review", "completed", "failed"],
+            default: "pending",
+        },
+
+        radiologist: {
+            type: String,
         },
     },
     {

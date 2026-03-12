@@ -48,10 +48,25 @@ const createScan = asyncHandler(async (req, res) => {
                 .toLowerCase(),
         }));
 
+        // ml processing goes here (fake data for now)
+        const prediction = "Healthy";
+        const confidenceScores = {
+            Healthy: 97.6,
+            GBM: 2.4,
+            LGG: 0.2,
+            Metastasis: 0.1,
+        };
+        const gradCamPath = "https://example.com/gradcam.jpg";
+        const radiologist = "Dr. Smith";
+
         const scan = await Scan.create({
             userId: req.user.id,
             files,
-            status: "review",
+            prediction,
+            confidenceScores,
+            gradCamPath,
+            status: "pending",
+            radiologist,
         });
 
         res.status(201).json({
@@ -66,7 +81,7 @@ const createScan = asyncHandler(async (req, res) => {
 // ------------------
 const getScans = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = 1;
 
     const skip = (page - 1) * limit;
 
@@ -75,7 +90,7 @@ const getScans = asyncHandler(async (req, res) => {
     });
 
     const scans = await Scan.find({ userId: req.user.id })
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: 1 })
         .skip(skip)
         .limit(limit);
 
@@ -84,6 +99,8 @@ const getScans = asyncHandler(async (req, res) => {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
         totalScans: total,
+        start: skip + 1,
+        end: skip + scans.length,
     });
 });
 
