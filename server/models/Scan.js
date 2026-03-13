@@ -58,6 +58,11 @@ const scanSchema = new mongoose.Schema(
             Healthy: Number,
         },
 
+        // max confidence score (to be used for filtering)
+        confidence: {
+            type: Number,
+        },
+
         gradCamPath: {
             type: String,
         },

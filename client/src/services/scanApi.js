@@ -17,8 +17,17 @@ export async function createScanApi(files) {
     return res.data;
 }
 
-export async function getScansApi({ page = 1 }) {
-    const res = await api.get(`/scan?page=${page}`);
+export async function getScansApi({
+    page = 1,
+    type = "",
+    confidenceFrom = "",
+    confidenceTo = "",
+    status = "",
+    date = "",
+}) {
+    const res = await api.get(
+        `/scan?page=${page}&type=${type}&confidenceFrom=${confidenceFrom}&confidenceTo=${confidenceTo}&status=${status}&date=${date}`,
+    );
     return res.data;
 }
 

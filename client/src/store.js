@@ -15,7 +15,7 @@ const persistConfig = {
 // Combine reducers if there are multiple slices
 const rootReducer = combineReducers({
     theme: themeReducer,
-    scan: scanReducer
+    scan: scanReducer,
 });
 
 // Create a persisted reducer

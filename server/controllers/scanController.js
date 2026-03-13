@@ -56,6 +56,7 @@ const createScan = asyncHandler(async (req, res) => {
             LGG: 0.2,
             Metastasis: 0.1,
         };
+        const confidence = 97.6;
         const gradCamPath = "https://example.com/gradcam.jpg";
         const radiologist = "Dr. Smith";
 
@@ -64,6 +65,7 @@ const createScan = asyncHandler(async (req, res) => {
             files,
             prediction,
             confidenceScores,
+            confidence,
             gradCamPath,
             status: "pending",
             radiologist,
@@ -80,16 +82,55 @@ const createScan = asyncHandler(async (req, res) => {
 // Get All Scans
 // ------------------
 const getScans = asyncHandler(async (req, res) => {
+    // get page from url to handle pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = 1;
+    const limit = 10;
 
+    // get filters
+    const { type, confidenceFrom, confidenceTo, status, date } = req.query;
+
+    // build filter
+    const filter = {
+        userId: req.user.id,
+    };
+
+    if (type && type !== "All") {
+        filter.prediction = type;
+    }
+
+    if (
+        confidenceFrom &&
+        confidenceFrom !== "All" &&
+        confidenceTo &&
+        confidenceTo !== "All"
+    ) {
+        filter.confidence = {
+            $gte: Number(confidenceFrom),
+            $lte: Number(confidenceTo),
+        };
+    }
+
+    if (status && status !== "All") {
+        filter.status = status;
+    }
+
+    if (date && date !== "All") {
+        // get the scans from the same year only
+        const start = new Date(`${date}-01-01`);
+        const end = new Date(`${Number(date) + 1}-01-01`);
+
+        filter.createdAt = {
+            $gte: start,
+            $lt: end,
+        };
+    }
+
+    // get the specific page
     const skip = (page - 1) * limit;
 
-    const total = await Scan.countDocuments({
-        userId: req.user.id,
-    });
+    const total = await Scan.countDocuments(filter);
 
-    const scans = await Scan.find({ userId: req.user.id })
+    const scans = await Scan.find(filter)
         .sort({ createdAt: 1 })
         .skip(skip)
         .limit(limit);
