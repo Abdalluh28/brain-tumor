@@ -24,9 +24,10 @@ export async function getScansApi({
     confidenceTo = "",
     status = "",
     date = "",
+    search = "",
 }) {
     const res = await api.get(
-        `/scan?page=${page}&type=${type}&confidenceFrom=${confidenceFrom}&confidenceTo=${confidenceTo}&status=${status}&date=${date}`,
+        `/scan?page=${page}&type=${type}&confidenceFrom=${confidenceFrom}&confidenceTo=${confidenceTo}&status=${status}&date=${date}&search=${search}`,
     );
     return res.data;
 }

@@ -84,10 +84,11 @@ const createScan = asyncHandler(async (req, res) => {
 const getScans = asyncHandler(async (req, res) => {
     // get page from url to handle pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = 1;
 
     // get filters
-    const { type, confidenceFrom, confidenceTo, status, date } = req.query;
+    const { type, confidenceFrom, confidenceTo, status, date, search } =
+        req.query;
 
     // build filter
     const filter = {
@@ -123,6 +124,24 @@ const getScans = asyncHandler(async (req, res) => {
             $gte: start,
             $lt: end,
         };
+    }
+
+    // SEARCH by scan ID or doctor name
+    if (search && search.trim() !== "") {
+        const searchConditions = [
+            { radiologist: { $regex: search, $options: "i" } },
+            {
+                $expr: {
+                    $regexMatch: {
+                        input: { $toString: "$_id" },
+                        regex: search,
+                        options: "i",
+                    },
+                },
+            },
+        ];
+
+        filter.$or = searchConditions;
     }
 
     // get the specific page

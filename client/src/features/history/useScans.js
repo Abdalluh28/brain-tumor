@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export const useScans = () => {
-    // get the params from url to handle pagination and filters
+    // get the params from url to handle pagination, filters, and search
     const queryClient = useQueryClient();
     const [searchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -13,6 +13,7 @@ export const useScans = () => {
     const confidenceTo = searchParams.get("confidenceTo") || "";
     const status = searchParams.get("status") || "";
     const date = searchParams.get("date") || "";
+    const search = searchParams.get("search") || "";
 
     const { data, isPending: isLoading } = useQuery({
         queryFn: () =>
@@ -23,6 +24,7 @@ export const useScans = () => {
                 confidenceTo,
                 status,
                 date,
+                search,
             }),
         queryKey: [
             "scans",
@@ -32,6 +34,7 @@ export const useScans = () => {
             confidenceTo,
             status,
             date,
+            search,
         ],
         retry: false,
         // placeholder data to display previous data while loading new data
@@ -60,6 +63,7 @@ export const useScans = () => {
                     confidenceTo,
                     status,
                     date,
+                    search,
                 ],
                 queryFn: () =>
                     getScansApi({
@@ -69,6 +73,7 @@ export const useScans = () => {
                         confidenceTo,
                         status,
                         date,
+                        search,
                     }),
             });
         }
@@ -81,6 +86,7 @@ export const useScans = () => {
         confidenceTo,
         status,
         date,
+        search,
     ]);
 
     return {
