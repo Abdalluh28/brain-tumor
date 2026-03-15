@@ -84,7 +84,7 @@ const createScan = asyncHandler(async (req, res) => {
 const getScans = asyncHandler(async (req, res) => {
     // get page from url to handle pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = 1;
+    const limit = 10;
 
     // get filters
     const { type, confidenceFrom, confidenceTo, status, date, search } =
