@@ -32,6 +32,8 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.11.0",
     "redux-persist": "^6.0.0",
+    "sweetalert2": "^11.26.23",
+    "sweetalert2-react-content": "^5.1.2",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ const multer = require("multer");
 const asyncHandler = require("../middleware/asyncHandler");
 const Scan = require("../models/Scan");
 const path = require("path");
+const fs = require("fs");
 
 // ------------------
 // Multer Local Storage (Better for ML processing)
@@ -15,9 +16,21 @@ const storage = multer.diskStorage({
         cb(null, uniqueName + path.extname(file.originalname));
     },
 });
+const allowedExtensions = [".nii", ".nii.gz", ".dcm", ".png", ".jpg", ".jpeg"];
+
+const fileFilter = (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedExtensions.includes(ext)) {
+        return cb(new Error("Only .nii, .png, .jpg allowed"));
+    }
+
+    cb(null, true);
+};
 
 const upload = multer({
     storage,
+    fileFilter,
     limits: {
         fileSize: 20 * 1024 * 1024, // 20MB per file
     },
@@ -150,7 +163,7 @@ const getScans = asyncHandler(async (req, res) => {
     const total = await Scan.countDocuments(filter);
 
     const scans = await Scan.find(filter)
-        .sort({ createdAt: 1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
@@ -186,6 +199,12 @@ const deleteScan = asyncHandler(async (req, res) => {
     if (!scan) {
         return res.status(404).json({ message: "Scan not found" });
     }
+
+    scan.files.forEach((file) => {
+        if (fs.existsSync(file.rawPath)) {
+            fs.unlinkSync(file.rawPath);
+        }
+    });
 
     await scan.deleteOne();
 

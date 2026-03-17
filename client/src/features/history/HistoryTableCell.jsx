@@ -6,6 +6,8 @@ import {
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
 import { Eye, Trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDeleteScan } from "./useDeleteScan";
+import Swal from "sweetalert2";
 
 export default function HistoryTableCell({ scan }) {
 
@@ -17,6 +19,24 @@ export default function HistoryTableCell({ scan }) {
     const date = scan.createdAt.split('T')[0];
     const time = scan.createdAt.split('T')[1].split('.')[0];
     const confidence = scan.confidenceScores[scan.prediction] || 0;
+
+
+    const { deleteScan, isLoading } = useDeleteScan();
+    const handleDeleteScan = () => {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteScan(scan._id);
+            }
+        })
+    };
 
     return (
         <>
@@ -49,7 +69,9 @@ export default function HistoryTableCell({ scan }) {
                 </Tooltip>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <button className='cursor-pointer hover:text-red-500 transition duration-300'>
+                        <button className='cursor-pointer hover:text-red-500 transition duration-300'
+                            onClick={handleDeleteScan}
+                            disabled={isLoading}>
                             <Trash />
                         </button>
                     </TooltipTrigger>

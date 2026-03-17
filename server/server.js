@@ -18,12 +18,14 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 
+app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
+
 // Routes
 app.use("/", require("./routes/root"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/user", require("./routes/userRoutes"));
-app.use('/api/password', require('./routes/passwordRoutes'));
-app.use('/api/scan', require('./routes/scanRoutes'));
+app.use("/api/password", require("./routes/passwordRoutes"));
+app.use("/api/scan", require("./routes/scanRoutes"));
 
 // Start server after MongoDB connection is established
 mongoose.connection.once("open", () => {
