@@ -2,7 +2,7 @@ import { PREDICTION_CONFIG } from '@/config/predictionConfig'
 import { TrendingUp } from 'lucide-react'
 import React from 'react'
 import { Progress } from "@/components/ui/progress"
-export default function ScanIdProbabilities({ confidence, prediction, probabilities, scanId, patientId, date, time, status }) {
+export default function ScanIdProbabilities({ confidence, prediction, confidenceScores, scanId, radiologist, date, time, status }) {
 
     const key = prediction.toLowerCase()
     const config = PREDICTION_CONFIG[key] || {}
@@ -34,8 +34,7 @@ export default function ScanIdProbabilities({ confidence, prediction, probabilit
             {/* Probabilities */}
             <div className='flex flex-col gap-4 bg-white dark:bg-background p-5 rounded-xl shadow-md border border-slate-200 dark:border-slate-600'>
                 <p>All Class Probabilities</p>
-                {Object.entries(probabilities).map(([label, prob]) => {
-                    prob = (prob * 100).toFixed(2)
+                {Object.entries(confidenceScores).map(([label, prob]) => {
                     return (
                         <div key={label} className='flex flex-col gap-2'>
                             <div className='flex justify-between'>
@@ -56,8 +55,8 @@ export default function ScanIdProbabilities({ confidence, prediction, probabilit
                     <p>{scanId}</p>
                 </div>
                 <div className='flex flex-col '>
-                    <span className='text-sm text-slate-500'>Patient ID</span>
-                    <p>{patientId}</p>
+                    <span className='text-sm text-slate-500'>Radiologist</span>
+                    <p>{radiologist}</p>
                 </div>
                 <div className='flex flex-col '>
                     <span className='text-sm text-slate-500'>Date & Time</span>

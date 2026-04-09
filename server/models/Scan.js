@@ -76,6 +76,14 @@ const scanSchema = new mongoose.Schema(
         radiologist: {
             type: String,
         },
+
+        processedTime: {
+            type: Number,
+        },
+
+        modelVersion: {
+            type: String,
+        },
     },
     {
         timestamps: true,

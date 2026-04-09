@@ -33,6 +33,7 @@ export async function getScansApi({
 }
 
 export async function getScanApi(id) {
+    console.log(id)
     const res = await api.get(`/scan/${id}`);
     return res.data;
 }

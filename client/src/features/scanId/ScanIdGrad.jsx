@@ -1,7 +1,6 @@
 import React from 'react'
-import gradCamImage from '@/assets/grad_cam_test.png'
 
-export default function ScanIdGrad() {
+export default function ScanIdGrad({ gradCamPath }) {
     return (
         <div className='flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 shadow-md rounded-xl'>
             <div className='flex justify-between'>
@@ -17,7 +16,7 @@ export default function ScanIdGrad() {
             </div>
             <div className='rounded-lg p-4 flex justify-center items-center'>
                 <img
-                    src={gradCamImage}
+                    src={gradCamPath}
                     alt="Grad-CAM Heatmap"
                     className="max-h-105 w-auto object-contain rounded-md shadow-sm"
                 />

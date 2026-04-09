@@ -1,30 +1,26 @@
-import React from 'react'
-import ScanIdResult from './ScanIdResult'
-import { data } from '@/data'
+import Spinner from '@/components/Spinner'
+import { useParams } from 'react-router-dom'
+import ScanIdFooter from './ScanIdFooter'
+import ScanIdGrad from './ScanIdGrad'
 import ScanIdHeader from './ScanIdHeader'
 import ScanIdMRI from './ScanIdMRI'
-import ScanIdGrad from './ScanIdGrad'
 import ScanIdProbabilities from './ScanIdProbabilities'
-import ScanIdFooter from './ScanIdFooter'
+import ScanIdResult from './ScanIdResult'
+import { useScan } from './useScan'
 
 export default function ScanIdBody() {
 
-    // TODO: Get the predicted classification from the backend and display it here
-    // think about using the loader functionality from router 6 for this
-    // to render the UI in the pages folder (I don't know this will work or not yet)
-    const scanResult = data[0]
-    const {
-        scanId,
-        patientId,
-        date,
-        time,
-        modelVersion,
-        processedTimeMs,
-        probabilities,
-        prediction,
-        confidence,
-        status,
-    } = scanResult
+    const params = useParams();
+    const scanId = params.scanId;
+    const { scan, isLoading } = useScan({ id: scanId });
+    // still need to get the images properly
+    const { prediction, confidenceScores, confidence, gradCamPath, radiologist, status, createdAt } = scan || {};
+    const date = new Date(createdAt).toLocaleDateString();
+    const time = new Date(createdAt).toLocaleTimeString();
+
+    if (isLoading) {
+        return <Spinner />
+    }
 
     return (
         <>
@@ -33,20 +29,20 @@ export default function ScanIdBody() {
                 <ScanIdResult
                     prediction={prediction}
                     confidence={confidence}
-                    modelVersion={modelVersion}
-                    processedTimeMs={processedTimeMs}
+                    modelVersion={1}
+                    processedTimeMs={1000}
                 />
                 <div className='flex flex-col lg:col-span-2'>
                     <ScanIdMRI />
-                    <ScanIdGrad />
+                    <ScanIdGrad gradCamPath={gradCamPath} />
                 </div>
                 <div className='col-span-1'>
                     <ScanIdProbabilities
                         confidence={confidence}
                         prediction={prediction}
-                        probabilities={probabilities}
+                        confidenceScores={confidenceScores}
                         scanId={scanId}
-                        patientId={patientId}
+                        radiologist={radiologist}
                         date={date}
                         time={time}
                         status={status} />
