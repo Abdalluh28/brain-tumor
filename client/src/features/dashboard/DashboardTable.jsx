@@ -1,12 +1,15 @@
-import React from 'react'
-import { data } from '@/data'
-import { getRecentData } from '@/utils/getRecentData'
-import { Link, useNavigate } from 'react-router-dom';
+import Spinner from '@/components/Spinner';
+import { useNavigate } from 'react-router-dom';
 import DashboardTableCell from './DashboardTableCell';
+import { useRecentScans } from './useRecentScans';
 export default function DashboardTable() {
 
-    const recentData = getRecentData(data);
+    const { data: recentData, isLoading } = useRecentScans();
     const navigate = useNavigate();
+
+    if (isLoading) {
+        return <Spinner />
+    }
 
     return (
         <div className='bg-white shadow rounded-lg p-4 m-4 dark:bg-gray-800 lg:col-span-3'>
@@ -20,7 +23,7 @@ export default function DashboardTable() {
                     <thead className='border-b border-slate-200 dark:border-slate-700'>
                         <tr className='text-left text-slate-600 dark:text-slate-400'>
                             <th className='py-3 px-2 font-medium'>Scan ID</th>
-                            <th className='py-3 px-2 font-medium'>Patient</th>
+                            <th className='py-3 px-2 font-medium'>Radiologist</th>
                             <th className='py-3 px-2 font-medium hidden md:table-cell'>Date & Time</th>
                             <th className='py-3 px-2 font-medium'>Prediction</th>
                             <th className='py-3 px-2 font-medium'>Confidence</th>
@@ -30,8 +33,9 @@ export default function DashboardTable() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-600">
                         {recentData.map(item => (
                             <tr
-                                key={item.scanId}
+                                key={item._id}
                                 className="hover:bg-slate-50 dark:hover:bg-slate-700 transition hover:cursor-pointer duration-300"
+                                onClick={() => navigate(`/scan/${item._id}`)}
                             >
                                 <DashboardTableCell data={item} />
                             </tr>

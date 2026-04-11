@@ -52,7 +52,7 @@ export default function HistoryTableCell({ scan }) {
             </td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{confidence}</td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>
-                <p className={`px-2 py-1 text-sm rounded-lg text-center capitalize ${scan.status === 'completed' ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>{scan.status}</p>
+                <p className={`px-2 py-1 text-sm rounded-lg text-center capitalize ${scan.status === 'completed' ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : scan.status === 'review' ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>{scan.status}</p>
             </td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{scan.radiologist || 'N/A'}</td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white flex gap-4'>

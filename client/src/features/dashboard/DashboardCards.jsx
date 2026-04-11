@@ -1,7 +1,17 @@
 import { Brain, CircleCheckBig, Activity, TrendingUp } from 'lucide-react'
 import React from 'react'
+import { useDashboardStats } from './useDashboardStats'
+import Spinner from '@/components/Spinner';
 
 export default function DashboardCards() {
+
+    const { stats, isLoading } = useDashboardStats();
+    const { totalScans, avgConfidence, modelVersion, modelAccuracy } = stats || {};
+
+    if (isLoading) {
+        return <Spinner />;
+    }
+
     return (
         <div
             className="
@@ -19,11 +29,8 @@ export default function DashboardCards() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">Total Scans</p>
-                        <p className="text-xl font-semibold">20</p>
+                        <p className="text-xl font-semibold">{totalScans}</p>
                     </div>
-                </div>
-                <div className="text-dashboard-numbers bg-dashboard-numbers-bg h-fit p-1 rounded-lg">
-                    +12%
                 </div>
             </div>
 
@@ -35,7 +42,7 @@ export default function DashboardCards() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">Model Accuracy</p>
-                        <p className="text-xl font-semibold">96.4%</p>
+                        <p className="text-xl font-semibold">{modelAccuracy?.toFixed(1)}%</p>
                     </div>
                 </div>
                 <div className="text-dashboard-numbers bg-dashboard-numbers-bg h-fit p-1 rounded-lg">
@@ -51,10 +58,10 @@ export default function DashboardCards() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">Model Version</p>
-                        <p className="text-xl font-semibold">v0.1</p>
+                        <p className="text-xl font-semibold">{modelVersion}</p>
                     </div>
                 </div>
-                <div className="text-dashboard-numbers bg-dashboard-numbers-bg h-fit p-1 rounded-lg">
+                <div className="text-dashboard-numbers bg-dashboard-numbers-bg h-fit p-1 rounded-lg px-2">
                     Latest
                 </div>
             </div>
@@ -67,7 +74,7 @@ export default function DashboardCards() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">Avg Confidence</p>
-                        <p className="text-xl font-semibold">95%</p>
+                        <p className="text-xl font-semibold">{avgConfidence?.toFixed(1)}%</p>
                     </div>
                 </div>
                 <div className="text-dashboard-numbers bg-dashboard-numbers-bg h-fit p-1 rounded-lg">

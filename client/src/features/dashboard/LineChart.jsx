@@ -1,40 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { Line } from 'react-chartjs-2'
-
-import { data } from '../../data'
-import { getLastMonthsData } from '@/utils/getLastMonthsData';
+import { useMonthDistribution } from './useMonthDistribution';
 
 export default function LineChart() {
-    const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains("dark"));
-    const lastMonthsData = getLastMonthsData(data, 4);
+    const [darkMode, setDarkMode] = useState(
+        document.documentElement.classList.contains("dark")
+    );
 
-    // Count scans per month
-    const scansPerMonth = {};
+    const { data, isLoading } = useMonthDistribution();
 
-    lastMonthsData.forEach(item => {
-        const month = new Date(item.date).toLocaleString("default", {
+    // ✅ Prepare chart data from API
+    const labels = data?.map(item => {
+        const date = new Date(item.year, item.month - 1);
+        return date.toLocaleString("default", {
             month: "short",
             year: "numeric",
         });
+    }) || [];
 
-        scansPerMonth[month] = (scansPerMonth[month] || 0) + 1;
-    });
-
-    const months = Object.keys(scansPerMonth);
-
-    // Sort months chronologically
-    const sortedMonths = months.sort((a, b) => {
-        const [monthA, yearA] = a.split(' ');
-        const [monthB, yearB] = b.split(' ');
-
-        const dateA = new Date(`${monthA} 1, ${yearA}`);
-        const dateB = new Date(`${monthB} 1, ${yearB}`);
-
-        return dateA - dateB;
-    });
-
-    const labels = sortedMonths;
-    const values = sortedMonths.map(month => scansPerMonth[month]);
+    const values = data?.map(item => item.count) || [];
 
     // Listen for dark mode changes
     useEffect(() => {
@@ -42,12 +26,12 @@ export default function LineChart() {
 
         const observer = new MutationObserver(() => {
             setDarkMode(root.classList.contains("dark"));
-        })
+        });
 
         observer.observe(root, {
             attributes: true,
             attributeFilter: ['class'],
-        })
+        });
 
         return () => observer.disconnect();
     }, []);
@@ -82,6 +66,15 @@ export default function LineChart() {
                 bodyColor: darkMode ? "#ffffff" : "#111827",
                 borderColor: "#155dfc",
                 borderWidth: 1,
+
+                callbacks: {
+                    title: (tooltipItems) => {
+                        return tooltipItems[0].label; // "Mar 2026"
+                    },
+                    label: (context) => {
+                        return `Scans: ${context.raw}`; // "Scans: 5"
+                    }
+                }
             },
         },
         interaction: {
@@ -114,6 +107,15 @@ export default function LineChart() {
         },
     };
 
+
+    // ✅ Loading state
+    if (isLoading) {
+        return (
+            <div className="w-full h-80 flex items-center justify-center">
+                Loading...
+            </div>
+        );
+    }
 
     return (
         <div className="w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">

@@ -1,43 +1,71 @@
 import React from 'react'
 import { Pie } from 'react-chartjs-2'
-import { data } from '../../data'
+import { useClassDistribution } from './useClassDistribution'
+import Spinner from '@/components/Spinner';
 
 export default function PieChart() {
 
-    const types = {
-        Healthy: data.filter(item => item.prediction === 'Healthy').length,
-        GBM: data.filter(item => item.prediction === 'GBM').length,
-        LGG: data.filter(item => item.prediction === 'LGG').length,
-        Metastasis: data.filter(item => item.prediction === 'Metastasis').length,
+    const { data, isLoading } = useClassDistribution();
+
+    if (isLoading) {
+        return <Spinner />
     }
+
+    // ✅ Normalize API data into object
+    const types = {
+        GBM: 0,
+        LGG: 0,
+        Metastasis: 0,
+        Healthy: 0,
+    };
+
+    data?.forEach(item => {
+        types[item.type] = item.count;
+    });
 
     const pieData = {
         labels: ['GBM', 'LGG', 'Metastasis', 'Healthy'],
         datasets: [
             {
-                data: [types.GBM, types.LGG, types.Metastasis, types.Healthy],
+                data: [
+                    types.GBM,
+                    types.LGG,
+                    types.Metastasis,
+                    types.Healthy
+                ],
                 backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#10b981'],
                 borderWidth: 0,
             }
         ]
-    }
+    };
 
     const options = {
         responsive: true,
-        maintainAspectRatio: false, // 🔑 important
+        maintainAspectRatio: false,
         cutout: '70%',
         plugins: {
             legend: { display: false },
-            tooltip: { enabled: true },
+
+            // 🔥 Better Tooltip
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        const label = context.label;
+                        const value = context.raw;
+
+                        return `${label}: ${value} scans`;
+                    }
+                }
+            },
         },
-    }
+    };
 
     const typesColors = {
-        'GBM': '#ef4444',
-        'LGG': '#f59e0b',
-        'Metastasis': '#8b5cf6',
-        'Healthy': '#10b981',
-    }
+        GBM: '#ef4444',
+        LGG: '#f59e0b',
+        Metastasis: '#8b5cf6',
+        Healthy: '#10b981',
+    };
 
     return (
         <div className="w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">
@@ -49,17 +77,18 @@ export default function PieChart() {
                 <Pie data={pieData} options={options} />
             </div>
 
+            {/* ✅ Legend with counts */}
             <div className="mt-4 grid grid-cols-2 gap-2">
-                {Object.entries(types).map(([key]) => (
+                {Object.entries(types).map(([key, value]) => (
                     <div key={key} className="flex items-center">
                         <div
                             className="w-4 h-4 rounded-full mr-2"
                             style={{ backgroundColor: typesColors[key] }}
                         />
-                        <span>{key}</span>
+                        <span>{key} ({value})</span>
                     </div>
                 ))}
             </div>
         </div>
-    )
+    );
 }
