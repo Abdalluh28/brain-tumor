@@ -6,10 +6,10 @@ const jwt = require("jsonwebtoken");
 const createTokens = require("../utils/createTokens.js");
 
 const register = asyncHandler(async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     // check if all fields are filled
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password) {
         return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -27,7 +27,6 @@ const register = asyncHandler(async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        role,
         lastLogin: new Date(),
     });
 
@@ -38,7 +37,6 @@ const register = asyncHandler(async (req, res) => {
             accessToken,
             name: newUser.name,
             email: newUser.email,
-            role: newUser.role,
             lastLogin: newUser.lastLogin,
             id: newUser.id,
         });
@@ -77,7 +75,6 @@ const login = asyncHandler(async (req, res) => {
             accessToken,
             name: existingUser.name,
             email: existingUser.email,
-            role: existingUser.role,
             lastLogin: existingUser.lastLogin,
             id: existingUser.id,
         };
@@ -109,7 +106,7 @@ const refresh = asyncHandler(async (req, res) => {
     }
 
     const accessToken = jwt.sign(
-        { userInfo: { id: existingUser.id, role: existingUser.role } },
+        { userInfo: { id: existingUser.id } },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" },
     );
@@ -118,7 +115,6 @@ const refresh = asyncHandler(async (req, res) => {
         id: existingUser.id,
         name: existingUser.name,
         email: existingUser.email,
-        role: existingUser.role,
         lastLogin: existingUser.lastLogin,
     };
 

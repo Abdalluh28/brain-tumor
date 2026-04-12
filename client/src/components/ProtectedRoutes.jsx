@@ -10,7 +10,7 @@ export default function ProtectedRoutes() {
     if (isLoading) return <Spinner />
 
     // if not logged in, redirect to login
-    if (!user) return <Navigate to="/login" replace />
+    if (!user) return <Navigate to="/login" replace={true} />
 
     // if logged in, render the matched child route
     return <Outlet />

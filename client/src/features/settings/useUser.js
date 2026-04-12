@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 export function useUser() {
     const { data: user, isError, isPending } = useQuery({
         queryFn: () => getUserApi(),
-        queryKey: ["user"]
+        queryKey: ["user"],
+        retry: false,
     })
 
     return { user: isError ? undefined : user, isLoading: isPending };
