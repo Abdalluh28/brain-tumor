@@ -6,9 +6,7 @@ const Scan = require("../models/Scan");
 // CLASS DISTRIBUTION
 // -----------------------------
 const getClassDistribution = asyncHandler(async (req, res) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
     const result = await Scan.aggregate([
-        { $match: { userId } },
         {
             $group: {
                 _id: "$prediction",
@@ -29,9 +27,7 @@ const getClassDistribution = asyncHandler(async (req, res) => {
 // MONTHLY DISTRIBUTION
 // -----------------------------
 const getMonthlyDistribution = asyncHandler(async (req, res) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
     const result = await Scan.aggregate([
-        { $match: { userId } },
         {
             $group: {
                 _id: {
@@ -57,12 +53,9 @@ const getMonthlyDistribution = asyncHandler(async (req, res) => {
 // DASHBOARD STATS
 // -----------------------------
 const getStats = asyncHandler(async (req, res) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-
-    const totalScans = await Scan.countDocuments({ userId });
+    const totalScans = await Scan.countDocuments();
 
     const avgConfidenceData = await Scan.aggregate([
-        { $match: { userId } },
         { $group: { _id: null, avg: { $avg: "$confidence" } } },
     ]);
 
@@ -73,8 +66,8 @@ const getStats = asyncHandler(async (req, res) => {
     res.json({
         totalScans,
         avgConfidence,
-        modelVersion: "v1.0", // static or from db later
-        modelAccuracy: 93.5, // static or from db later
+        modelVersion: "v1.0",
+        modelAccuracy: 93.5,
     });
 });
 
@@ -82,8 +75,7 @@ const getStats = asyncHandler(async (req, res) => {
 // LAST 5 SCANS
 // -----------------------------
 const getRecentScans = asyncHandler(async (req, res) => {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-    const scans = await Scan.find({ userId })
+    const scans = await Scan.find()
         .sort({ createdAt: -1 })
         .limit(5)
         .select("prediction confidence radiologist createdAt status");

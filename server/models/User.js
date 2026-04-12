@@ -21,12 +21,6 @@ const userSchema = new mongoose.Schema(
             required: true,
         },
 
-        role: {
-            type: String,
-            enum: ["Radiologist", "Doctor"],
-            default: "Radiologist",
-        },
-
         lastLogin: {
             type: Date,
         },

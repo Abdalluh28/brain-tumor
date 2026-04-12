@@ -4,6 +4,7 @@ import { Brain, Lock, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useLogin } from './useLogin';
+import FormInput from '@/components/FormInput';
 
 
 export default function Login() {
@@ -46,45 +47,39 @@ export default function Login() {
                         <p className='text-sm text-slate-500'>Sign in to access your medical AI dashboard</p>
                     </div>
                     <div className='flex flex-col gap-4'>
-                        <div className='flex flex-col gap-1'>
-                            <label htmlFor='email' className='text-sm text-slate-600 dark:text-slate-400'>Email Address</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600'>
-                                <label htmlFor='email'>
-                                    <Mail className='text-slate-600 dark:text-slate-400' />
-                                </label>
-                                <input type="email" id='email'
-                                    {...register('email', {
-                                        required: 'Email is required',
-                                        pattern: {
-                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                            message: 'Invalid email address'
-                                        }
-                                    })}
-                                    placeholder='Doctor@gmail.com'
-                                    className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
-                            </div>
-                            {errors.email && <span className='text-xs text-red-500'>{errors.email.message}</span>}
-                        </div>
+                        <FormInput
+                            id='email'
+                            type='email'
+                            label='Email'
+                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='abdo@gamil.com'
+                            validation={{
+                                required: 'Email is required',
+                                pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: 'Invalid email address'
+                                }
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
 
-                        <div className='flex flex-col gap-1'>
-                            <label htmlFor='password' className='text-sm text-slate-600 dark:text-slate-400'>Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600'>
-                                <label htmlFor='password'>
-                                    <Lock className='text-slate-600 dark:text-slate-400' />
-                                </label>
-                                <input type="password" id='password'
-                                    {...register('password', {
-                                        required: 'Password is required',
-                                        minLength: {
-                                            value: 8,
-                                            message: 'Password must be at least 8 characters'
-                                        }
-                                    })}
-                                    placeholder='••••••••'
-                                    className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
-                            </div>
-                            {errors.password && <span className='text-xs text-red-500'>{errors.password.message}</span>}
-                        </div>
+                        <FormInput
+                            id="password" 
+                            type="password" 
+                            label="Password" 
+                            icon={<Lock className='text-slate-600 dark:text-slate-400' />} 
+                            placeholder="••••••••" 
+                            validation={{
+                                required: 'Password is required',
+                                pattern: {
+                                    value: /.{8,}/,
+                                    message: 'Password must be at least 8 characters'
+                                }
+                            }} 
+                            register={register} 
+                            errors={errors}
+                        />
 
                         {/* handle forgot by enter email to reset password (not have to navigate to custom page) */}
                         <div className='text-right text-sm text-primary hover:text-primary-hover transition duration-300 cursor-pointer'>
