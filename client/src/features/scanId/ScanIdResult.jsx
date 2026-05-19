@@ -7,7 +7,8 @@ export default function ScanIdResult({
     modelVersion,
     processedTimeMs,
 }) {
-    const key = prediction.toLowerCase();
+    const safeProcessedTime = processedTimeMs ?? 0;
+    const key = prediction?.toLowerCase() || 'healthy';
     const config = PREDICTION_CONFIG[key];
     const predictionText = key === 'healthy' ? 'No Tumor Detected (Healthy)' : `${prediction} Tumor Detected`;
 
@@ -29,8 +30,8 @@ export default function ScanIdResult({
 
                 <div className="flex gap-4">
                     <InfoBlock label="Confidence" value={`${confidence} %`} color={textColor} size='font-semibold text-lg' />
-                    <InfoBlock label="Model Version" value={modelVersion} />
-                    <InfoBlock label="Processed Time" value={`${(processedTimeMs / 1000).toFixed(2)} s`} />
+                    <InfoBlock label="Model Version" value={modelVersion ?? 'N/A'} />
+                    <InfoBlock label="Processed Time" value={`${(safeProcessedTime / 1000).toFixed(2)} s`} />
                 </div>
             </div>
 

@@ -14,7 +14,17 @@ export default function ScanIdBody() {
     const scanId = params.scanId;
     const { scan, isLoading } = useScan({ id: scanId });
     // still need to get the images properly
-    const { prediction, confidenceScores, confidence, gradCamPath, radiologist, status, createdAt } = scan || {};
+    const {
+        prediction,
+        confidenceScores,
+        confidence,
+        gradCamPath,
+        radiologist,
+        status,
+        createdAt,
+        modelVersion,
+        processedTime,
+    } = scan || {};
     const date = new Date(createdAt).toLocaleDateString();
     const time = new Date(createdAt).toLocaleTimeString();
 
@@ -29,8 +39,8 @@ export default function ScanIdBody() {
                 <ScanIdResult
                     prediction={prediction}
                     confidence={confidence}
-                    modelVersion={1}
-                    processedTimeMs={1000}
+                    modelVersion={modelVersion}
+                    processedTimeMs={processedTime}
                 />
                 <div className='flex flex-col lg:col-span-2'>
                     <ScanIdMRI />
