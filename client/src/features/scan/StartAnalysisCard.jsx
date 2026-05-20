@@ -33,7 +33,7 @@ export default function StartAnalysisCard() {
                 <ul className='flex flex-col gap-1 mt-2 ml-2 text-blue-800 dark:text-blue-200 text-[15px] list-inside'>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Comprehensive tumor classification (HGG, LGG, Metastasis, or Healthy)</span>
+                        <span>Comprehensive tumor classification (GBM, LGG, Metastasis, or Healthy)</span>
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>

@@ -8,7 +8,6 @@ export default function LineChart() {
     );
 
     const { data, isLoading } = useMonthDistribution();
-    console.log(data)
 
     // ✅ Prepare chart data from API
     const labels = data?.map(item => {

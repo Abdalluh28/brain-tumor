@@ -19,10 +19,10 @@ export const PREDICTION_CONFIG = {
         color: "#f54a00",
         darkColor: '#ff8904'
     },
-    hgg: {
-        textColor: "text-scan-header-hgg-text",
+    gbm: {
+        textColor: "text-scan-header-gbm-text",
         iconColor: "text-scan-header-tumor-icon",
-        bg: "bg-scan-header-hgg-bg",
+        bg: "bg-scan-header-gbm-bg",
         border: "border-red-200 dark:border-red-800",
         Icon: CircleAlert,
         color: '#e7000b',

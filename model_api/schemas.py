@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 ScanFormat = Literal["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"]
-Prediction = Literal["HGG", "LGG", "Metastasis", "Healthy", "Others"]
+Prediction = Literal["GBM", "LGG", "Metastasis", "Healthy", "Others"]
 
 
 class ScanFileIn(BaseModel):

@@ -70,7 +70,7 @@ export default function UploadScanCard() {
     }
 
     const deleteFile = (index) => {
-        const file = files[index]
+        const file = files[index - 1]
         if (file) dispatch(removeFile(file.id))
     }
 
@@ -81,11 +81,11 @@ export default function UploadScanCard() {
 
             {/* Upload Slots Grid */}
             <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6'>
-                {[0, 1, 2, 3].map(item => (
+                {[1, 2, 3, 4].map(item => (
                     <UploadSlot
                         key={item}
                         index={item}
-                        file={files[item]}
+                        file={files[item - 1]}
                         onUpload={handleUpload}
                         onDelete={deleteFile}
                         disabled={files.length === 4} />

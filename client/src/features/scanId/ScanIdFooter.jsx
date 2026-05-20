@@ -20,10 +20,10 @@ export default function ScanIdFooter() {
                     color='text-scan-header-lgg-text'
                     bg='bg-scan-header-lgg-bg' />
                 <Card
-                    title="HGG"
+                    title="GBM"
                     text="Glioblastoma - aggressive malignant tumor"
-                    color='text-scan-header-hgg-text'
-                    bg='bg-scan-header-hgg-bg' />
+                    color='text-scan-header-gbm-text'
+                    bg='bg-scan-header-gbm-bg' />
                 <Card
                     title="Metastasis"
                     text="Cancer spread from another body part"

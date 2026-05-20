@@ -7,7 +7,7 @@ the scan result in MongoDB.
 
 1. **Stage 1** (`custom_cnn_lowdrop_best (2).keras`): Healthy vs Tumor using T1 + T2 (`t1n`, `t2w`).
 2. **Stage 2** (`custom_cnn_3class_finetune_stage2_best.keras`): GLI vs METS vs OTHER using all 4 modalities.
-3. **Stage 3** (`best_densenet_stage2_more_finetune_lessdrop.keras`): HGG vs LGG for glioma cases.
+3. **Stage 3** (`best_densenet_stage2_more_finetune_lessdrop.keras`): GBM (HGG) vs LGG for glioma cases.
 
 Upload slot mapping (4 files from the backend):
 
