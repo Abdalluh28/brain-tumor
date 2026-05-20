@@ -7,6 +7,7 @@ export default function ScanIdProbabilities({ confidence, prediction, confidence
     const key = prediction?.toLowerCase()
     const config = PREDICTION_CONFIG[key] || {}
 
+
     
 
 
