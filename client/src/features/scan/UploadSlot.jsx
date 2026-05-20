@@ -1,6 +1,7 @@
 import { Upload, X } from 'lucide-react'
 import { memo } from 'react'
 
+const MODALITY_ORDER = ['T1N', 'T1C', 'T2W', 'T2F']
 // Each upload slot component
 const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
     return (
@@ -8,7 +9,7 @@ const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
 
             {/* Slot header */}
             <div className="flex justify-between">
-                <p className='text-slate-400'>View {index}</p>
+                <p className='text-slate-400'>{MODALITY_ORDER[index]}</p>
                 {file && (
                     <button className="text-gray-500 cursor-pointer bg-gray-50 p-1 rounded-2xl hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white transition duration-300"
                         onClick={() => onDelete(index)} aria-label={`Remove MRI view ${index}`}>

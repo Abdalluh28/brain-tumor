@@ -48,11 +48,11 @@ const scanSchema = new mongoose.Schema(
 
         prediction: {
             type: String,
-            enum: ["GBM", "LGG", "Metastasis", "Healthy", "Others"],
+            enum: ["HGG", "LGG", "Metastasis", "Healthy", "Others"],
         },
 
         confidenceScores: {
-            GBM: Number,
+            HGG: Number,
             LGG: Number,
             Metastasis: Number,
             Healthy: Number,

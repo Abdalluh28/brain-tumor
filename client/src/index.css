@@ -67,8 +67,8 @@
     --color-scan-header-healthy-icon: var(--scan-header-healthy-icon);
     --color-scan-header-lgg-text: var(--scan-header-lgg-text);
     --color-scan-header-lgg-bg: var(--scan-header-lgg-bg);
-    --color-scan-header-gbm-text: var(--scan-header-gbm-text);
-    --color-scan-header-gbm-bg: var(--scan-header-gbm-bg);
+    --color-scan-header-hgg-text: var(--scan-header-hgg-text);
+    --color-scan-header-hgg-bg: var(--scan-header-hgg-bg);
     --color-scan-header-metastasis-text: var(--scan-header-metastasis-text);
     --color-scan-header-metastasis-bg: var(--scan-header-metastasis-bg);
     --color-scan-header-tumor-icon: var(--scan-header-lgg-icon);
@@ -138,9 +138,9 @@
     --scan-header-lgg-text: #f54a00;
     --scan-header-lgg-bg: #fff7ed;
     --scan-header-lgg-icon: #ff6900;
-    --scan-header-gbm-text: #e7000b;
-    --scan-header-gbm-bg: #fef2f2;
-    --scan-header-gbm-icon: #ff6900;
+    --scan-header-hgg-text: #e7000b;
+    --scan-header-hgg-bg: #fef2f2;
+    --scan-header-hgg-icon: #ff6900;
     --scan-header-metastasis-text: #9810fa;
     --scan-header-metastasis-bg: #faf5ff;
     --scan-header-metastasis-icon: #ff6900;
@@ -208,9 +208,9 @@
     --scan-header-lgg-text: #ff8904;
     --scan-header-lgg-bg: #251a24;
     --scan-header-lgg-icon: #ff6900;
-    --scan-header-gbm-text: #ff6467;
-    --scan-header-gbm-bg: #261727;
-    --scan-header-gbm-icon: #ff6900;
+    --scan-header-hgg-text: #ff6467;
+    --scan-header-hgg-bg: #261727;
+    --scan-header-hgg-icon: #ff6900;
     --scan-header-metastasis-text: #c27aff;
     --scan-header-metastasis-bg: #1e163e;
     --scan-header-metastasis-icon: #ff6900;
