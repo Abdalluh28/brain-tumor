@@ -17,6 +17,7 @@ export default function PieChart() {
         LGG: 0,
         Metastasis: 0,
         Healthy: 0,
+        Others: 0,
     };
 
     data?.forEach(item => {
@@ -24,16 +25,17 @@ export default function PieChart() {
     });
 
     const pieData = {
-        labels: ['GBM', 'LGG', 'Metastasis', 'Healthy'],
+        labels: ['GBM', 'LGG', 'Metastasis', 'Healthy', 'Others'],
         datasets: [
             {
                 data: [
                     types.GBM,
                     types.LGG,
                     types.Metastasis,
-                    types.Healthy
+                    types.Healthy,
+                    types.Others,
                 ],
-                backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#10b981'],
+                backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#10b981', '#3b82f6'],
                 borderWidth: 0,
             }
         ]
@@ -65,6 +67,7 @@ export default function PieChart() {
         LGG: '#f59e0b',
         Metastasis: '#8b5cf6',
         Healthy: '#10b981',
+        Others: '#3b82f6',
     };
 
     return (

@@ -8,6 +8,7 @@ export default function DashboardTableCell({ data }) {
         GBM: 'bg-red-100 text-red-700',
         LGG: 'bg-yellow-100 text-yellow-700',
         Metastasis: 'bg-purple-100 text-purple-700',
+        Others: 'bg-blue-100 text-blue-700',
     };
 
     const date = new Date(data.createdAt);

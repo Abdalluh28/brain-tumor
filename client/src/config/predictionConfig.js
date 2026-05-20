@@ -37,4 +37,13 @@ export const PREDICTION_CONFIG = {
         color: '#9810fa',
         darkColor: '#c27aff'
     },
+    others: {
+        textColor: "text-scan-header-metastasis-text",
+        iconColor: "text-scan-header-tumor-icon",
+        bg: "bg-scan-header-metastasis-bg",
+        border: "border-blue-200 dark:border-blue-800",
+        Icon: CircleAlert,
+        color: '#155dfc',
+        darkColor: '#51a2ff'
+    },
 };

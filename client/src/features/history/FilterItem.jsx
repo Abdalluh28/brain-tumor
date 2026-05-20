@@ -74,6 +74,7 @@ export default function FilterItem({ filterBy, clearFlag, setClearFlag }) {
                                 <SelectItem value="LGG">LGG</SelectItem>
                                 <SelectItem value="GBM">GBM</SelectItem>
                                 <SelectItem value="Metastasis">Metastasis</SelectItem>
+                                <SelectItem value="Others">Others</SelectItem>
                             </SelectGroup>
                         </>
                     )}

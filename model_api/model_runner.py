@@ -1,45 +1,12 @@
-import hashlib
 import os
 import time
 from pathlib import Path
 from urllib.parse import quote
 
+from .pipeline import get_model_version, run_pipeline
 from .schemas import ModelResult, ScanFileIn
 
-LABELS = ("GBM", "LGG", "Metastasis", "Healthy")
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
-
-
-def _file_fingerprint(files: list[ScanFileIn]) -> bytes:
-    digest = hashlib.sha256()
-
-    for scan_file in sorted(files, key=lambda item: item.rawPath):
-        path = Path(scan_file.rawPath)
-        digest.update(scan_file.rawPath.encode("utf-8"))
-        digest.update(scan_file.format.encode("utf-8"))
-
-        if path.exists():
-            stat = path.stat()
-            digest.update(str(stat.st_size).encode("utf-8"))
-            digest.update(str(int(stat.st_mtime)).encode("utf-8"))
-
-            with path.open("rb") as file:
-                digest.update(file.read(1024 * 1024))
-
-    return digest.digest()
-
-
-def _scores_from_fingerprint(fingerprint: bytes) -> dict[str, float]:
-    raw_scores = [fingerprint[index] + 24 for index in range(len(LABELS))]
-    total = sum(raw_scores)
-    scores = {
-        label: round((score / total) * 100, 2)
-        for label, score in zip(LABELS, raw_scores, strict=True)
-    }
-
-    delta = round(100 - sum(scores.values()), 2)
-    scores["Healthy"] = round(scores["Healthy"] + delta, 2)
-    return scores
 
 
 def _grad_cam_path(files: list[ScanFileIn], backend_public_url: str | None) -> str:
@@ -78,16 +45,13 @@ def run_model(files: list[ScanFileIn], backend_public_url: str | None = None) ->
         if not Path(scan_file.rawPath).exists():
             raise FileNotFoundError(f"Input file not found: {scan_file.rawPath}")
 
-    fingerprint = _file_fingerprint(files)
-    confidence_scores = _scores_from_fingerprint(fingerprint)
-    prediction = max(confidence_scores, key=confidence_scores.get)
-    confidence = confidence_scores[prediction]
+    pipeline_result = run_pipeline(files)
 
     return ModelResult(
-        prediction=prediction,
-        confidenceScores=confidence_scores,
-        confidence=confidence,
+        prediction=pipeline_result.prediction,
+        confidenceScores=pipeline_result.confidence_scores,
+        confidence=pipeline_result.confidence,
         gradCamPath=_grad_cam_path(files, backend_public_url),
         processedTime=round((time.perf_counter() - started_at) * 1000, 2),
-        modelVersion=os.getenv("MODEL_VERSION", "local-placeholder-v1"),
+        modelVersion=os.getenv("MODEL_VERSION", get_model_version()),
     )

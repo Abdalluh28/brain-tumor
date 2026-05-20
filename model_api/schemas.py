@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 ScanFormat = Literal["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"]
-Prediction = Literal["GBM", "LGG", "Metastasis", "Healthy"]
+Prediction = Literal["GBM", "LGG", "Metastasis", "Healthy", "Others"]
 
 
 class ScanFileIn(BaseModel):
@@ -23,7 +23,9 @@ class AnalyzeScanRequest(BaseModel):
 
 class ModelResult(BaseModel):
     prediction: Prediction
-    confidenceScores: dict[Prediction, float]
+    confidenceScores: dict[Prediction, float] = Field(
+        description="Joint cascade probabilities mapped to final class labels.",
+    )
     confidence: float
     gradCamPath: str
     processedTime: float

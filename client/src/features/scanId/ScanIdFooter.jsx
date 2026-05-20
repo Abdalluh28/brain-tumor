@@ -29,6 +29,11 @@ export default function ScanIdFooter() {
                     text="Cancer spread from another body part"
                     color='text-scan-header-metastasis-text'
                     bg='bg-scan-header-metastasis-bg' />
+                <Card
+                    title="Others"
+                    text="Non-glioma tumor types such as meningioma"
+                    color='text-scan-header-metastasis-text'
+                    bg='bg-scan-header-metastasis-bg' />
             </div>
         </div>
     )

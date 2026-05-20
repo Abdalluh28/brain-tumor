@@ -48,7 +48,7 @@ const scanSchema = new mongoose.Schema(
 
         prediction: {
             type: String,
-            enum: ["GBM", "LGG", "Metastasis", "Healthy"],
+            enum: ["GBM", "LGG", "Metastasis", "Healthy", "Others"],
         },
 
         confidenceScores: {
@@ -56,6 +56,7 @@ const scanSchema = new mongoose.Schema(
             LGG: Number,
             Metastasis: Number,
             Healthy: Number,
+            Others: Number,
         },
 
         // max confidence score (to be used for filtering)
