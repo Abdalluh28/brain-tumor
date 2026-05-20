@@ -13,7 +13,7 @@ export default function PieChart() {
 
     // ✅ Normalize API data into object
     const types = {
-        GBM: 0,
+        HGG: 0,
         LGG: 0,
         Metastasis: 0,
         Healthy: 0,
@@ -25,11 +25,11 @@ export default function PieChart() {
     });
 
     const pieData = {
-        labels: ['GBM', 'LGG', 'Metastasis', 'Healthy', 'Others'],
+        labels: ['HGG', 'LGG', 'Metastasis', 'Healthy', 'Others'],
         datasets: [
             {
                 data: [
-                    types.GBM,
+                    types.HGG,
                     types.LGG,
                     types.Metastasis,
                     types.Healthy,
@@ -63,7 +63,7 @@ export default function PieChart() {
     };
 
     const typesColors = {
-        GBM: '#ef4444',
+        HGG: '#ef4444',
         LGG: '#f59e0b',
         Metastasis: '#8b5cf6',
         Healthy: '#10b981',

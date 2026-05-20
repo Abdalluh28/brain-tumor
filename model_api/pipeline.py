@@ -17,13 +17,13 @@ from .schemas import Prediction, ScanFileIn
 
 STAGE1_LABELS = ("Healthy", "Tumor")
 STAGE2_LABELS = ("GLI", "METS", "OTHER")
-STAGE3_LABELS = ("GBM", "LGG")
+STAGE3_LABELS = ("HGG", "LGG")
 
 FINAL_LABELS: tuple[Prediction, ...] = (
     "Healthy",
     "Metastasis",
     "Others",
-    "GBM",
+    "HGG",
     "LGG",
 )
 
@@ -107,7 +107,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": 0.0,
             "Others": 0.0,
-            "GBM": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
@@ -142,7 +142,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": p_mets,
             "Others": p_other,
-            "GBM": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
@@ -159,7 +159,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": p_mets,
             "Others": p_other,
-            "GBM": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
@@ -180,18 +180,18 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
     )
     stage_details["stage3"] = stage3_pred
 
-    p_gbm = p_gli * stage3_pred.probabilities["GBM"]
+    p_hgg = p_gli * stage3_pred.probabilities["HGG"]
     p_lgg = p_gli * stage3_pred.probabilities["LGG"]
 
     joint_probs = {
         "Healthy": p_healthy,
         "Metastasis": p_mets,
         "Others": p_other,
-        "GBM": p_gbm,
+        "HGG": p_hgg,
         "LGG": p_lgg,
     }
     confidence_scores = _finalize_scores(joint_probs)
-    prediction = "GBM" if stage3_idx == 0 else "LGG"
+    prediction = "HGG" if stage3_idx == 0 else "LGG"
 
     return PipelineResult(
         prediction=prediction,
