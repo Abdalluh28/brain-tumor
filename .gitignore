@@ -5,7 +5,10 @@ client/node_modules/
 server/node_modules/
 client/dist/
 server/uploads/
+# Python venv (repo root or under model_api)
+.venv/
 model_api/.venv/
+model_api/.venv/**
 venv/
 __pycache__/
 *.pyc

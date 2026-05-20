@@ -2,9 +2,12 @@
 *.keras
 Models/**/*.keras
 
-# Python virtual environments
+# Python virtual environments (match folder whether named .venv or venv)
+.venv
 .venv/
+**/.venv/
 venv/
+venv/**
 env/
 .env/
 

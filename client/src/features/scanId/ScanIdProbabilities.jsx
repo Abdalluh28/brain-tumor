@@ -4,8 +4,10 @@ import React from 'react'
 import { Progress } from "@/components/ui/progress"
 export default function ScanIdProbabilities({ confidence, prediction, confidenceScores, scanId, radiologist, date, time, status }) {
 
-    const key = prediction.toLowerCase()
+    const key = prediction?.toLowerCase()
     const config = PREDICTION_CONFIG[key] || {}
+
+    
 
 
     return (
