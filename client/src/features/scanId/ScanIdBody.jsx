@@ -43,7 +43,7 @@ export default function ScanIdBody() {
                     processedTimeMs={processedTime}
                 />
                 <div className='flex flex-col lg:col-span-2'>
-                    <ScanIdMRI />
+                    <ScanIdMRI originalMRI={gradCamPath} />
                     <ScanIdGrad gradCamPath={gradCamPath} />
                 </div>
                 <div className='col-span-1'>
