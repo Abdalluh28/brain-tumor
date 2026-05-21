@@ -1,7 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-    files: [],
+    // files: [T1N, T1C, T2W, T2F]
+    files: [null, null, null, null],
 };
 
 export const scanSlice = createSlice({
@@ -9,21 +10,12 @@ export const scanSlice = createSlice({
     initialState,
     reducers: {
         uploadFile: (state, action) => {
-            console.log(action.payload);
-            state.files.push({
-                id: Date.now(),
-                name: action.payload.name,
-                size: action.payload.size,
-                type: action.payload.type,
-                previewURL: action.payload.previewURL || null,
-                rawFile: action.payload.rawFile || null,
-                processedAt: new Date().toISOString(),
-            });
+            const { index, file } = action.payload;
+            state.files[index] = file;
         },
         removeFile: (state, action) => {
-            state.files = state.files.filter(
-                (file) => file.id !== action.payload,
-            );
+            const index = action.payload;
+            state.files[index] = null;
         },
         clearFiles: (state) => {
             state.files = [];
