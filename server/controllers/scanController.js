@@ -204,7 +204,7 @@ const getScans = asyncHandler(async (req, res) => {
     }
 
     if (status && status !== "All") {
-        filter.status = status;
+        filter.status = status.toLowerCase();
     }
 
     if (date && date !== "All") {

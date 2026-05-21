@@ -8,9 +8,10 @@ export const useScans = () => {
     const queryClient = useQueryClient();
     const [searchParams] = useSearchParams();
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
-    const type = searchParams.get("tumorType") || "";
-    const confidenceFrom = searchParams.get("confidenceFrom") || "";
-    const confidenceTo = searchParams.get("confidenceTo") || "";
+    const type = searchParams.get("prediction") || "";
+    const confidence = searchParams.get("confidence") || "";
+    const confidenceFrom = confidence.split("-")[0] || "";
+    const confidenceTo = confidence.split("-")[1] || "";
     const status = searchParams.get("status") || "";
     const date = searchParams.get("date") || "";
     const search = searchParams.get("search") || "";
