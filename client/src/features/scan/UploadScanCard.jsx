@@ -9,18 +9,25 @@ import UploadSlot from './UploadSlot'
 export default function UploadScanCard() {
 
     const files = useSelector(state => state.scan.files)
-    const uploadedSlots = files.length
+
+    // Count uploaded files (ignore null values)
+    const uploadedSlots = files.filter(Boolean).length
     const emptySlots = 4 - uploadedSlots
+
     const dispatch = useDispatch()
 
+    // Validate uploaded file
     const validateFile = (file) => {
         const imageTypes = ['image/jpeg', 'image/png', 'image/jpg']
         const medicalExtensions = ['.nii', '.nii.gz', '.dcm']
-        const maxSize = 50 * 1024 * 1024 // 50MB for MRI files
+        const maxSize = 50 * 1024 * 1024 // 50MB
 
         const isImage = imageTypes.includes(file.type)
+
         const isMedical =
-            medicalExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+            medicalExtensions.some(ext =>
+                file.name.toLowerCase().endsWith(ext)
+            )
 
         if (!isImage && !isMedical) {
             toast.error('Unsupported file type')
@@ -35,82 +42,106 @@ export default function UploadScanCard() {
         return true
     }
 
-    const handleUpload = (e) => {
-        const selectedFiles = Array.from(e.target.files)
-        const remainingSlots = 4 - files.length
+    // Handle upload for specific slot
+    const handleUpload = (e, slotIndex) => {
+        const file = e.target.files[0]
 
-        selectedFiles.slice(0, remainingSlots).forEach(file => {
-            if (!validateFile(file)) return
+        if (!file) return
 
-            const isImage = file.type.startsWith('image/')
+        // Validate file
+        if (!validateFile(file)) {
+            e.target.value = null
+            return
+        }
 
-            if (isImage) {
-                const reader = new FileReader()
-                reader.onloadend = () => {
-                    dispatch(uploadFile({
+        const isImage = file.type.startsWith('image/')
+
+        // Handle image upload
+        if (isImage) {
+            const reader = new FileReader()
+
+            reader.onloadend = () => {
+                dispatch(
+                    uploadFile({
+                        index: slotIndex,
+                        file: {
+                            id: crypto.randomUUID(),
+                            name: file.name,
+                            size: file.size,
+                            type: 'image',
+                            previewURL: reader.result,
+                            rawFile: file,
+                        },
+                    })
+                )
+            }
+
+            reader.readAsDataURL(file)
+        }
+
+        // Handle medical files
+        else {
+            dispatch(
+                uploadFile({
+                    index: slotIndex,
+                    file: {
+                        id: crypto.randomUUID(),
                         name: file.name,
                         size: file.size,
-                        type: 'image',
-                        previewURL: reader.result,
+                        type: file.name.toLowerCase().endsWith('.dcm')
+                            ? 'dicom'
+                            : 'nifti',
                         rawFile: file,
-                    }))
-                }
-                reader.readAsDataURL(file)
-            } else {
-                dispatch(uploadFile({
-                    name: file.name,
-                    size: file.size,
-                    type: file.name.endsWith('.dcm') ? 'dicom' : 'nifti',
-                    rawFile: file,
-                }))
-            }
-        })
+                    },
+                })
+            )
+        }
 
+        // Reset input
         e.target.value = null
     }
 
+    // Remove file from specific slot
     const deleteFile = (index) => {
-        const file = files[index]
-        if (file) dispatch(removeFile(file.id))
+        dispatch(removeFile(index))
     }
+
+    // Check if all slots are filled
+    const allSlotsFilled = uploadedSlots === 4
 
     return (
         <div className='w-full flex flex-col gap-6'>
-            {/* Status Banner */}
-            <UploadBanner uploadedSlots={uploadedSlots} emptySlots={emptySlots} />
 
-            {/* Upload Slots Grid */}
+            {/* Status Banner */}
+            <UploadBanner
+                uploadedSlots={uploadedSlots}
+                emptySlots={emptySlots}
+            />
+
+            {/* Upload Slots */}
             <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6'>
-                {[0, 1, 2, 3].map(item => (
+                {[0, 1, 2, 3].map((item) => (
                     <UploadSlot
                         key={item}
                         index={item}
                         file={files[item]}
-                        onUpload={handleUpload}
+                        onUpload={(e) => handleUpload(e, item)}
                         onDelete={deleteFile}
-                        disabled={files.length === 4} />
+                        disabled={allSlotsFilled && !files[item]}
+                    />
                 ))}
             </div>
 
-            {/* Main Upload Button */}
-            {uploadedSlots < 4 ? (
-                <div className='w-fit self-center'>
-                    <label htmlFor='upload' className={`bg-primary flex items-center justify-center gap-2 py-4 px-20 text-lg text-white rounded-2xl hover:bg-primary-hover transition duration-300 ${files.length === 4 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                        <Upload size={20} />
-                        <p>
-                            {uploadedSlots === 0 ? 'Select files to upload'
-                                : uploadedSlots < 4 ? `Add More Files (${emptySlots} remaining)`
-                                    : 'Start Analysis'}
-                        </p>
-                    </label>
-                    {/* images or nifti files */}
-                    <input type='file' id='upload' multiple accept='image/*, .nii, .nii.gz, .dcm' className='hidden'
-                        onChange={(e) => handleUpload(e)}
-                        disabled={files.length === 4} />
-                </div>
-            ) : (
+            {/* Start Analysis */}
+            {allSlotsFilled ? (
                 <StartAnalysisCard />
+            ) : (
+                <div className='w-fit self-center'>
+                    <p className=' text-white dark:text-black text-center bg-primary dark:bg-primary-foreground px-8 py-4 rounded-full'>
+                        Upload all 4 MRI modalities to start analysis
+                    </p>
+                </div>
             )}
-        </div >
+        </div>
     )
 }
