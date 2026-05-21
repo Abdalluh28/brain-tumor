@@ -35,7 +35,9 @@ const fileFilter = (req, file, cb) => {
     const ext = getFileExtension(file.originalname);
 
     if (!allowedExtensions.includes(ext)) {
-        return cb(new Error("Only .nii, .nii.gz, .dcm, .png, .jpg, .jpeg allowed"));
+        return cb(
+            new Error("Only .nii, .nii.gz, .dcm, .png, .jpg, .jpeg allowed"),
+        );
     }
 
     cb(null, true);
@@ -79,12 +81,17 @@ const postJson = (url, payload) =>
                     let parsedBody;
 
                     try {
-                        parsedBody = responseBody ? JSON.parse(responseBody) : {};
+                        parsedBody = responseBody
+                            ? JSON.parse(responseBody)
+                            : {};
                     } catch {
                         parsedBody = { message: responseBody };
                     }
 
-                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                    if (
+                        response.statusCode >= 200 &&
+                        response.statusCode < 300
+                    ) {
                         resolve(parsedBody);
                     } else {
                         const message =
@@ -142,7 +149,7 @@ const createScan = asyncHandler(async (req, res) => {
             const result = await postJson(modelApiUrl, {
                 userId: req.user.id,
                 files,
-                radiologist: req.body.radiologist,
+                radiologist: req.body.name,
                 backendPublicUrl:
                     process.env.BACKEND_PUBLIC_URL ||
                     `http://localhost:${process.env.PORT || 3000}`,

@@ -17,6 +17,8 @@ const verifyJWT = (req, res, next) => {
         // Attach only ID (not full user document)
         req.user = {
             id: decoded.userInfo.id,
+            name: decoded.userInfo.name,
+            email: decoded.userInfo.email,
             role: decoded.userInfo.role,
         };
 
