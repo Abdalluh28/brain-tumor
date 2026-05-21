@@ -7,13 +7,15 @@ import Spinner from "@/components/Spinner";
 export default function ProgressCard() {
     const [progressValue, setProgressValue] = useState(0);
 
-    useScanProgress({ progressValue, setProgressValue });
+    useScanProgress({ setProgressValue });
 
     return (
         <div className='flex flex-col gap-4 shadow-md rounded-lg bg-white dark:bg-background dark:border dark:border-slate-700 p-4'>
-            <div className='flex gap-2 items-center'>
-                <Spinner />
-                <span>Processing 4-view MRI scan</span>
+            <div className='flex gap-2 items-center justify-center'>
+                <div>
+                    <Spinner />
+                </div>
+                <span>Processing MRI scan</span>
             </div>
 
             <div>

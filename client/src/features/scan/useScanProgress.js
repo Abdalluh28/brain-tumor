@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 
-export const useScanProgress = ({ progressValue, setProgressValue }) => {
+// this hook is used to simulate a progress bar
+export const useScanProgress = ({ setProgressValue }) => {
     useEffect(() => {
         const interval = setInterval(() => {
             setProgressValue((prev) => {
-                if (prev >= 100) {
+                if (prev >= 99) {
                     clearInterval(interval);
-                    return 100;
+                    return 99;
                 }
                 return prev + 1;
             });
