@@ -3,15 +3,37 @@ import ProgressCard from './ProgressCard';
 import { useCreateScan } from './useCreateScan';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearFiles } from './scanSlice';
+import toast from 'react-hot-toast';
+import { useFormContext } from 'react-hook-form';
 
-export default function StartAnalysisCard() {
+export default function StartAnalysisCard({ patientData }) {
 
+    // trigger to validate form without submitting it
+    const { trigger } = useFormContext();
+    
     const { createScan, isLoading } = useCreateScan();
     const files = useSelector(state => state.scan.files);
     const dispatch = useDispatch();
 
-    const handleCreateScan = () => {
-        createScan(files, {
+    const handleCreateScan = async () => {
+        // validate patient info
+        const isValid = await trigger([
+            'patientName',
+            'patientId',
+            'patientAge',
+            'patientGender',
+            'patientPhone',
+            'scanType',
+        ])
+
+        // show error message
+        if (!isValid) {
+            toast.error("Please fill in all patient information");
+            return;
+        }
+
+        // all good, create scan
+        createScan({ patientData, files }, {
             onSuccess: () => {
                 dispatch(clearFiles());
             }

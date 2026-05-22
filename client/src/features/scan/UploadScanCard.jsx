@@ -5,8 +5,14 @@ import { removeFile, uploadFile } from './scanSlice'
 import StartAnalysisCard from './StartAnalysisCard'
 import UploadBanner from './UploadBanner'
 import UploadSlot from './UploadSlot'
+import { useFormContext, useWatch } from 'react-hook-form'
 
 export default function UploadScanCard() {
+    // access patient data first
+    const { control } = useFormContext()
+    const patientData = useWatch({
+        control,
+    })
 
     const files = useSelector(state => state.scan.files)
 
@@ -134,7 +140,7 @@ export default function UploadScanCard() {
 
             {/* Start Analysis */}
             {allSlotsFilled ? (
-                <StartAnalysisCard />
+                <StartAnalysisCard patientData={patientData} />
             ) : (
                 <div className='w-fit self-center'>
                     <p className=' text-white dark:text-black text-center bg-primary dark:bg-primary-foreground px-8 py-4 rounded-full'>

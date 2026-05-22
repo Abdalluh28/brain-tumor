@@ -52,7 +52,7 @@ export default function FormInput({ id, type, label, icon, placeholder, validati
 
             {errors[id] && (
                 <p className='text-red-600 mt-1'>
-                    {errors[id]}
+                    {errors[id].message}
                 </p>
             )}
         </div>

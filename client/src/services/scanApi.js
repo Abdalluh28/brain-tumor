@@ -1,13 +1,23 @@
 import { api } from "./api";
 
-export async function createScanApi(files) {
+export async function createScanApi(data) {
     // Create a FormData object to hold the files
     const formData = new FormData();
 
     // Append files to FormData
-    files.forEach((file) => {
+    data.files.forEach((file) => {
         formData.append("files", file.rawFile);
     });
+
+    // Append other data to FormData
+    const { patientData } = data;
+    formData.append("patientName", patientData.patientName);
+    formData.append("patientId", patientData.patientId);
+    formData.append("patientAge", patientData.patientAge);
+    formData.append("patientGender", patientData.patientGender);
+    formData.append("patientPhone", patientData.patientPhone);
+    formData.append("notes", patientData.notes);
+    formData.append("scanType", patientData.scanType);
 
     const res = await api.post("/scan", formData, {
         headers: {
