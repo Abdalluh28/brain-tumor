@@ -9,20 +9,38 @@ export default function FormInput({ id, type, label, icon, placeholder, validati
         setShowPassword(prev => !prev);
     }
 
+    const handleNoPasswordCopy = (e) => {
+        if (type === 'password') {
+            e.preventDefault();
+        }
+    }
 
     return (
-        <div className='flex flex-col gap-1'>
-            <label htmlFor={id} className='text-sm text-slate-600 dark:text-slate-400'>{label}</label>
-            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200  dark:border-slate-600'>
-                <label htmlFor={id}>
-                    {icon}
-                </label>
-                <input type={showPassword ? 'text' : type} id={id}
-                    {...register(id, validation)}
-                    placeholder={placeholder}
-                    className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
+        <div className='w-full'>
+            <label
+                htmlFor={id}
+                className='block mb-2 text-foreground/90'
+            >
+                {label}
+            </label>
+
+            <div className='relative'>
+                <div className='relative'>
+                    <div className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'>
+                        {icon}
+                    </div>
+
+                    <input
+                        id={id}
+                        type={showPassword ? 'text' : type}
+                        placeholder={placeholder}
+                        className='w-full h-11 px-4 rounded-lg border-2 border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed pl-10'
+                        {...register(id, validation)}
+                        onCopy={handleNoPasswordCopy}
+                    />
+                </div>
                 {type === 'password' && (
-                    <button type='button' className='cursor-pointer' onClick={handleShowPassword}>
+                    <button type='button' className='absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer' onClick={handleShowPassword}>
                         {showPassword ? (
                             <Eye size={20} />
                         ) : (
@@ -31,7 +49,12 @@ export default function FormInput({ id, type, label, icon, placeholder, validati
                     </button>
                 )}
             </div>
-            {errors[id] && <span className='text-xs text-red-500'>{errors[id].message}</span>}
+
+            {errors[id] && (
+                <p className='text-red-600 mt-1'>
+                    {errors[id]}
+                </p>
+            )}
         </div>
     )
 }
