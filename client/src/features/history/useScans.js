@@ -13,7 +13,8 @@ export const useScans = () => {
     const confidenceFrom = confidence.split("-")[0] || "";
     const confidenceTo = confidence.split("-")[1] || "";
     const status = searchParams.get("status") || "";
-    const date = searchParams.get("date") || "";
+    const startDate = searchParams.get("start") || "";
+    const endDate = searchParams.get("end") || "";
     const search = searchParams.get("search") || "";
 
     const { data, isPending: isLoading } = useQuery({
@@ -24,7 +25,8 @@ export const useScans = () => {
                 confidenceFrom,
                 confidenceTo,
                 status,
-                date,
+                startDate,
+                endDate,
                 search,
             }),
         queryKey: [
@@ -34,7 +36,8 @@ export const useScans = () => {
             confidenceFrom,
             confidenceTo,
             status,
-            date,
+            startDate,
+            endDate,
             search,
         ],
         retry: false,
@@ -63,7 +66,8 @@ export const useScans = () => {
                     confidenceFrom,
                     confidenceTo,
                     status,
-                    date,
+                    startDate,
+                    endDate,
                     search,
                 ],
                 queryFn: () =>
@@ -73,7 +77,8 @@ export const useScans = () => {
                         confidenceFrom,
                         confidenceTo,
                         status,
-                        date,
+                        startDate,
+                        endDate,
                         search,
                     }),
             });
@@ -86,7 +91,8 @@ export const useScans = () => {
         confidenceFrom,
         confidenceTo,
         status,
-        date,
+        startDate,
+        endDate,
         search,
     ]);
 

@@ -23,17 +23,18 @@ export async function getScansApi({
     confidenceFrom = "",
     confidenceTo = "",
     status = "",
-    date = "",
+    startDate = "",
+    endDate = "",
     search = "",
 }) {
     const res = await api.get(
-        `/scan?page=${page}&type=${type}&confidenceFrom=${confidenceFrom}&confidenceTo=${confidenceTo}&status=${status}&date=${date}&search=${search}`,
+        `/scan?page=${page}&type=${type}&confidenceFrom=${confidenceFrom}&confidenceTo=${confidenceTo}&status=${status}&startDate=${startDate}&endDate=${endDate}&search=${search}`,
     );
     return res.data;
 }
 
 export async function getScanApi(id) {
-    console.log(id)
+    console.log(id);
     const res = await api.get(`/scan/${id}`);
     return res.data;
 }

@@ -1,6 +1,33 @@
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+
+import CustomDatePicker from "./CustomDatePicker";
 import SelectFilter from "./FilterItem";
 
 export default function Filters() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams);
+
+        if (startDate) {
+            params.set("start", startDate.format("YYYY-MM-DD"));
+        } else {
+            params.delete("start");
+        }
+
+        if (endDate) {
+            params.set("end", endDate.format("YYYY-MM-DD"));
+        } else {
+            params.delete("end");
+        }
+
+        setSearchParams(params);
+    }, [startDate, endDate]);
+
     return (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Filter by prediction */}
@@ -30,6 +57,19 @@ export default function Filters() {
 
 
             {/* Filter by date */}
+            <CustomDatePicker
+                label="Start Date"
+                date={startDate}
+                setDate={setStartDate}
+                endDate={endDate}
+            />
+
+            <CustomDatePicker
+                label="End Date"
+                date={endDate}
+                setDate={setEndDate}
+                startDate={startDate}
+            />
         </div>
     )
 }

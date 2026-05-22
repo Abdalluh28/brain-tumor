@@ -179,8 +179,15 @@ const getScans = asyncHandler(async (req, res) => {
     const limit = 10;
 
     // get filters
-    const { type, confidenceFrom, confidenceTo, status, date, search } =
-        req.query;
+    const {
+        type,
+        confidenceFrom,
+        confidenceTo,
+        status,
+        startDate,
+        endDate,
+        search,
+    } = req.query;
 
     // build filter
     const filter = {
@@ -206,16 +213,25 @@ const getScans = asyncHandler(async (req, res) => {
     if (status && status !== "All") {
         filter.status = status.toLowerCase();
     }
+    // Filter by start/end date
+    // Filter by start/end date
+    if (startDate || endDate) {
+        filter.createdAt = {};
 
-    if (date && date !== "All") {
-        // get the scans from the same year only
-        const start = new Date(`${date}-01-01`);
-        const end = new Date(`${Number(date) + 1}-01-01`);
+        // Start date
+        if (startDate) {
+            filter.createdAt.$gte = new Date(startDate);
+        }
 
-        filter.createdAt = {
-            $gte: start,
-            $lt: end,
-        };
+        // End date
+        if (endDate) {
+            const end = new Date(endDate);
+
+            // Include full end day
+            end.setHours(23, 59, 59, 999);
+
+            filter.createdAt.$lte = end;
+        }
     }
 
     // SEARCH by scan ID or doctor name
