@@ -1,10 +1,16 @@
 import os
 import time
+import uuid
 from pathlib import Path
 from urllib.parse import quote
 
 from .pipeline import get_model_version, run_pipeline
-from .schemas import ModelResult, ScanFileIn
+from .schemas import ModelResult, ScanFileIn, SegmentationClassStatOut, SegmentationResult
+from .segmentation import (
+    prediction_supports_segmentation,
+    resolve_segmentation_output_dir,
+    run_segmentation,
+)
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
@@ -49,6 +55,27 @@ def _validate_scan_type_files(files: list[ScanFileIn], scan_type: str | None) ->
         raise ValueError("3D scans must use medical volume files: nii, nii.gz, or dcm.")
 
 
+def _to_segmentation_result(artifacts) -> SegmentationResult:
+    return SegmentationResult(
+        modelType=artifacts.model_type,
+        maskPath=artifacts.mask_path,
+        overlayPath=artifacts.overlay_path,
+        legendPath=artifacts.legend_path,
+        distributionPath=artifacts.distribution_path,
+        classStats=[
+            SegmentationClassStatOut(
+                classId=stat.class_id,
+                label=stat.label,
+                colorHex=stat.color_hex,
+                pixelCount=stat.pixel_count,
+                percentage=stat.percentage,
+            )
+            for stat in artifacts.class_stats
+        ],
+        metadata=artifacts.metadata,
+    )
+
+
 def run_model(
     files: list[ScanFileIn],
     backend_public_url: str | None = None,
@@ -63,12 +90,26 @@ def run_model(
     _validate_scan_type_files(files, scan_type)
 
     pipeline_result = run_pipeline(files)
+    segmentation_result: SegmentationResult | None = None
+    grad_cam_path = _grad_cam_path(files, backend_public_url)
+
+    if prediction_supports_segmentation(pipeline_result.prediction):
+        job_id = uuid.uuid4().hex
+        output_dir = resolve_segmentation_output_dir(files, job_id)
+        artifacts = run_segmentation(
+            files,
+            pipeline_result.prediction,
+            output_dir,
+            backend_public_url,
+        )
+        segmentation_result = _to_segmentation_result(artifacts)
 
     return ModelResult(
         prediction=pipeline_result.prediction,
         confidenceScores=pipeline_result.confidence_scores,
         confidence=pipeline_result.confidence,
-        gradCamPath=_grad_cam_path(files, backend_public_url),
+        gradCamPath=grad_cam_path,
         processedTime=round((time.perf_counter() - started_at) * 1000, 2),
         modelVersion=os.getenv("MODEL_VERSION", get_model_version()),
+        segmentation=segmentation_result,
     )

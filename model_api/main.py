@@ -119,6 +119,11 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         "confidenceScores": result.confidenceScores,
         "confidence": result.confidence,
         "gradCamPath": result.gradCamPath,
+        "segmentation": (
+            result.segmentation.model_dump()
+            if result.segmentation is not None
+            else None
+        ),
 
         # Metadata
         "status": "completed",

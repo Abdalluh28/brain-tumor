@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+
 import keras
 import numpy as np
 
@@ -17,13 +18,13 @@ from .schemas import Prediction, ScanFileIn
 
 STAGE1_LABELS = ("Healthy", "Tumor")
 STAGE2_LABELS = ("GLI", "METS", "OTHER")
-STAGE3_LABELS = ("LGG", "LGG")
+STAGE3_LABELS = ("HGG", "LGG")
 
 FINAL_LABELS: tuple[Prediction, ...] = (
     "Healthy",
     "Metastasis",
     "Others",
-    "LGG",
+    "HGG",
     "LGG",
 )
 
@@ -107,14 +108,13 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": 0.0,
             "Others": 0.0,
-            "LGG": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
-        prediction: Prediction = "Healthy"
         return PipelineResult(
-            prediction=prediction,
-            confidence=confidence_scores[prediction],
+            prediction="Healthy",
+            confidence=confidence_scores["Healthy"],
             confidence_scores=confidence_scores,
             stages_run=stages_run,
             stage_details=stage_details,
@@ -142,7 +142,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": p_mets,
             "Others": p_other,
-            "LGG": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
@@ -159,7 +159,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             "Healthy": p_healthy,
             "Metastasis": p_mets,
             "Others": p_other,
-            "LGG": 0.0,
+            "HGG": 0.0,
             "LGG": 0.0,
         }
         confidence_scores = _finalize_scores(joint_probs)
@@ -180,18 +180,18 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
     )
     stage_details["stage3"] = stage3_pred
 
-    p_lgg = p_gli * stage3_pred.probabilities["LGG"]
+    p_hgg = p_gli * stage3_pred.probabilities["HGG"]
     p_lgg = p_gli * stage3_pred.probabilities["LGG"]
 
     joint_probs = {
         "Healthy": p_healthy,
         "Metastasis": p_mets,
         "Others": p_other,
-        "LGG": p_lgg,
+        "HGG": p_hgg,
         "LGG": p_lgg,
     }
     confidence_scores = _finalize_scores(joint_probs)
-    prediction = "LGG" if stage3_idx == 0 else "LGG"
+    prediction: Prediction = "HGG" if stage3_idx == 0 else "LGG"
 
     return PipelineResult(
         prediction=prediction,

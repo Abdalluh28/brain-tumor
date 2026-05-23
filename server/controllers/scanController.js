@@ -407,6 +407,41 @@ const deleteScan = asyncHandler(async (req, res) => {
         }
     });
 
+    const segmentationPaths = [
+        scan.segmentation?.maskPath,
+        scan.segmentation?.overlayPath,
+        scan.segmentation?.legendPath,
+        scan.segmentation?.distributionPath,
+    ].filter(Boolean);
+
+    segmentationPaths.forEach((urlPath) => {
+        const marker = "/uploads/";
+        const normalized = String(urlPath).replace(/\\/g, "/");
+        if (!normalized.includes(marker)) {
+            return;
+        }
+
+        const relativePath = normalized.split(marker)[1];
+        const absolutePath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            relativePath,
+        );
+
+        if (fs.existsSync(absolutePath)) {
+            fs.unlinkSync(absolutePath);
+        }
+
+        const segmentationDir = path.dirname(absolutePath);
+        if (
+            fs.existsSync(segmentationDir) &&
+            fs.readdirSync(segmentationDir).length === 0
+        ) {
+            fs.rmdirSync(segmentationDir);
+        }
+    });
+
     await scan.deleteOne();
 
     res.json({ message: "Scan deleted successfully" });
