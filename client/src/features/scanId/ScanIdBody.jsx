@@ -2,6 +2,7 @@ import Spinner from '@/components/Spinner'
 import { useParams } from 'react-router-dom'
 import ScanIdFooter from './ScanIdFooter'
 import ScanIdGrad from './ScanIdGrad'
+import ScanIdSegmentation from './ScanIdSegmentation'
 import ScanIdHeader from './ScanIdHeader'
 import ScanIdMRI from './ScanIdMRI'
 import ScanIdProbabilities from './ScanIdProbabilities'
@@ -19,6 +20,7 @@ export default function ScanIdBody() {
         confidenceScores,
         confidence,
         gradCamPath,
+        segmentation,
         radiologist,
         status,
         createdAt,
@@ -42,9 +44,13 @@ export default function ScanIdBody() {
                     modelVersion={modelVersion}
                     processedTimeMs={processedTime}
                 />
-                <div className='flex flex-col lg:col-span-2'>
+                <div className='flex flex-col lg:col-span-2 gap-6'>
                     <ScanIdMRI originalMRI={gradCamPath} />
-                    <ScanIdGrad gradCamPath={gradCamPath} />
+                    {segmentation ? (
+                        <ScanIdSegmentation segmentation={segmentation} />
+                    ) : (
+                        <ScanIdGrad gradCamPath={gradCamPath} />
+                    )}
                 </div>
                 <div className='col-span-1'>
                     <ScanIdProbabilities

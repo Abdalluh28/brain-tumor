@@ -55,6 +55,24 @@ class AnalyzeScanRequest(BaseModel):
     backendPublicUrl: str | None = None
 
 
+class SegmentationClassStatOut(BaseModel):
+    classId: int
+    label: str
+    colorHex: str
+    pixelCount: int
+    percentage: float
+
+
+class SegmentationResult(BaseModel):
+    modelType: Literal["GLI", "METS"]
+    maskPath: str
+    overlayPath: str
+    legendPath: str
+    distributionPath: str
+    classStats: list[SegmentationClassStatOut]
+    metadata: dict
+
+
 class ModelResult(BaseModel):
     prediction: Prediction
     confidenceScores: dict[Prediction, float] = Field(
@@ -64,3 +82,4 @@ class ModelResult(BaseModel):
     gradCamPath: str
     processedTime: float
     modelVersion: str
+    segmentation: SegmentationResult | None = None

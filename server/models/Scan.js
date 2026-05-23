@@ -117,6 +117,29 @@ const scanSchema = new mongoose.Schema(
             type: String,
         },
 
+        segmentation: {
+            modelType: {
+                type: String,
+                enum: ["GLI", "METS"],
+            },
+            maskPath: String,
+            overlayPath: String,
+            legendPath: String,
+            distributionPath: String,
+            classStats: [
+                {
+                    classId: Number,
+                    label: String,
+                    colorHex: String,
+                    pixelCount: Number,
+                    percentage: Number,
+                },
+            ],
+            metadata: {
+                type: Object,
+            },
+        },
+
         status: {
             type: String,
             enum: ["pending", "review", "completed", "failed"],

@@ -5,8 +5,8 @@ export default function ScanIdGrad({ gradCamPath }) {
         <div className='flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 shadow-md rounded-xl'>
             <div className='flex justify-between'>
                 <div className='flex flex-col gap-2'>
-                    <p className='font-semibold text-xl'>Grad-CAM Heatmap</p>
-                    <p>Areas of interest highlighted by the AI model</p>
+                    <p className='font-semibold text-xl'>Reference MRI</p>
+                    <p>Uploaded scan preview when segmentation is not available</p>
                 </div>
                 <div className='flex gap-2'>
                     <ImageKey text='Low' color='bg-blue-500' />
@@ -22,7 +22,7 @@ export default function ScanIdGrad({ gradCamPath }) {
                 />
             </div>
             <div className='px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100'>
-                The heatmap shows regions that contributed most to the Healthy classification. Red areas indicate highest activation, while blue areas show lower activation.
+                Segmentation is only generated for HGG, LGG, and Metastasis predictions.
             </div>
         </div>
     )

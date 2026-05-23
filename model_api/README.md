@@ -7,7 +7,7 @@ the scan result in MongoDB.
 
 1. **Stage 1** (`custom_cnn_lowdrop_best (2).keras`): Healthy vs Tumor using T1 + T2 (`t1n`, `t2w`).
 2. **Stage 2** (`custom_cnn_3class_finetune_stage2_best.keras`): GLI vs METS vs OTHER using all 4 modalities.
-3. **Stage 3** (`best_densenet_stage2_more_finetune_lessdrop.keras`): GBM (HGG) vs LGG for glioma cases.
+3. **Stage 3** (`best_densenet_stage2_more_finetune_lessdrop.keras`): HGG vs LGG for glioma cases.
 
 Upload slot mapping (4 files from the backend):
 
@@ -19,6 +19,24 @@ Upload slot mapping (4 files from the backend):
 | 4    | `t2f`    | FLAIR        |
 
 Supported file formats: `.png`, `.jpg`, `.jpeg`, `.nii`, `.nii.gz`, `.dcm`.
+
+## Segmentation (after classification)
+
+When the final prediction is **HGG**, **LGG**, or **Metastasis**, a segmentation model runs on all 4 modalities:
+
+| Prediction | Model folder | Expected weight file (place one of these) |
+|------------|--------------|-------------------------------------------|
+| HGG / LGG  | `Models/segmentation/GLI Model/` | `unet_brats_best (3).keras` |
+| Metastasis | `Models/segmentation/Mets Model/` | `residual_unet_brats_mets_best_v1_20.keras` |
+
+Outputs are saved under `server/uploads/segmentation/<job-id>/`:
+
+- `mask.png` — color-coded segmentation mask
+- `overlay_t1n.png` — mask overlaid on T1
+- `legend.png` — class color legend
+- `distribution.png` — bar chart of pixel counts per class
+
+Class labels: Background, NCR/NET, Edema, Enhancing Tumor.
 
 ## Setup
 
@@ -36,7 +54,7 @@ Run these commands from the repository root.
 The service reads `MONGO_URL` from `.env` or `server/.env`. Optional values:
 
 - `MONGO_DB`: database name when the Mongo URL does not include one. Defaults to `test`.
-- `MODEL_VERSION`: version string saved on each scan. Defaults to `cascade-v1.0.0`.
+- `MODEL_VERSION`: version string saved on each scan. Defaults to `cascade-v1.1.0-seg`.
 
 The Express server calls:
 
