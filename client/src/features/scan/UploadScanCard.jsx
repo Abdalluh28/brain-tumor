@@ -1,4 +1,3 @@
-import { Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useDispatch, useSelector } from 'react-redux'
 import { removeFile, uploadFile } from './scanSlice'
@@ -8,13 +7,13 @@ import UploadSlot from './UploadSlot'
 import { useFormContext, useWatch } from 'react-hook-form'
 
 export default function UploadScanCard() {
-    // access patient data first
     const { control } = useFormContext()
     const patientData = useWatch({
         control,
     })
 
     const files = useSelector(state => state.scan.files)
+    const is3DScan = patientData.scanType === '3D'
 
     // Count uploaded files (ignore null values)
     const uploadedSlots = files.filter(Boolean).length
@@ -26,7 +25,7 @@ export default function UploadScanCard() {
     const validateFile = (file) => {
         const imageTypes = ['image/jpeg', 'image/png', 'image/jpg']
         const medicalExtensions = ['.nii', '.nii.gz', '.dcm']
-        const maxSize = 50 * 1024 * 1024 // 50MB
+        const maxSize = 100 * 1024 * 1024 // 100MB
 
         const isImage = imageTypes.includes(file.type)
 
@@ -40,8 +39,18 @@ export default function UploadScanCard() {
             return false
         }
 
+        if (patientData.scanType === 'MRI' && !isImage) {
+            toast.error('Please upload an image file')
+            return false
+        }
+
+        if (patientData.scanType === '3D' && !isMedical) {
+            toast.error('Please upload a 3D medical volume')
+            return false
+        }
+
         if (file.size > maxSize) {
-            toast.error('File size exceeds 50MB')
+            toast.error('File size exceeds 100MB')
             return false
         }
 
@@ -134,6 +143,7 @@ export default function UploadScanCard() {
                         onUpload={(e) => handleUpload(e, item)}
                         onDelete={deleteFile}
                         disabled={allSlotsFilled && !files[item]}
+                        scanType={patientData.scanType}
                     />
                 ))}
             </div>
@@ -144,7 +154,7 @@ export default function UploadScanCard() {
             ) : (
                 <div className='w-fit self-center'>
                     <p className=' text-white dark:text-black text-center bg-primary dark:bg-primary-foreground px-8 py-4 rounded-full'>
-                        Upload all 4 MRI modalities to start analysis
+                        Upload all 4 {is3DScan ? '3D volume' : 'MRI image'} modalities to start analysis
                     </p>
                 </div>
             )}

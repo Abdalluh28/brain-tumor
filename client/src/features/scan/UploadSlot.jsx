@@ -1,9 +1,11 @@
-import { Upload, X } from 'lucide-react'
+import { Box, FileImage, Upload, X } from 'lucide-react'
 import { memo } from 'react'
 
 const MODALITY_ORDER = ['T1N', 'T1C', 'T2W', 'T2F']
 // Each upload slot component
-const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
+const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled, scanType }) => {
+    const is3D = scanType === '3D'
+
     return (
         <div className="rounded-lg shadow-md bg-white border border-dashed border-slate-300 p-4 flex flex-col gap-2 dark:bg-background dark:border-slate-700">
 
@@ -28,8 +30,9 @@ const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
                             alt={`view-${index}`}
                         />
                     ) : (
-                        <>
-                        </>
+                        <div className="w-full h-48 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-900 text-primary">
+                            <Box size={52} />
+                        </div>
                     )}
                     <div className='flex flex-col gap-1'>
                         <p className="text-sm truncate dark:text-slate-300">{file.name}</p>
@@ -49,13 +52,16 @@ const UploadSlot = memo(({ index, file, onUpload, onDelete, disabled }) => {
                         <p className='text-primary bg-primary/7 p-3 rounded-lg'>
                             <Upload size={28} />
                         </p>
-                        <p className="text-sm">Drop file here</p>
+                        <div className="flex items-center gap-2 text-sm">
+                            {is3D ? <Box size={16} /> : <FileImage size={16} />}
+                            <span>{is3D ? 'Drop 3D volume here' : 'Drop image here'}</span>
+                        </div>
                     </label>
                     <input
                         type="file"
                         id={`upload-view-${index}`}
                         className="hidden"
-                        accept="image/*, .nii, .nii.gz, .dcm"
+                        accept={is3D ? '.nii,.nii.gz,.dcm' : 'image/png,image/jpeg,image/jpg'}
                         onChange={onUpload}
                         disabled={disabled}
                     />

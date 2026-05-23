@@ -29,14 +29,18 @@ const storage = multer.diskStorage({
         cb(null, uniqueName + getFileExtension(file.originalname));
     },
 });
-const allowedExtensions = [".nii", ".nii.gz", ".dcm", ".png", ".jpg", ".jpeg"];
+const imageExtensions = [".png", ".jpg", ".jpeg"];
+const volumeExtensions = [".nii", ".nii.gz", ".dcm"];
+const allowedExtensions = [...imageExtensions, ...volumeExtensions];
 
 const fileFilter = (req, file, cb) => {
     const ext = getFileExtension(file.originalname);
 
     if (!allowedExtensions.includes(ext)) {
         return cb(
-            new Error("Only .nii, .nii.gz, .dcm, .png, .jpg, .jpeg allowed"),
+            new Error(
+                "Only image files (.png, .jpg, .jpeg) or 3D medical volumes (.nii, .nii.gz, .dcm) are allowed",
+            ),
         );
     }
 
@@ -47,7 +51,7 @@ const upload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB per file
+        fileSize: 100 * 1024 * 1024, // 100MB
     },
 });
 const uploadFiles = upload.array("files", 4);
@@ -167,7 +171,36 @@ const createScan = asyncHandler(async (req, res) => {
                 removeUploadedFiles(req.files);
 
                 return res.status(400).json({
-                    message: "Exactly 4 MRI files are required",
+                    message:
+                        "Exactly 4 modality files are required for analysis",
+                });
+            }
+
+            const receivedExtensions = req.files.map((file) =>
+                getFileExtension(file.originalname),
+            );
+            const allImages = receivedExtensions.every((ext) =>
+                imageExtensions.includes(ext),
+            );
+            const allVolumes = receivedExtensions.every((ext) =>
+                volumeExtensions.includes(ext),
+            );
+
+            if (scanType === "MRI" && !allImages) {
+                removeUploadedFiles(req.files);
+
+                return res.status(400).json({
+                    message:
+                        "MRI analysis expects image files: .png, .jpg, or .jpeg",
+                });
+            }
+
+            if (scanType === "3D" && !allVolumes) {
+                removeUploadedFiles(req.files);
+
+                return res.status(400).json({
+                    message:
+                        "3D analysis expects medical volume files: .nii, .nii.gz, or .dcm",
                 });
             }
 

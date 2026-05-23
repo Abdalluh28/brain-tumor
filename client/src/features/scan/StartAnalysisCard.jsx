@@ -14,6 +14,7 @@ export default function StartAnalysisCard({ patientData }) {
     const { createScan, isLoading } = useCreateScan();
     const files = useSelector(state => state.scan.files);
     const dispatch = useDispatch();
+    const is3DScan = patientData.scanType === '3D';
 
     const handleCreateScan = async () => {
         // validate patient info
@@ -48,10 +49,10 @@ export default function StartAnalysisCard({ patientData }) {
         <div className='flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-700 shadow-md rounded-lg p-4 '>
             <div className='flex gap-2 text-green-500 '>
                 <CircleCheckBig />
-                <p>All 4 MRI views validated successfully</p>
+                <p>All 4 {is3DScan ? '3D volume' : 'MRI image'} modalities validated successfully</p>
             </div>
             <div className='bg-primary/15 px-4 py-2 rounded-lg'>
-                <p className='text-blue-900 dark:text-blue-100 font-semibold'>The AI model will analyze all 4 views and provide:</p>
+                <p className='text-blue-900 dark:text-blue-100 font-semibold'>The AI model will analyze all 4 modalities and provide:</p>
                 <ul className='flex flex-col gap-1 mt-2 ml-2 text-blue-800 dark:text-blue-200 text-[15px] list-inside'>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
@@ -59,21 +60,21 @@ export default function StartAnalysisCard({ patientData }) {
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Multi-view confidence scoring and probability distribution</span>
+                        <span>Multi-modality confidence scoring and probability distribution</span>
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Grad-CAM visualizations for each MRI view</span>
+                        <span>Grad-CAM visualization for the analyzed scan</span>
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Cross-view consistency analysis</span>
+                        <span>Cross-modality consistency analysis</span>
                     </li>
                 </ul>
             </div>
             <button className='bg-primary rounded-xl p-4 text-white cursor-pointer hover:bg-primary-hover transition duration-300 text-lg'
                 onClick={handleCreateScan}>
-                Run Multi-View Classification Analysis
+                Run Multi-Modality Classification Analysis
             </button>
         </div>
     )

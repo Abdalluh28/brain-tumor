@@ -18,7 +18,7 @@ export const scanSlice = createSlice({
             state.files[index] = null;
         },
         clearFiles: (state) => {
-            state.files = [];
+            state.files = [null, null, null, null];
         },
     },
 });

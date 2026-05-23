@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const scanFormats = ["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"];
+
 const scanFileSchema = new mongoose.Schema(
     {
         // modality: {
@@ -21,8 +23,18 @@ const scanFileSchema = new mongoose.Schema(
 
         format: {
             type: String,
-            enum: ["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"],
+            enum: scanFormats,
             required: true,
+        },
+
+        originalName: {
+            type: String,
+        },
+
+        slot: {
+            type: Number,
+            min: 1,
+            max: 4,
         },
     },
     { _id: false }, // prevents auto _id for subdocuments
@@ -79,7 +91,7 @@ const scanSchema = new mongoose.Schema(
                 validator: function (value) {
                     return value.length === 4;
                 },
-                message: "A scan must contain exactly 4 MRI files.",
+                message: "A scan must contain exactly 4 modality files.",
             },
         },
 

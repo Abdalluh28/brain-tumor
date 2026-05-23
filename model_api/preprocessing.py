@@ -9,6 +9,7 @@ from .config import IMG_HEIGHT, IMG_WIDTH, MODALITY_ORDER, SLOT_TO_MODALITY
 from .schemas import ScanFileIn
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
+VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
 
 
 def _load_png_like(path: Path) -> np.ndarray:
@@ -21,6 +22,28 @@ def _load_png_like(path: Path) -> np.ndarray:
     return array
 
 
+def _central_slice(array: np.ndarray, source: Path) -> np.ndarray:
+    array = np.asarray(array, dtype=np.float32)
+    array = np.squeeze(array)
+
+    if array.ndim < 2:
+        raise ValueError(f"Could not extract a 2D slice from 3D file: {source}")
+
+    while array.ndim > 3:
+        array = np.take(array, array.shape[-1] // 2, axis=-1)
+        array = np.squeeze(array)
+
+    if array.ndim == 3:
+        slice_axis = int(np.argmax(array.shape))
+        array = np.take(array, array.shape[slice_axis] // 2, axis=slice_axis)
+        array = np.squeeze(array)
+
+    if array.ndim != 2:
+        raise ValueError(f"Could not extract a 2D slice from 3D file: {source}")
+
+    return array
+
+
 def _load_nifti_middle_slice(path: Path) -> np.ndarray:
     try:
         import nibabel as nib
@@ -30,16 +53,7 @@ def _load_nifti_middle_slice(path: Path) -> np.ndarray:
         ) from exc
 
     volume = np.asarray(nib.load(str(path)).get_fdata(dtype=np.float32))
-    if volume.ndim < 3:
-        raise ValueError(f"NIfTI volume has unexpected shape: {volume.shape}")
-
-    slice_2d = volume[:, :, volume.shape[2] // 2]
-    slice_2d = np.squeeze(slice_2d)
-
-    if slice_2d.ndim != 2:
-        raise ValueError(f"Could not extract a 2D slice from NIfTI file: {path}")
-
-    slice_2d = _normalize_to_unit_interval(slice_2d)
+    slice_2d = _normalize_to_unit_interval(_central_slice(volume, path))
     return _resize_grayscale_array(slice_2d)
 
 
@@ -59,7 +73,7 @@ def _load_dicom_slice(path: Path) -> np.ndarray:
     if hasattr(dataset, "RescaleIntercept"):
         pixels = pixels + float(dataset.RescaleIntercept)
 
-    pixels = _normalize_to_unit_interval(pixels)
+    pixels = _normalize_to_unit_interval(_central_slice(pixels, path))
     return _resize_grayscale_array(pixels)
 
 

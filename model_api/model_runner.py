@@ -7,6 +7,7 @@ from .pipeline import get_model_version, run_pipeline
 from .schemas import ModelResult, ScanFileIn
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
+VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
 
 
 def _grad_cam_path(files: list[ScanFileIn], backend_public_url: str | None) -> str:
@@ -38,12 +39,28 @@ def _grad_cam_path(files: list[ScanFileIn], backend_public_url: str | None) -> s
     return f"data:image/svg+xml;utf8,{quote(svg)}"
 
 
-def run_model(files: list[ScanFileIn], backend_public_url: str | None = None) -> ModelResult:
+def _validate_scan_type_files(files: list[ScanFileIn], scan_type: str | None) -> None:
+    formats = {scan_file.format for scan_file in files}
+
+    if scan_type == "MRI" and not formats.issubset(IMAGE_FORMATS):
+        raise ValueError("MRI scans must use image files: png, jpg, or jpeg.")
+
+    if scan_type == "3D" and not formats.issubset(VOLUME_FORMATS):
+        raise ValueError("3D scans must use medical volume files: nii, nii.gz, or dcm.")
+
+
+def run_model(
+    files: list[ScanFileIn],
+    backend_public_url: str | None = None,
+    scan_type: str | None = None,
+) -> ModelResult:
     started_at = time.perf_counter()
 
     for scan_file in files:
         if not Path(scan_file.rawPath).exists():
             raise FileNotFoundError(f"Input file not found: {scan_file.rawPath}")
+
+    _validate_scan_type_files(files, scan_type)
 
     pipeline_result = run_pipeline(files)
 

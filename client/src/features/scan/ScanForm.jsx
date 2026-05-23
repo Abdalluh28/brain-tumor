@@ -169,12 +169,7 @@ export default function ScanForm() {
                     )} />
 
             </form>
-            {scanType === 'MRI' && <UploadScanCard />}
-            {scanType === '3D' && (
-                <div>
-                    3D
-                </div>
-            )}
+            {scanType && <UploadScanCard />}
         </FormProvider>
     )
 }

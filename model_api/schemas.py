@@ -3,9 +3,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+IMAGE_FORMATS = ("png", "jpg", "jpeg")
+VOLUME_FORMATS = ("nii", "nii.gz", "dcm")
+
 ScanFormat = Literal["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"]
 Prediction = Literal["HGG", "LGG", "Metastasis", "Healthy", "Others"]
 Gender = Literal['male', 'female']
+ScanType = Literal["MRI", "3D"]
 
 
 class ScanFileIn(BaseModel):
@@ -45,7 +49,7 @@ class AnalyzeScanRequest(BaseModel):
         max_length=1000,
     )
 
-    scanType: str | None = None
+    scanType: ScanType
     files: list[ScanFileIn] = Field(min_length=4, max_length=4)
     radiologist: str | None = None
     backendPublicUrl: str | None = None
