@@ -1,6 +1,6 @@
 import FormInput from "@/components/FormInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User } from "lucide-react";
+import { IdCard, NotebookText, Phone, User } from "lucide-react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import UploadScanCard from "./UploadScanCard";
 
@@ -9,24 +9,21 @@ export default function ScanForm() {
     const methods = useForm({
         mode: "onChange",
     });
-    const { register, handleSubmit, reset, formState: { errors }, watch } = methods;
+    const { register, formState: { errors }, watch } = methods;
     const scanType = watch("scanType");
 
-    const handleFormSubmit = (data) => {
-        console.log(data);
-        reset();
-    }
+
 
     return (
         <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(handleFormSubmit)}
-                className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 bg-white shadow-md rounded-lg px-4 py-6 ">
+            <form
+                className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 bg-white dark:bg-background border border-slate-200 dark:border-slate-800 shadow-md rounded-lg px-4 py-6 ">
                 <FormInput
                     id="patientName"
                     label="Patient Name"
                     type="text"
                     placeholder="John Doe"
-                    icon={<User />}
+                    icon={<User className="w-5 h-5" />}
                     validation={{
                         required: "Patient Name is required",
                         minLength: {
@@ -42,7 +39,7 @@ export default function ScanForm() {
                     label="Patient ID"
                     type="text"
                     placeholder="12345678"
-                    icon={<User />}
+                    icon={<IdCard className="w-5 h-5" />}
                     validation={{
                         required: "Patient ID is required",
                         pattern: {
@@ -58,7 +55,7 @@ export default function ScanForm() {
                     label="Patient Age"
                     type="text"
                     placeholder="25"
-                    icon={<User />}
+                    icon={<User className="w-5 h-5" />}
                     validation={{
                         required: "Patient Age is required",
                         pattern: {
@@ -117,7 +114,7 @@ export default function ScanForm() {
                     label="Patient Phone"
                     type="text"
                     placeholder="1234567890"
-                    icon={<User />}
+                    icon={<Phone className="w-5 h-5" />}
                     validation={{
                         required: "Patient Phone is required",
                         pattern: {
@@ -133,7 +130,7 @@ export default function ScanForm() {
                     label="Notes"
                     type="text"
                     placeholder="Notes"
-                    icon={<User />}
+                    icon={<NotebookText className="w-5 h-5" />}
                     register={register}
                     errors={errors} />
 
