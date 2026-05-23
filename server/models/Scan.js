@@ -36,6 +36,43 @@ const scanSchema = new mongoose.Schema(
             required: true,
         },
 
+        patientName: {
+            type: String,
+            required: true,
+        },
+
+        patientId: {
+            type: String,
+            required: true,
+        },
+
+        patientAge: {
+            type: Number,
+            required: true,
+        },
+
+        patientGender: {
+            type: String,
+            enum: ["male", "female"],
+            required: true,
+        },
+
+        patientPhone: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+
+        notes: {
+            type: String,
+        },
+
+        scanType: {
+            type: String,
+            enum: ["MRI", '3D'],
+            required: true,
+        },
+
         files: {
             type: [scanFileSchema],
             validate: {

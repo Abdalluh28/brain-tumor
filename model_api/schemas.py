@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 ScanFormat = Literal["nii", "nii.gz", "dcm", "png", "jpg", "jpeg"]
 Prediction = Literal["HGG", "LGG", "Metastasis", "Healthy", "Others"]
+Gender = Literal['male', 'female']
 
 
 class ScanFileIn(BaseModel):
@@ -16,6 +17,35 @@ class ScanFileIn(BaseModel):
 
 class AnalyzeScanRequest(BaseModel):
     userId: str
+    # Patient Information
+    patientName: str = Field(
+        min_length=2,
+        max_length=100,
+    )
+
+    patientId: str = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+    patientAge: int = Field(
+        gt=0,
+        lt=120,
+    )
+
+    patientGender: Gender
+
+    patientPhone: str = Field(
+        min_length=6,
+        max_length=20,
+    )
+
+    notes: str | None = Field(
+        default=None,
+        max_length=1000,
+    )
+
+    scanType: str | None = None
     files: list[ScanFileIn] = Field(min_length=4, max_length=4)
     radiologist: str | None = None
     backendPublicUrl: str | None = None

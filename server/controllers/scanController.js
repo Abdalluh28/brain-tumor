@@ -120,6 +120,9 @@ const removeUploadedFiles = (files = []) => {
 // ------------------
 // Create Scan
 // ------------------
+// ------------------
+// Create Scan
+// ------------------
 const createScan = asyncHandler(async (req, res) => {
     uploadFiles(req, res, async function (err) {
         if (err) {
@@ -127,46 +130,109 @@ const createScan = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: err.message });
         }
 
-        if (!req.files || req.files.length !== 4) {
-            removeUploadedFiles(req.files);
-            return res.status(400).json({
-                message: "Exactly 4 MRI files are required",
-            });
-        }
-
-        const files = req.files.map((file, index) => ({
-            rawPath: path.resolve(file.path),
-            format: getFileExtension(file.originalname).replace(".", ""),
-            originalName: file.originalname,
-            slot: index + 1,
-        }));
-
-        const modelApiUrl =
-            process.env.MODEL_API_URL || "http://127.0.0.1:8000/scans/analyze";
-        let scan;
-
         try {
-            const result = await postJson(modelApiUrl, {
-                userId: req.user.id,
-                files,
-                radiologist: req.body.name,
-                backendPublicUrl:
-                    process.env.BACKEND_PUBLIC_URL ||
-                    `http://localhost:${process.env.PORT || 3000}`,
-            });
+            // ------------------
+            // Validate Patient Data
+            // ------------------
+            const {
+                patientName,
+                patientId,
+                patientAge,
+                patientGender,
+                patientPhone,
+                notes,
+                scanType,
+            } = req.body;
+            console.log(req.body)
 
-            scan = result.scan;
+            if (
+                !patientName ||
+                !patientId ||
+                !patientAge ||
+                !patientGender ||
+                !patientPhone ||
+                !scanType
+            ) {
+                removeUploadedFiles(req.files);
+
+                return res.status(400).json({
+                    message: "All patient information is required",
+                });
+            }
+
+            // ------------------
+            // Validate Files
+            // ------------------
+            if (!req.files || req.files.length !== 4) {
+                removeUploadedFiles(req.files);
+
+                return res.status(400).json({
+                    message: "Exactly 4 MRI files are required",
+                });
+            }
+
+            // ------------------
+            // Prepare Files
+            // ------------------
+            const files = req.files.map((file, index) => ({
+                rawPath: path.resolve(file.path),
+                format: getFileExtension(file.originalname).replace(".", ""),
+                originalName: file.originalname,
+                slot: index + 1,
+            }));
+
+            const modelApiUrl =
+                process.env.MODEL_API_URL ||
+                "http://127.0.0.1:8000/scans/analyze";
+
+            let scan;
+
+            try {
+                // ------------------
+                // Send To FastAPI
+                // ------------------
+                const result = await postJson(modelApiUrl, {
+                    userId: req.user.id,
+
+                    // Patient Info
+                    patientName,
+                    patientId,
+                    patientAge,
+                    patientGender,
+                    patientPhone,
+                    notes,
+                    scanType,
+
+                    // Files
+                    files,
+
+                    radiologist: req.body.name,
+
+                    backendPublicUrl:
+                        process.env.BACKEND_PUBLIC_URL ||
+                        `http://localhost:${process.env.PORT || 3000}`,
+                });
+
+                scan = result.scan;
+            } catch (error) {
+                removeUploadedFiles(req.files);
+
+                return res.status(502).json({
+                    message: `Model service failed: ${error.message}`,
+                });
+            }
+
+            res.status(201).json({
+                message: "Scan uploaded and analyzed successfully",
+                scan,
+            });
         } catch (error) {
             removeUploadedFiles(req.files);
-            return res.status(502).json({
-                message: `Model service failed: ${error.message}`,
+
+            res.status(500).json({
+                message: error.message,
             });
         }
-
-        res.status(201).json({
-            message: "Scan uploaded and analyzed successfully",
-            scan,
-        });
     });
 });
 
@@ -238,6 +304,13 @@ const getScans = asyncHandler(async (req, res) => {
     if (search && search.trim() !== "") {
         const searchConditions = [
             { radiologist: { $regex: search, $options: "i" } },
+
+            { patientName: { $regex: search, $options: "i" } },
+
+            { patientId: { $regex: search, $options: "i" } },
+
+            { patientPhone: { $regex: search, $options: "i" } },
+
             {
                 $expr: {
                     $regexMatch: {

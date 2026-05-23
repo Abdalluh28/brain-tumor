@@ -22,12 +22,17 @@ app.add_middleware(
 
 def _serialize_scan(scan: dict) -> dict:
     serialized = {**scan}
+
     serialized["_id"] = str(serialized["_id"])
     serialized["userId"] = str(serialized["userId"])
 
     for key in ("createdAt", "updatedAt"):
         if isinstance(serialized.get(key), datetime):
-            serialized[key] = serialized[key].isoformat().replace("+00:00", "Z")
+            serialized[key] = (
+                serialized[key]
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
 
     return serialized
 
@@ -39,43 +44,96 @@ async def health():
 
 @app.post("/scans/analyze")
 async def analyze_scan(payload: AnalyzeScanRequest):
+
+    # ------------------
+    # Validate User ID
+    # ------------------
     try:
         user_id = ObjectId(payload.userId)
-    except InvalidId as exc:
-        raise HTTPException(status_code=400, detail="Invalid userId") from exc
 
+    except InvalidId as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid userId",
+        ) from exc
+
+    # ------------------
+    # Run Model
+    # ------------------
     try:
-        result = run_model(payload.files, payload.backendPublicUrl)
+        result = run_model(
+            payload.files,
+            payload.backendPublicUrl,
+        )
+
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Model inference failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model inference failed: {exc}",
+        ) from exc
 
     now = datetime.now(timezone.utc)
+
+    # ------------------
+    # Create Scan Document
+    # ------------------
     scan = {
+        # User
         "userId": user_id,
+
+        # Patient Information
+        "patientName": payload.patientName,
+        "patientId": payload.patientId,
+        "patientAge": payload.patientAge,
+        "patientGender": payload.patientGender,
+        "patientPhone": payload.patientPhone,
+        "notes": payload.notes,
+        "scanType": payload.scanType,
+
+        # Files
         "files": [
             {
                 "rawPath": scan_file.rawPath,
                 "format": scan_file.format,
+                "originalName": scan_file.originalName,
+                "slot": scan_file.slot,
             }
             for scan_file in payload.files
         ],
+
+        # AI Results
         "prediction": result.prediction,
         "confidenceScores": result.confidenceScores,
         "confidence": result.confidence,
         "gradCamPath": result.gradCamPath,
+
+        # Metadata
         "status": "completed",
         "radiologist": payload.radiologist or "AI Model",
         "processedTime": result.processedTime,
         "modelVersion": result.modelVersion,
+
+        # Dates
         "createdAt": now,
         "updatedAt": now,
     }
 
+    # ------------------
+    # Save To MongoDB
+    # ------------------
     database = get_database()
+
     insert_result = await database.scans.insert_one(scan)
-    saved_scan = await database.scans.find_one({"_id": insert_result.inserted_id})
+
+    saved_scan = await database.scans.find_one(
+        {"_id": insert_result.inserted_id}
+    )
 
     return {
         "message": "Scan analyzed successfully",

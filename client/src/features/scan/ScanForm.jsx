@@ -70,45 +70,47 @@ export default function ScanForm() {
                     errors={errors} />
 
                 {/* gender */}
-                <Controller
-                    name="patientGender"
-                    control={methods.control}
-                    rules={{
-                        required: "Patient Gender is required",
-                    }}
-                    render={({ field }) => {
-                        return (
-                            <div className="w-full">
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Gender" />
-                                    </SelectTrigger>
+                <div className="flex items-end">
+                    <Controller
+                        name="patientGender"
+                        control={methods.control}
+                        rules={{
+                            required: "Patient Gender is required",
+                        }}
+                        render={({ field }) => {
+                            return (
+                                <div className="w-full">
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Gender" />
+                                        </SelectTrigger>
 
-                                    <SelectContent>
-                                        <SelectItem value="male">
-                                            Male
-                                        </SelectItem>
+                                        <SelectContent>
+                                            <SelectItem value="male">
+                                                Male
+                                            </SelectItem>
 
-                                        <SelectItem value="female">
-                                            Female
-                                        </SelectItem>
+                                            <SelectItem value="female">
+                                                Female
+                                            </SelectItem>
 
-                                    </SelectContent>
-                                </Select>
+                                        </SelectContent>
+                                    </Select>
 
-                                {errors.patientGender && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.patientGender.message}
-                                    </p>
-                                )}
-                            </div>
+                                    {errors.patientGender && (
+                                        <p className="text-red-500 text-sm mt-1">
+                                            {errors.patientGender.message}
+                                        </p>
+                                    )}
+                                </div>
 
-                        )
-                    }}
-                />
+                            )
+                        }}
+                    />
+                </div>
 
                 <FormInput
                     id="patientPhone"
