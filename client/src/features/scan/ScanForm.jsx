@@ -3,16 +3,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IdCard, NotebookText, Phone, User } from "lucide-react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import UploadScanCard from "./UploadScanCard";
+import { useDispatch } from "react-redux";
+import { clearFiles } from "./scanSlice";
 
 export default function ScanForm() {
 
     const methods = useForm({
         mode: "onChange",
     });
-    const { register, formState: { errors }, watch } = methods;
+    const { register, formState: { errors }, watch, setValue } = methods;
     const scanType = watch("scanType");
 
-
+    const dispatch = useDispatch();
+    const handleScanTypeChange = (value) => {
+        setValue("scanType", value);
+        dispatch(clearFiles());
+    }
 
     return (
         <FormProvider {...methods}>
@@ -141,7 +147,7 @@ export default function ScanForm() {
                     render={({ field }) => (
                         <div className="w-full">
                             <Select
-                                onValueChange={field.onChange}
+                                onValueChange={handleScanTypeChange}
                                 value={field.value}
                             >
                                 <SelectTrigger className="w-full">

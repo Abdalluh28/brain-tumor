@@ -401,20 +401,15 @@ const deleteScan = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Scan not found" });
     }
 
-    scan.files.forEach((file) => {
-        if (fs.existsSync(file.rawPath)) {
-            fs.unlinkSync(file.rawPath);
-        }
-    });
-
-    const segmentationPaths = [
+    const pathsToDelete = [
+        ...scan.files.map((file) => file.rawPath),
         scan.segmentation?.maskPath,
         scan.segmentation?.overlayPath,
         scan.segmentation?.legendPath,
         scan.segmentation?.distributionPath,
     ].filter(Boolean);
 
-    segmentationPaths.forEach((urlPath) => {
+    pathsToDelete.forEach((urlPath) => {
         const marker = "/uploads/";
         const normalized = String(urlPath).replace(/\\/g, "/");
         if (!normalized.includes(marker)) {

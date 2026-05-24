@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -36,6 +37,16 @@ def _serialize_scan(scan: dict) -> dict:
 
     return serialized
 
+
+def _get_file_url(raw_path: str, backend_public_url: str | None) -> str | None:
+    if not backend_public_url:
+        return None
+    normalized = raw_path.replace("\\", "/")
+    marker = "/uploads/"
+    if marker in normalized:
+        upload_path = normalized.split(marker, 1)[1]
+        return f"{backend_public_url.rstrip('/')}/uploads/{quote(upload_path)}"
+    return None
 
 @app.get("/health")
 async def health():
@@ -106,7 +117,7 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         # Files
         "files": [
             {
-                "rawPath": scan_file.rawPath,
+                "rawPath": _get_file_url(scan_file.rawPath, payload.backendPublicUrl) or scan_file.rawPath,
                 "format": scan_file.format,
                 "originalName": scan_file.originalName,
                 "slot": scan_file.slot,

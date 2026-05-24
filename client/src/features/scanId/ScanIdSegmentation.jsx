@@ -9,8 +9,6 @@ export default function ScanIdSegmentation({ segmentation }) {
         modelType,
         maskPath,
         overlayPath,
-        legendPath,
-        distributionPath,
         classStats = [],
         metadata = {},
     } = segmentation
@@ -36,12 +34,6 @@ export default function ScanIdSegmentation({ segmentation }) {
                     title="Overlay on T1"
                     src={overlayPath}
                     alt="T1 overlay with segmentation"
-                />
-                <SegmentationPanel title="Class legend" src={legendPath} alt="Segmentation legend" />
-                <SegmentationPanel
-                    title="Class distribution (pixels)"
-                    src={distributionPath}
-                    alt="Segmentation class distribution"
                 />
             </div>
 

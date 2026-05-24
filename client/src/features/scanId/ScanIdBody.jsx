@@ -26,6 +26,7 @@ export default function ScanIdBody() {
         createdAt,
         modelVersion,
         processedTime,
+        files,
     } = scan || {};
     const date = new Date(createdAt).toLocaleDateString();
     const time = new Date(createdAt).toLocaleTimeString();
@@ -45,7 +46,7 @@ export default function ScanIdBody() {
                     processedTimeMs={processedTime}
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
-                    <ScanIdMRI originalMRI={gradCamPath} />
+                    <ScanIdMRI originalMRI={gradCamPath} files={files} />
                     {segmentation ? (
                         <ScanIdSegmentation segmentation={segmentation} />
                     ) : (
