@@ -177,7 +177,7 @@ def run_cascade_xai(
     pipeline_result: PipelineResult,
     *,
     cascade_prediction: Prediction,
-    xai_method: XaiMethod = "gradcam",
+    xai_method: XaiMethod = "gradcam++",
     backend_public_url: str | None = None,
     job_id: str | None = None,
     target_layer: str | None = None,

@@ -67,11 +67,11 @@ def generate_explanation(
     try:
         if method == "gradcam":
             layer = resolve_target_layer(model, target_layer)
-            heatmap = compute_gradcam(model, input_tensor, class_index, layer.name)
+            heatmap = compute_gradcam(model, input_tensor, class_index, layer)
             layer_name = layer.name
         elif method == "gradcam++":
             layer = resolve_target_layer(model, target_layer)
-            heatmap = compute_gradcam_pp(model, input_tensor, class_index, layer.name)
+            heatmap = compute_gradcam_pp(model, input_tensor, class_index, layer)
             layer_name = layer.name
         elif method == "integrated_gradients":
             heatmap = compute_integrated_gradients(

@@ -82,11 +82,11 @@ AttributionReduction = Literal["mean", "max"]
 
 
 class XaiExplainRequest(BaseModel):
-    """Explain a stage classifier with XAI (stage 2 supported today)."""
+    """Explain a cascade stage classifier with XAI (stages 1, 2, and 3)."""
 
     files: list[ScanFileIn] = Field(min_length=4, max_length=4)
     stage: int = Field(default=2, ge=1, le=3)
-    xaiMethod: XaiMethod = "gradcam"
+    xaiMethod: XaiMethod = "gradcam++"
     targetClass: int | None = Field(
         default=None,
         description="Class index to explain. Defaults to predicted class.",
@@ -153,7 +153,7 @@ class XaiResultOut(BaseModel):
 
 
 class ScanXaiMethodRequest(BaseModel):
-    xaiMethod: XaiMethod = "gradcam"
+    xaiMethod: XaiMethod = "gradcam++"
     targetClass: int | None = None
     targetLayer: str | None = None
     displayChannel: int | str | None = None
@@ -172,3 +172,7 @@ class ModelResult(BaseModel):
     modelVersion: str
     segmentation: SegmentationResult | None = None
     xai: XaiResultOut | None = None
+    xaiError: str | None = Field(
+        default=None,
+        description="Set when cascade XAI could not be generated during analyze.",
+    )

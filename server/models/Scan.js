@@ -121,6 +121,10 @@ const scanSchema = new mongoose.Schema(
             type: String,
         },
 
+        xaiError: {
+            type: String,
+        },
+
         xai: {
             stage: Number,
             xaiMethod: String,

@@ -409,7 +409,7 @@ const runScanXai = asyncHandler(async (req, res) => {
 
     try {
         const xaiResult = await postJson(xaiUrl, {
-            xaiMethod: req.body.xaiMethod || "gradcam",
+            xaiMethod: req.body.xaiMethod || "gradcam++",
             targetClass: req.body.targetClass ?? null,
             targetLayer: req.body.targetLayer ?? null,
             displayChannel: req.body.displayChannel ?? null,
@@ -418,6 +418,7 @@ const runScanXai = asyncHandler(async (req, res) => {
         });
 
         scan.xai = xaiResult;
+        scan.xaiError = null;
         scan.gradCamPath = xaiResult.overlayPath;
         await scan.save();
 

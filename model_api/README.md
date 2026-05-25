@@ -38,17 +38,19 @@ Outputs are saved under `server/uploads/segmentation/<job-id>/`:
 
 Class labels: Background, NCR/NET, Edema, Enhancing Tumor.
 
-## XAI (Explainable AI) — Stage 2
+## XAI (Explainable AI) — Stages 1, 2, and 3
 
-`POST /xai/explain` runs the **stage 2** classifier (GLI / METS / OTHER) and returns base64 PNGs for:
+Cascade analysis runs XAI on the stage that produced the final label (Healthy → stage 1, Metastasis/Others → stage 2, HGG/LGG → stage 3). `POST /xai/explain` can target any stage explicitly.
 
-- `images.original` — display channel (default **T1c**)
+Returns base64 PNGs for:
+
+- `images.original` — display channel (stage 1 default **T1n**, stages 2/3 default **T1c**)
 - `images.heatmap` — colored attribution map
 - `images.overlay` — heatmap blended on the display channel
 
 **Methods:** `gradcam`, `gradcam++`, `integrated_gradients`, `vanilla_saliency`
 
-**Supported stages today:** `2` only (stages 1 and 3 are configured but not exposed until enabled in `xai/registry.py`).
+**Supported stages:** `1`, `2`, `3`
 
 Example body:
 
@@ -56,7 +58,7 @@ Example body:
 {
   "files": [ /* 4 ScanFileIn objects with rawPath, format, slot 1-4 */ ],
   "stage": 2,
-  "xaiMethod": "gradcam",
+  "xaiMethod": "gradcam++",
   "displayChannel": "t1c",
   "targetClass": null,
   "igSteps": 50

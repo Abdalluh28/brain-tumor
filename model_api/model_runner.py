@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import uuid
@@ -15,6 +16,16 @@ from .xai_service import run_cascade_xai
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
+
+logger = logging.getLogger(__name__)
+
+# Tried in order when generating cascade XAI (GLI/HGG/LGG uses stage 3 DenseNet).
+CASCADE_XAI_METHODS = (
+    "gradcam++",
+    "gradcam",
+    "vanilla_saliency",
+    "integrated_gradients",
+)
 
 
 def _grad_cam_path(files: list[ScanFileIn], backend_public_url: str | None) -> str:
@@ -83,7 +94,7 @@ def run_model(
     scan_type: str | None = None,
     *,
     run_xai: bool = True,
-    xai_method: str = "gradcam",
+    xai_method: str = "gradcam++",
 ) -> ModelResult:
     started_at = time.perf_counter()
 
@@ -96,23 +107,46 @@ def run_model(
     pipeline_result = run_pipeline(files)
     segmentation_result: SegmentationResult | None = None
     xai_result = None
+    xai_error: str | None = None
     grad_cam_path = _grad_cam_path(files, backend_public_url)
 
     if run_xai:
-        try:
-            xai_job_id = uuid.uuid4().hex
-            xai_result = run_cascade_xai(
-                files,
-                pipeline_result,
-                cascade_prediction=pipeline_result.prediction,
-                xai_method=xai_method,
-                backend_public_url=backend_public_url,
-                job_id=xai_job_id,
-            )
-            grad_cam_path = xai_result.overlayPath
-        except Exception:
-            # Cascade prediction still returned; XAI failure must not block the scan.
-            xai_result = None
+        methods_to_try = (xai_method,) + tuple(
+            m for m in CASCADE_XAI_METHODS if m != xai_method
+        )
+        xai_job_id = uuid.uuid4().hex
+
+        for method in methods_to_try:
+            try:
+                xai_result = run_cascade_xai(
+                    files,
+                    pipeline_result,
+                    cascade_prediction=pipeline_result.prediction,
+                    xai_method=method,
+                    backend_public_url=backend_public_url,
+                    job_id=xai_job_id,
+                )
+                grad_cam_path = xai_result.overlayPath
+                xai_error = None
+                if method != xai_method:
+                    logger.info(
+                        "Cascade XAI succeeded with fallback method '%s' "
+                        "(requested '%s') for prediction %s",
+                        method,
+                        xai_method,
+                        pipeline_result.prediction,
+                    )
+                break
+            except Exception as exc:
+                xai_error = str(exc)
+                logger.warning(
+                    "Cascade XAI failed for prediction %s with method '%s': %s",
+                    pipeline_result.prediction,
+                    method,
+                    exc,
+                    exc_info=True,
+                )
+                xai_result = None
 
     if prediction_supports_segmentation(pipeline_result.prediction):
         job_id = uuid.uuid4().hex
@@ -134,4 +168,5 @@ def run_model(
         modelVersion=os.getenv("MODEL_VERSION", get_model_version()),
         segmentation=segmentation_result,
         xai=xai_result,
+        xaiError=xai_error,
     )

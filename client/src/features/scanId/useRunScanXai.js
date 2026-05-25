@@ -8,8 +8,13 @@ export function useRunScanXai(scanId) {
     const { mutate: runXai, isPending: isLoading } = useMutation({
         mutationFn: (xaiMethod) => runScanXaiApi(scanId, { xaiMethod }),
         onSuccess: (data) => {
-            queryClient.setQueryData(["scan", scanId], data.scan);
-            toast.success(`XAI updated (${data.xai?.xaiMethod || "gradcam"})`);
+            const scan = {
+                ...data.scan,
+                xai: data.xai ?? data.scan?.xai,
+                xaiError: null,
+            };
+            queryClient.setQueryData(["scan", scanId], scan);
+            toast.success(`XAI updated (${data.xai?.xaiMethod || "gradcam++"})`);
         },
         onError: (err) => {
             const message =

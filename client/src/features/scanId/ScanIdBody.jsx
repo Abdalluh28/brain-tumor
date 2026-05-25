@@ -21,6 +21,7 @@ export default function ScanIdBody() {
         confidence,
         gradCamPath,
         xai,
+        xaiError,
         segmentation,
         radiologist,
         status,
@@ -51,7 +52,7 @@ export default function ScanIdBody() {
                         originalMRI={xai?.originalPath || gradCamPath}
                         files={files}
                     />
-                    <ScanIdXai scanId={scanId} xai={xai} />
+                    <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
                     {segmentation ? (
                         <ScanIdSegmentation segmentation={segmentation} />
                     ) : null}

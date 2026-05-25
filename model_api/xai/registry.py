@@ -48,7 +48,6 @@ STAGE_CONFIGS: dict[int, StageXaiConfig] = {
         default_display_modality="t1c",
         input_channels=4,
     ),
-    # Reserved for future XAI support (not exposed via API yet).
     1: StageXaiConfig(
         stage=1,
         model_path=str(STAGE1_MODEL_PATH),

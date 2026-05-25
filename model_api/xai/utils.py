@@ -36,10 +36,37 @@ def _iter_layers(model):
             yield from _iter_layers(layer)
 
 
+def _model_inputs(model):
+    """Return the input tensor(s) used to build a Grad-CAM subgraph."""
+    if getattr(model, "inputs", None):
+        inputs = model.inputs
+        if isinstance(inputs, (list, tuple)) and len(inputs) == 1:
+            return inputs[0]
+        return inputs
+    if getattr(model, "input", None) is not None:
+        return model.input
+    raise InvalidTargetLayerError("Model has no input tensor for Grad-CAM.")
+
+
+def find_layer_by_name(model, name: str) -> keras.layers.Layer | None:
+    """Find a layer by name in the top-level model or nested submodels."""
+    for layer in _iter_layers(model):
+        if layer.name == name:
+            return layer
+    return None
+
+
+def _is_conv2d_layer(layer) -> bool:
+    """Detect Conv2D layers across Keras versions / saved-model class paths."""
+    if isinstance(layer, (keras.layers.Conv2D, keras.layers.Conv2DTranspose)):
+        return True
+    return layer.__class__.__name__ in ("Conv2D", "Conv2DTranspose")
+
+
 def find_last_conv2d_layer(model) -> keras.layers.Layer:
     last_conv = None
     for layer in _iter_layers(model):
-        if isinstance(layer, keras.layers.Conv2D):
+        if _is_conv2d_layer(layer):
             last_conv = layer
     if last_conv is None:
         raise InvalidTargetLayerError("No Conv2D layer found in model.")
@@ -48,13 +75,33 @@ def find_last_conv2d_layer(model) -> keras.layers.Layer:
 
 def resolve_target_layer(model, target_layer: str | None) -> keras.layers.Layer:
     if target_layer:
-        try:
-            return model.get_layer(target_layer)
-        except ValueError as exc:
+        layer = find_layer_by_name(model, target_layer)
+        if layer is None:
             raise InvalidTargetLayerError(
                 f"Layer '{target_layer}' not found in model."
-            ) from exc
+            )
+        return layer
     return find_last_conv2d_layer(model)
+
+
+def build_conv_feature_model(model, conv_layer: keras.layers.Layer):
+    """
+    Submodel from inputs to a conv feature map.
+
+    Safer than a combined [conv, logits] model for nested backbones (e.g. stage 3
+    DenseNet) where outputs can be disconnected in one functional graph.
+    """
+    inputs = _model_inputs(model)
+    return tf.keras.models.Model(inputs=inputs, outputs=conv_layer.output)
+
+
+def build_gradcam_model(model, conv_layer: keras.layers.Layer):
+    """Legacy combined graph; prefer separate conv + full forward in Grad-CAM."""
+    inputs = _model_inputs(model)
+    return tf.keras.models.Model(
+        inputs=inputs,
+        outputs=[conv_layer.output, model.output],
+    )
 
 
 def normalize_heatmap(heatmap: np.ndarray) -> np.ndarray:

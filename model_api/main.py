@@ -78,7 +78,7 @@ async def list_xai_methods():
             {"id": "vanilla_saliency", "label": "Vanilla Saliency"},
         ],
         "supportedStages": [1, 2, 3],
-        "cascadeDefaultMethod": "gradcam",
+        "cascadeDefaultMethod": "gradcam++",
     }
 
 
@@ -87,8 +87,9 @@ async def explain_with_xai(payload: XaiExplainRequest):
     """
     Run an isolated stage classifier and generate an XAI explanation.
 
-    Currently supported: stage=2 (GLI / METS / OTHER), methods:
-    gradcam, gradcam++, integrated_gradients, vanilla_saliency.
+    Supported cascade stages: 1 (Healthy/Tumor), 2 (GLI/METS/OTHER),
+    3 (HGG/LGG). Methods: gradcam, gradcam++, integrated_gradients,
+    vanilla_saliency.
     """
     for scan_file in payload.files:
         if not Path(scan_file.rawPath).exists():
@@ -268,6 +269,7 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         "confidence": result.confidence,
         "gradCamPath": result.gradCamPath,
         "xai": result.xai.model_dump() if result.xai is not None else None,
+        "xaiError": result.xaiError,
         "segmentation": (
             result.segmentation.model_dump()
             if result.segmentation is not None
