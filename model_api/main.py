@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import quote
 
 from bson import ObjectId
@@ -8,7 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_database
 from .model_runner import run_model
-from .schemas import AnalyzeScanRequest
+from .schemas import AnalyzeScanRequest, XaiExplainRequest, XaiExplainResponse
+from .xai.exceptions import (
+    ExplanationGenerationError,
+    InvalidTargetLayerError,
+    InvalidXaiMethodError,
+    UnsupportedStageError,
+)
+from .xai_service import run_stage_xai
 
 app = FastAPI(title="Brain Tumor Model API")
 
@@ -51,6 +59,51 @@ def _get_file_url(raw_path: str, backend_public_url: str | None) -> str | None:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/xai/explain", response_model=XaiExplainResponse)
+async def explain_with_xai(payload: XaiExplainRequest):
+    """
+    Run an isolated stage classifier and generate an XAI explanation.
+
+    Currently supported: stage=2 (GLI / METS / OTHER), methods:
+    gradcam, gradcam++, integrated_gradients, vanilla_saliency.
+    """
+    for scan_file in payload.files:
+        if not Path(scan_file.rawPath).exists():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Input file not found: {scan_file.rawPath}",
+            )
+
+    try:
+        return run_stage_xai(
+            payload.files,
+            stage=payload.stage,
+            xai_method=payload.xaiMethod,
+            target_class=payload.targetClass,
+            target_layer=payload.targetLayer,
+            display_channel=payload.displayChannel,
+            ig_steps=payload.igSteps,
+            attribution_reduction=payload.attributionReduction,
+        )
+    except UnsupportedStageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except InvalidXaiMethodError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except InvalidTargetLayerError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ExplanationGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"XAI explanation failed: {exc}",
+        ) from exc
 
 
 @app.post("/scans/analyze")
