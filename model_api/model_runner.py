@@ -11,6 +11,7 @@ from .segmentation import (
     resolve_segmentation_output_dir,
     run_segmentation,
 )
+from .xai_service import run_cascade_xai
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
@@ -80,6 +81,9 @@ def run_model(
     files: list[ScanFileIn],
     backend_public_url: str | None = None,
     scan_type: str | None = None,
+    *,
+    run_xai: bool = True,
+    xai_method: str = "gradcam",
 ) -> ModelResult:
     started_at = time.perf_counter()
 
@@ -91,7 +95,24 @@ def run_model(
 
     pipeline_result = run_pipeline(files)
     segmentation_result: SegmentationResult | None = None
+    xai_result = None
     grad_cam_path = _grad_cam_path(files, backend_public_url)
+
+    if run_xai:
+        try:
+            xai_job_id = uuid.uuid4().hex
+            xai_result = run_cascade_xai(
+                files,
+                pipeline_result,
+                cascade_prediction=pipeline_result.prediction,
+                xai_method=xai_method,
+                backend_public_url=backend_public_url,
+                job_id=xai_job_id,
+            )
+            grad_cam_path = xai_result.overlayPath
+        except Exception:
+            # Cascade prediction still returned; XAI failure must not block the scan.
+            xai_result = None
 
     if prediction_supports_segmentation(pipeline_result.prediction):
         job_id = uuid.uuid4().hex
@@ -112,4 +133,5 @@ def run_model(
         processedTime=round((time.perf_counter() - started_at) * 1000, 2),
         modelVersion=os.getenv("MODEL_VERSION", get_model_version()),
         segmentation=segmentation_result,
+        xai=xai_result,
     )

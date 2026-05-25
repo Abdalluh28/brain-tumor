@@ -17,6 +17,10 @@ class ScanFileIn(BaseModel):
     format: ScanFormat
     originalName: str | None = None
     slot: int | None = None
+    storagePath: str | None = Field(
+        default=None,
+        description="Local disk path for model/XAI re-runs when rawPath is a public URL.",
+    )
 
 
 class AnalyzeScanRequest(BaseModel):
@@ -132,6 +136,31 @@ class XaiExplainResponse(BaseModel):
     metadata: XaiMetadataOut
 
 
+class XaiResultOut(BaseModel):
+    """XAI artifacts stored on disk and served via /uploads URLs."""
+
+    stage: int
+    xaiMethod: XaiMethod
+    cascadePrediction: Prediction
+    targetClassIndex: int
+    targetClassLabel: str
+    displayChannel: int
+    displayModality: str
+    originalPath: str
+    heatmapPath: str
+    overlayPath: str
+    metadata: dict
+
+
+class ScanXaiMethodRequest(BaseModel):
+    xaiMethod: XaiMethod = "gradcam"
+    targetClass: int | None = None
+    targetLayer: str | None = None
+    displayChannel: int | str | None = None
+    igSteps: int = Field(default=50, ge=1, le=200)
+    attributionReduction: AttributionReduction = "mean"
+
+
 class ModelResult(BaseModel):
     prediction: Prediction
     confidenceScores: dict[Prediction, float] = Field(
@@ -142,3 +171,4 @@ class ModelResult(BaseModel):
     processedTime: float
     modelVersion: str
     segmentation: SegmentationResult | None = None
+    xai: XaiResultOut | None = None

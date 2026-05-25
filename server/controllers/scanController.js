@@ -392,6 +392,48 @@ const getScanById = asyncHandler(async (req, res) => {
 });
 
 // ------------------
+// Re-run XAI (no segmentation)
+// ------------------
+const runScanXai = asyncHandler(async (req, res) => {
+    const scan = await Scan.findById(req.params.id);
+
+    if (!scan) {
+        return res.status(404).json({ message: "Scan not found" });
+    }
+
+    const modelApiBase =
+        process.env.MODEL_API_URL?.replace(/\/scans\/analyze\/?$/, "") ||
+        "http://127.0.0.1:8000";
+
+    const xaiUrl = `${modelApiBase}/scans/${req.params.id}/xai`;
+
+    try {
+        const xaiResult = await postJson(xaiUrl, {
+            xaiMethod: req.body.xaiMethod || "gradcam",
+            targetClass: req.body.targetClass ?? null,
+            targetLayer: req.body.targetLayer ?? null,
+            displayChannel: req.body.displayChannel ?? null,
+            igSteps: req.body.igSteps ?? 50,
+            attributionReduction: req.body.attributionReduction || "mean",
+        });
+
+        scan.xai = xaiResult;
+        scan.gradCamPath = xaiResult.overlayPath;
+        await scan.save();
+
+        res.json({
+            message: "XAI explanation updated",
+            xai: xaiResult,
+            scan,
+        });
+    } catch (error) {
+        return res.status(502).json({
+            message: `XAI service failed: ${error.message}`,
+        });
+    }
+});
+
+// ------------------
 // Delete Scan
 // ------------------
 const deleteScan = asyncHandler(async (req, res) => {
@@ -403,6 +445,9 @@ const deleteScan = asyncHandler(async (req, res) => {
 
     const pathsToDelete = [
         ...scan.files.map((file) => file.rawPath),
+        scan.xai?.originalPath,
+        scan.xai?.heatmapPath,
+        scan.xai?.overlayPath,
         scan.segmentation?.maskPath,
         scan.segmentation?.overlayPath,
         scan.segmentation?.legendPath,
@@ -446,5 +491,6 @@ module.exports = {
     createScan,
     getScans,
     getScanById,
+    runScanXai,
     deleteScan,
 };

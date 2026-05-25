@@ -16,6 +16,10 @@ const scanFileSchema = new mongoose.Schema(
             required: true,
         },
 
+        storagePath: {
+            type: String,
+        },
+
         // preprocessedPath is the path to the preprocessed MRI file
         preprocessedPath: {
             type: String,
@@ -115,6 +119,22 @@ const scanSchema = new mongoose.Schema(
 
         gradCamPath: {
             type: String,
+        },
+
+        xai: {
+            stage: Number,
+            xaiMethod: String,
+            cascadePrediction: String,
+            targetClassIndex: Number,
+            targetClassLabel: String,
+            displayChannel: Number,
+            displayModality: String,
+            originalPath: String,
+            heatmapPath: String,
+            overlayPath: String,
+            metadata: {
+                type: Object,
+            },
         },
 
         segmentation: {

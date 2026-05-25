@@ -22,7 +22,7 @@ from .exceptions import UnsupportedStageError
 
 StageId = Literal[1, 2, 3]
 
-SUPPORTED_XAI_STAGES: frozenset[int] = frozenset({2})
+SUPPORTED_XAI_STAGES: frozenset[int] = frozenset({1, 2, 3})
 
 
 @dataclass(frozen=True)

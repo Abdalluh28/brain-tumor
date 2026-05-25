@@ -149,6 +149,40 @@ def blend_overlay(
     return np.clip(blended, 0, 255).astype(np.uint8)
 
 
+def save_png(array: np.ndarray, path) -> None:
+    if array.ndim == 2:
+        image = Image.fromarray(grayscale_to_uint8(array), mode="L")
+    else:
+        image = Image.fromarray(array.astype(np.uint8), mode="RGB")
+    image.save(path, format="PNG", optimize=True)
+
+
+def build_public_upload_url(backend_public_url: str | None, absolute_path) -> str:
+    from pathlib import Path
+    from urllib.parse import quote
+
+    normalized = str(Path(absolute_path)).replace("\\", "/")
+    marker = "/uploads/"
+    if marker not in normalized:
+        return normalized
+    relative = normalized.split(marker, 1)[1]
+    if not backend_public_url:
+        return relative
+    return f"{backend_public_url.rstrip('/')}/uploads/{quote(relative)}"
+
+
+def resolve_xai_output_dir(files, job_id: str):
+    import uuid
+    from pathlib import Path
+
+    first_path = Path(files[0].rawPath)
+    uploads_root = first_path.parent.parent
+    folder = job_id or uuid.uuid4().hex
+    output_dir = uploads_root / "xai" / folder
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
 def array_to_base64_png(array: np.ndarray) -> str:
     if array.ndim == 2:
         image = Image.fromarray(grayscale_to_uint8(array), mode="L")
