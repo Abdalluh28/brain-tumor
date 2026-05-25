@@ -4,6 +4,36 @@ from ..pipeline import PipelineResult, STAGE2_LABELS
 from ..schemas import Prediction
 
 
+def resolve_cascade_xai_stages(pipeline_result: PipelineResult) -> list[int]:
+    """
+    Stages executed on this scan's cascade path (and thus to explain).
+
+    Healthy -> [1]; Metastasis/Others -> [1, 2]; HGG/LGG -> [1, 2, 3].
+    """
+    order = {"stage1": 1, "stage2": 2, "stage3": 3}
+    return [order[key] for key in pipeline_result.stages_run if key in order]
+
+
+def resolve_stage_class_index(stage: int, pipeline_result: PipelineResult) -> int:
+    """Class index within a stage model from pipeline stage_details."""
+    stage_key = f"stage{stage}"
+    detail = pipeline_result.stage_details.get(stage_key)
+
+    if detail is None:
+        raise ValueError(f"Missing pipeline detail for {stage_key}")
+
+    if stage == 1:
+        return 0 if detail.label == "Healthy" else 1
+
+    if stage == 2:
+        return STAGE2_LABELS.index(detail.label)
+
+    if stage == 3:
+        return 0 if detail.label == "HGG" else 1
+
+    raise ValueError(f"Unsupported stage for cascade XAI: {stage}")
+
+
 def resolve_cascade_xai_stage(prediction: Prediction) -> int:
     """
     Pick the cascade stage whose decision produced the final label.

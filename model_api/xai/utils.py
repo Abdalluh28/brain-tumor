@@ -84,24 +84,85 @@ def resolve_target_layer(model, target_layer: str | None) -> keras.layers.Layer:
     return find_last_conv2d_layer(model)
 
 
-def build_conv_feature_model(model, conv_layer: keras.layers.Layer):
-    """
-    Submodel from inputs to a conv feature map.
+def _find_nested_container(
+    model,
+    target_layer: keras.layers.Layer,
+) -> keras.Model | None:
+    """Return the direct child submodel that owns target_layer, if any."""
+    for layer in model.layers:
+        if not isinstance(layer, keras.Model):
+            continue
+        for sub in _iter_layers(layer):
+            if sub is target_layer:
+                return layer
+    return None
 
-    Safer than a combined [conv, logits] model for nested backbones (e.g. stage 3
-    DenseNet) where outputs can be disconnected in one functional graph.
+
+def build_gradcam_combined_model(
+    model,
+    conv_layer: keras.layers.Layer,
+) -> keras.Model:
     """
+    Single forward graph: [conv feature map, class logits].
+
+    Nested Functional backbones (e.g. stage 3 DenseNet) cannot expose an internal
+    conv tensor from the top-level input in one Model(); we chain pre-layers,
+    a backbone submodel, then post-layers so gradients reach the conv map.
+    """
+    container = _find_nested_container(model, conv_layer)
     inputs = _model_inputs(model)
-    return tf.keras.models.Model(inputs=inputs, outputs=conv_layer.output)
+
+    if container is None:
+        return keras.models.Model(
+            inputs=inputs,
+            outputs=[conv_layer.output, model.output],
+            name="gradcam_combined",
+        )
+
+    pre_layers: list[keras.layers.Layer] = []
+    post_layers: list[keras.layers.Layer] = []
+    past_container = False
+    for layer in model.layers:
+        if isinstance(layer, keras.layers.InputLayer):
+            continue
+        if layer is container:
+            past_container = True
+            continue
+        if past_container:
+            post_layers.append(layer)
+        else:
+            pre_layers.append(layer)
+
+    x = inputs
+    for layer in pre_layers:
+        x = layer(x)
+
+    backbone = keras.models.Model(
+        container.input,
+        [conv_layer.output, container.output],
+        name=f"gradcam_backbone_{container.name}",
+    )
+    conv_features, x = backbone(x)
+
+    for layer in post_layers:
+        x = layer(x)
+
+    return keras.models.Model(
+        inputs=inputs,
+        outputs=[conv_features, x],
+        name="gradcam_combined",
+    )
+
+
+def build_conv_feature_model(model, conv_layer: keras.layers.Layer):
+    """Submodel from inputs to a conv feature map (flat models only)."""
+    inputs = _model_inputs(model)
+    return keras.models.Model(inputs=inputs, outputs=conv_layer.output)
 
 
 def build_gradcam_model(model, conv_layer: keras.layers.Layer):
-    """Legacy combined graph; prefer separate conv + full forward in Grad-CAM."""
-    inputs = _model_inputs(model)
-    return tf.keras.models.Model(
-        inputs=inputs,
-        outputs=[conv_layer.output, model.output],
-    )
+    """Combined [conv, logits] graph; prefer build_gradcam_combined_model."""
+    return build_gradcam_combined_model(model, conv_layer)
 
 
 def normalize_heatmap(heatmap: np.ndarray) -> np.ndarray:

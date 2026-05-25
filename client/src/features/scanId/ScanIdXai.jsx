@@ -22,6 +22,24 @@ const METHOD_LABELS = {
     vanilla_saliency: "Vanilla Saliency",
 };
 
+const STAGE_TITLES = {
+    1: "Stage 1 — Healthy vs Tumor",
+    2: "Stage 2 — GLI / Mets / Other",
+    3: "Stage 3 — HGG vs LGG",
+};
+
+/** Normalize legacy single-stage xai documents. */
+function normalizeXaiStages(xai) {
+    if (!xai) return [];
+    if (Array.isArray(xai.stages) && xai.stages.length > 0) {
+        return xai.stages;
+    }
+    if (xai.stage != null && xai.overlayPath) {
+        return [xai];
+    }
+    return [];
+}
+
 export default function ScanIdXai({ scanId, xai, xaiError }) {
     const { runXai, isLoading } = useRunScanXai(scanId);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -31,14 +49,16 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
             ?? "gradcam",
     );
 
-    if (!xai) {
+    const stages = normalizeXaiStages(xai);
+
+    if (stages.length === 0) {
         return (
             <div className="flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 shadow-md rounded-xl">
                 <p className="font-semibold text-xl">Explainable AI (XAI)</p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                     No explainability maps were saved for this scan. That usually
-                    means XAI failed during analysis (common for glioma / HGG / LGG
-                    cases on stage 3) while classification still completed.
+                    means XAI failed during analysis while classification still
+                    completed.
                 </p>
                 {xaiError && (
                     <p className="text-xs text-amber-700 dark:text-amber-400 break-words">
@@ -58,10 +78,9 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
     }
 
     const activeMethod = xai.xaiMethod;
-    const activeLabel =
-        METHOD_LABELS[activeMethod] || activeMethod;
+    const activeLabel = METHOD_LABELS[activeMethod] || activeMethod;
     const isPrimaryMethod = activeMethod === PRIMARY_XAI_METHOD.id;
-    const stageLabel = `Stage ${xai.stage} · ${xai.targetClassLabel}`;
+    const cascadePrediction = xai.cascadePrediction;
 
     const handleApplyOtherMethod = () => {
         if (selectedMethod === activeMethod) {
@@ -79,11 +98,15 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                 <div className="flex flex-col gap-2">
                     <p className="font-semibold text-xl">Explainable AI (XAI)</p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Cascade explanation for{" "}
-                        <strong>{xai.cascadePrediction}</strong>
+                        Cascade path for{" "}
+                        <strong>{cascadePrediction}</strong>
                         {" — "}
-                        <strong>{activeLabel}</strong> on {stageLabel}
-                        {xai.displayModality && ` (display: ${xai.displayModality})`}
+                        <strong>{activeLabel}</strong>
+                        {" · "}
+                        {stages.length} heatmap
+                        {stages.length === 1 ? "" : "s"}
+                        {" "}
+                        (stages {stages.map((s) => s.stage).join(", ")})
                     </p>
                     {!isPrimaryMethod && (
                         <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -109,9 +132,8 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                         <DialogHeader>
                             <DialogTitle>Other XAI methods</DialogTitle>
                             <DialogDescription>
-                                Choose an explainability method for this scan&apos;s
-                                cascade stage. All methods are supported for stages
-                                1, 2, and 3.
+                                Re-run explainability for all cascade stages on
+                                this scan (1–3 heatmaps depending on prediction).
                             </DialogDescription>
                         </DialogHeader>
 
@@ -166,22 +188,57 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
 
             {isLoading && (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Generating explanation…
+                    Generating explanations…
                 </p>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ImagePanel title="Original (display channel)" src={xai.originalPath} />
-                <ImagePanel title="Heatmap" src={xai.heatmapPath} />
-                <ImagePanel title="Overlay" src={xai.overlayPath} />
+            <div className="flex flex-col gap-10">
+                {stages.map((stageResult) => (
+                    <StageXaiSection
+                        key={stageResult.stage}
+                        stageResult={stageResult}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function StageXaiSection({ stageResult }) {
+    const title =
+        STAGE_TITLES[stageResult.stage]
+        ?? `Stage ${stageResult.stage}`;
+    const subtitle = `${stageResult.targetClassLabel}${
+        stageResult.displayModality
+            ? ` · display ${stageResult.displayModality}`
+            : ""
+    }`;
+
+    return (
+        <section className="flex flex-col gap-4 border-t border-slate-200 dark:border-slate-700 pt-6 first:border-t-0 first:pt-0">
+            <div>
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Explaining class: <strong>{subtitle}</strong>
+                </p>
             </div>
 
-            {xai.metadata?.targetLayer && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ImagePanel
+                    title="Original (display channel)"
+                    src={stageResult.originalPath}
+                />
+                <ImagePanel title="Heatmap" src={stageResult.heatmapPath} />
+                <ImagePanel title="Overlay" src={stageResult.overlayPath} />
+            </div>
+
+            {stageResult.metadata?.targetLayer && (
                 <p className="text-xs text-slate-500">
-                    Target layer: <code>{xai.metadata.targetLayer}</code>
+                    Target layer:{" "}
+                    <code>{stageResult.metadata.targetLayer}</code>
                 </p>
             )}
-        </div>
+        </section>
     );
 }
 

@@ -419,7 +419,9 @@ const runScanXai = asyncHandler(async (req, res) => {
 
         scan.xai = xaiResult;
         scan.xaiError = null;
-        scan.gradCamPath = xaiResult.overlayPath;
+        scan.gradCamPath =
+            xaiResult.stages?.[xaiResult.stages.length - 1]?.overlayPath
+            ?? xaiResult.overlayPath;
         await scan.save();
 
         res.json({
@@ -446,6 +448,11 @@ const deleteScan = asyncHandler(async (req, res) => {
 
     const pathsToDelete = [
         ...scan.files.map((file) => file.rawPath),
+        ...(scan.xai?.stages ?? []).flatMap((stage) => [
+            stage.originalPath,
+            stage.heatmapPath,
+            stage.overlayPath,
+        ]),
         scan.xai?.originalPath,
         scan.xai?.heatmapPath,
         scan.xai?.overlayPath,

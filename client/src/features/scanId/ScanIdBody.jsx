@@ -49,7 +49,11 @@ export default function ScanIdBody() {
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
                     <ScanIdMRI
-                        originalMRI={xai?.originalPath || gradCamPath}
+                        originalMRI={
+                            xai?.stages?.[0]?.originalPath
+                            || xai?.originalPath
+                            || gradCamPath
+                        }
                         files={files}
                     />
                     <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />

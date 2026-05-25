@@ -136,12 +136,10 @@ class XaiExplainResponse(BaseModel):
     metadata: XaiMetadataOut
 
 
-class XaiResultOut(BaseModel):
-    """XAI artifacts stored on disk and served via /uploads URLs."""
+class XaiStageResultOut(BaseModel):
+    """Per-stage XAI artifacts along the cascade path."""
 
     stage: int
-    xaiMethod: XaiMethod
-    cascadePrediction: Prediction
     targetClassIndex: int
     targetClassLabel: str
     displayChannel: int
@@ -150,6 +148,18 @@ class XaiResultOut(BaseModel):
     heatmapPath: str
     overlayPath: str
     metadata: dict
+
+
+class CascadeXaiResultOut(BaseModel):
+    """Multi-stage cascade XAI (1–3 heatmaps depending on prediction path)."""
+
+    xaiMethod: XaiMethod
+    cascadePrediction: Prediction
+    stages: list[XaiStageResultOut]
+
+
+# Backward-compatible alias for single-stage rerun responses
+XaiResultOut = CascadeXaiResultOut
 
 
 class ScanXaiMethodRequest(BaseModel):
@@ -171,7 +181,7 @@ class ModelResult(BaseModel):
     processedTime: float
     modelVersion: str
     segmentation: SegmentationResult | None = None
-    xai: XaiResultOut | None = None
+    xai: CascadeXaiResultOut | None = None
     xaiError: str | None = Field(
         default=None,
         description="Set when cascade XAI could not be generated during analyze.",

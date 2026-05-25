@@ -3,7 +3,7 @@ from __future__ import annotations
 import keras
 import tensorflow as tf
 
-from .utils import build_conv_feature_model
+from .utils import build_gradcam_combined_model
 
 
 def compute_gradcam_pp(
@@ -15,11 +15,10 @@ def compute_gradcam_pp(
     """
     Grad-CAM++ (Chattopadhyay et al.) implementation.
     """
-    conv_model = build_conv_feature_model(model, conv_layer)
+    gradcam_model = build_gradcam_combined_model(model, conv_layer)
 
     with tf.GradientTape() as tape:
-        conv_outputs = conv_model(input_tensor, training=False)
-        predictions = model(input_tensor, training=False)
+        conv_outputs, predictions = gradcam_model(input_tensor, training=False)
         if predictions.shape[-1] == 1:
             loss = predictions[:, 0]
         else:

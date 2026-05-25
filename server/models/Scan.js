@@ -126,19 +126,23 @@ const scanSchema = new mongoose.Schema(
         },
 
         xai: {
-            stage: Number,
             xaiMethod: String,
             cascadePrediction: String,
-            targetClassIndex: Number,
-            targetClassLabel: String,
-            displayChannel: Number,
-            displayModality: String,
-            originalPath: String,
-            heatmapPath: String,
-            overlayPath: String,
-            metadata: {
-                type: Object,
-            },
+            stages: [
+                {
+                    stage: Number,
+                    targetClassIndex: Number,
+                    targetClassLabel: String,
+                    displayChannel: Number,
+                    displayModality: String,
+                    originalPath: String,
+                    heatmapPath: String,
+                    overlayPath: String,
+                    metadata: {
+                        type: Object,
+                    },
+                },
+            ],
         },
 
         segmentation: {

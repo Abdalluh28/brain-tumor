@@ -15,7 +15,7 @@ from .schemas import (
     ScanXaiMethodRequest,
     XaiExplainRequest,
     XaiExplainResponse,
-    XaiResultOut,
+    CascadeXaiResultOut,
 )
 from .xai.exceptions import (
     ExplanationGenerationError,
@@ -128,7 +128,7 @@ async def explain_with_xai(payload: XaiExplainRequest):
         ) from exc
 
 
-@app.post("/scans/{scan_id}/xai", response_model=XaiResultOut)
+@app.post("/scans/{scan_id}/xai", response_model=CascadeXaiResultOut)
 async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
     """
     Re-run XAI for an existing scan (alternate methods only — no segmentation).
@@ -180,7 +180,7 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
         {
             "$set": {
                 "xai": xai_result.model_dump(),
-                "gradCamPath": xai_result.overlayPath,
+                "gradCamPath": xai_result.stages[-1].overlayPath,
                 "updatedAt": datetime.now(timezone.utc),
             }
         },

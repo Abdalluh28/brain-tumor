@@ -33,6 +33,7 @@ class StageXaiConfig:
     class_labels: tuple[str, ...]
     default_display_modality: str
     input_channels: int
+    gradcam_target_layer: str | None = None
 
     @property
     def default_display_channel_index(self) -> int:
@@ -47,6 +48,8 @@ STAGE_CONFIGS: dict[int, StageXaiConfig] = {
         class_labels=("GLI", "METS", "OTHER"),
         default_display_modality="t1c",
         input_channels=4,
+        # block5_conv3 (7×7 after pool) is too coarse; block4_conv3 keeps 30×30 features.
+        gradcam_target_layer="block4_conv3",
     ),
     1: StageXaiConfig(
         stage=1,
@@ -55,6 +58,8 @@ STAGE_CONFIGS: dict[int, StageXaiConfig] = {
         class_labels=("Healthy", "Tumor"),
         default_display_modality="t1n",
         input_channels=2,
+        # Penultimate block (30×30); deeper layers pool to 15×15 before GAP.
+        gradcam_target_layer="stage4_conv3",
     ),
     3: StageXaiConfig(
         stage=3,

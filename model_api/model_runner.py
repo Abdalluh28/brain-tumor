@@ -126,7 +126,7 @@ def run_model(
                     backend_public_url=backend_public_url,
                     job_id=xai_job_id,
                 )
-                grad_cam_path = xai_result.overlayPath
+                grad_cam_path = xai_result.stages[-1].overlayPath
                 xai_error = None
                 if method != xai_method:
                     logger.info(
