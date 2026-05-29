@@ -271,6 +271,8 @@ def generate_channel_explanations(
     extra_meta: dict = {}
 
     if method == "occlusion":
+        extra_meta["occlusionPatchSize"] = PERMUTATION_OCCLUSION_PATCH_SIZE
+        extra_meta["occlusionStride"] = PERMUTATION_OCCLUSION_STRIDE
         heatmaps = [
             _occlusion_channel_heatmap(model, batch, class_index, channel_index)
             for channel_index in range(num_channels)

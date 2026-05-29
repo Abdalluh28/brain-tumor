@@ -42,14 +42,16 @@ STAGE2_GRADCAM_TARGET_LAYER: str | None = "block7a_project_conv"
 # ---------------------------------------------------------------------------
 # Permutation XAI (PCI, occlusion, SHAP) — edit here, restart model API.
 # ---------------------------------------------------------------------------
-PERMUTATION_OCCLUSION_PATCH_SIZE = 32
-PERMUTATION_OCCLUSION_STRIDE = 8
+# Occlusion kernel: square patch occluded per forward pass (pixels).
+PERMUTATION_OCCLUSION_PATCH_SIZE = 40
+# Slide step between patches; use ~half of patch size for 50% overlap.
+PERMUTATION_OCCLUSION_STRIDE = 15
 PERMUTATION_PCI_GRID_ROWS = 8
 PERMUTATION_PCI_GRID_COLS = 8
 PERMUTATION_PCI_PERMUTATIONS_PER_CELL = 2
-PERMUTATION_SHAP_BACKGROUND_SAMPLES = 8
+PERMUTATION_SHAP_BACKGROUND_SAMPLES = 4
 # Channel ranking: shuffle repeats + zero-out / mean-fill occlusion
-PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES = 8
+PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES = 4
 
 MODEL_VERSION = "cascade-v1.2.0-efficientnet-s2-xai"
 
