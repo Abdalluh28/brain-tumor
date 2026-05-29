@@ -103,6 +103,7 @@ const scanSchema = new mongoose.Schema(
         xai: {
             xaiMethod: String,
             cascadePrediction: String,
+            availableViews: [String],
             stages: [
                 {
                     stage: Number,
@@ -128,6 +129,36 @@ const scanSchema = new mongoose.Schema(
                     },
                 },
             ],
+            cache: {
+                type: Map,
+                of: {
+                    stages: [
+                        {
+                            stage: Number,
+                            targetClassIndex: Number,
+                            targetClassLabel: String,
+                            displayChannel: Number,
+                            displayModality: String,
+                            originalPath: String,
+                            heatmapPath: String,
+                            overlayPath: String,
+                            channelMaps: [
+                                {
+                                    modality: String,
+                                    channelIndex: Number,
+                                    channelImportance: Number,
+                                    originalPath: String,
+                                    heatmapPath: String,
+                                    overlayPath: String,
+                                },
+                            ],
+                            metadata: {
+                                type: Object,
+                            },
+                        },
+                    ],
+                },
+            },
         },
 
         segmentation: {

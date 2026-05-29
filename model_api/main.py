@@ -23,6 +23,11 @@ from .xai.exceptions import (
     InvalidXaiMethodError,
     UnsupportedStageError,
 )
+from .xai_cache import (
+    apply_active_xai_view,
+    cascade_result_from_stored,
+    merge_xai_result,
+)
 from .xai_service import (
     cascade_stage_preview_overlay,
     rerun_scan_xai_from_document,
@@ -231,6 +236,28 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
 
+    existing_xai = scan.get("xai")
+    cached_view = apply_active_xai_view(existing_xai, payload.xaiMethod)
+    if cached_view is not None:
+        preview = cascade_stage_preview_overlay(
+            CascadeXaiResultOut(
+                xaiMethod=cached_view["xaiMethod"],
+                cascadePrediction=cached_view["cascadePrediction"],
+                stages=cached_view["stages"],
+            )
+        )
+        await database.scans.update_one(
+            {"_id": object_id},
+            {
+                "$set": {
+                    "xai": cached_view,
+                    "gradCamPath": preview,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
+        return cascade_result_from_stored(cached_view)
+
     backend_public_url = os.getenv(
         "BACKEND_PUBLIC_URL",
         "http://127.0.0.1:3000",
@@ -261,12 +288,15 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
             detail=f"XAI explanation failed: {exc}",
         ) from exc
 
+    merged_xai = merge_xai_result(existing_xai, xai_result)
+    preview = cascade_stage_preview_overlay(xai_result)
+
     await database.scans.update_one(
         {"_id": object_id},
         {
             "$set": {
-                "xai": xai_result.model_dump(),
-                "gradCamPath": _cascade_preview_overlay(xai_result),
+                "xai": merged_xai,
+                "gradCamPath": preview,
                 "updatedAt": datetime.now(timezone.utc),
             }
         },
@@ -350,7 +380,11 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         "confidenceScores": result.confidenceScores,
         "confidence": result.confidence,
         "gradCamPath": result.gradCamPath,
-        "xai": result.xai.model_dump() if result.xai is not None else None,
+        "xai": (
+            merge_xai_result(None, result.xai)
+            if result.xai is not None
+            else None
+        ),
         "xaiError": result.xaiError,
         "segmentation": (
             result.segmentation.model_dump()

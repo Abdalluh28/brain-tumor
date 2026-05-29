@@ -26,7 +26,6 @@ export default function ScanIdBody() {
         radiologist,
         status,
         createdAt,
-        modelVersion,
         processedTime,
         files,
     } = scan || {};
@@ -44,7 +43,6 @@ export default function ScanIdBody() {
                 <ScanIdResult
                     prediction={prediction}
                     confidence={confidence}
-                    modelVersion={modelVersion}
                     processedTimeMs={processedTime}
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>

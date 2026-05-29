@@ -23,7 +23,7 @@ export default function ScanCards() {
                     <CircleCheckBig size={32} />
                 </span>
                 <p className='font-semibold text-xl'>Explainable AI</p>
-                <p className='text-slate-600 dark:text-slate-400'>Grad-CAM heatmaps for each view show which areas influenced the decision</p>
+                <p className='text-slate-600 dark:text-slate-400'>Heatmaps show which brain regions influenced each classification</p>
             </div>
         </div>
     )

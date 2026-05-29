@@ -1,12 +1,21 @@
 import { api } from "./api";
 
-/** Default method run automatically after classification. */
+/** Default explanation (Grad-CAM++ on the backend). */
 export const PRIMARY_XAI_METHOD = {
     id: "gradcam++",
-    label: "Grad-CAM++",
+    label: "Combined heatmap",
 };
 
-/** Gradient / activation methods (single combined heatmap, stage 2). */
+/** Alternate user-facing view (grid PCI on the backend). */
+export const ALTERNATE_XAI_METHOD = {
+    id: "pci",
+    label: "Per-modality heatmaps",
+};
+
+/** Options shown in the scan UI — ids are sent to the API unchanged. */
+export const XAI_VIEW_OPTIONS = [PRIMARY_XAI_METHOD, ALTERNATE_XAI_METHOD];
+
+/** Gradient / activation methods (kept for internal / API compatibility). */
 export const GRAD_XAI_METHODS = [
     PRIMARY_XAI_METHOD,
     { id: "gradcam", label: "Grad-CAM" },
@@ -14,7 +23,7 @@ export const GRAD_XAI_METHODS = [
     { id: "vanilla_saliency", label: "Vanilla Saliency" },
 ];
 
-/** Permutation / occlusion / SHAP — one heatmap per MRI channel (stage 2). */
+/** Permutation methods (kept for internal / API compatibility). */
 export const PERMUTATION_XAI_METHODS = [
     { id: "pci", label: "PCI grid (per-channel)" },
     { id: "pci_full_channel", label: "PCI full-channel (per-channel)" },
@@ -23,8 +32,6 @@ export const PERMUTATION_XAI_METHODS = [
 ];
 
 export const XAI_METHODS = [...GRAD_XAI_METHODS, ...PERMUTATION_XAI_METHODS];
-
-/** All selectable methods in the dialog (includes Grad-CAM++). */
 export const OTHER_XAI_METHODS = XAI_METHODS;
 
 export const PERMUTATION_METHOD_IDS = new Set(
@@ -33,6 +40,61 @@ export const PERMUTATION_METHOD_IDS = new Set(
 
 export function isPermutationMethod(methodId) {
     return PERMUTATION_METHOD_IDS.has(methodId);
+}
+
+export function viewOptionForMethod(methodId) {
+    if (methodId === ALTERNATE_XAI_METHOD.id) {
+        return ALTERNATE_XAI_METHOD.id;
+    }
+    if (isPermutationMethod(methodId)) {
+        return ALTERNATE_XAI_METHOD.id;
+    }
+    return PRIMARY_XAI_METHOD.id;
+}
+
+/** User-facing labels for views stored on a scan. */
+export function listStoredXaiViews(xai) {
+    if (!xai) {
+        return [];
+    }
+
+    const cachedIds = new Set();
+
+    if (Array.isArray(xai.availableViews)) {
+        xai.availableViews.forEach((id) => cachedIds.add(id));
+    }
+
+    if (xai.cache && typeof xai.cache === "object") {
+        for (const [methodId, entry] of Object.entries(xai.cache)) {
+            if (entry?.stages?.length) {
+                cachedIds.add(methodId);
+            }
+        }
+    }
+
+    if (cachedIds.size === 0 && xai.stages?.length && xai.xaiMethod) {
+        cachedIds.add(viewOptionForMethod(xai.xaiMethod));
+    }
+
+    return XAI_VIEW_OPTIONS.filter((option) => cachedIds.has(option.id));
+}
+
+export function hasCachedXaiView(xai, methodId) {
+    if (!xai) {
+        return false;
+    }
+
+    const entry = xai.cache?.[methodId];
+    if (entry?.stages?.length) {
+        return true;
+    }
+
+    return (
+        xai.xaiMethod === methodId
+        && Array.isArray(xai.stages)
+        && xai.stages.length > 0
+        && !xai.cache
+    );
 }
 
 export async function runScanXaiApi(scanId, { xaiMethod }) {

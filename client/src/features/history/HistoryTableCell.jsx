@@ -4,6 +4,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
+import ExplanationBadges from "./ExplanationBadges";
 import { Eye, Trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDeleteScan } from "./useDeleteScan";
@@ -51,6 +52,9 @@ export default function HistoryTableCell({ scan }) {
                 </p>
             </td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{confidence}</td>
+            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>
+                <ExplanationBadges xai={scan.xai} />
+            </td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>
                 <p className={`px-2 py-1 text-sm rounded-lg text-center capitalize ${scan.status === 'completed' ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : scan.status === 'review' ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>{scan.status}</p>
             </td>

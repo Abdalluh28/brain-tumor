@@ -7,6 +7,14 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const getOrCreatePatient = require("./helpers/getOrCreatePatient");
+const {
+    applyActiveXaiView,
+    collectXaiAssetPaths,
+    hasCachedXaiView,
+    mergeXaiResult,
+    normalizeXaiDocument,
+    pickXaiPreviewPath,
+} = require("../helpers/xaiCache");
 
 // ------------------
 // Multer Local Storage (Better for ML processing)
@@ -453,7 +461,12 @@ const getScanById = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Scan not found" });
     }
 
-    res.json(scan);
+    const scanObject = scan.toObject({ virtuals: true });
+    if (scanObject.xai) {
+        scanObject.xai = normalizeXaiDocument(scanObject.xai);
+    }
+
+    res.json(scanObject);
 });
 
 // ------------------
@@ -466,6 +479,25 @@ const runScanXai = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "Scan not found" });
     }
 
+    const methodId = req.body.xaiMethod || "gradcam++";
+    const existingXai = scan.xai?.toObject?.() ?? scan.xai;
+
+    if (hasCachedXaiView(existingXai, methodId)) {
+        const cachedXai = applyActiveXaiView(existingXai, methodId);
+        scan.xai = cachedXai;
+        scan.xaiError = null;
+        scan.gradCamPath =
+            pickXaiPreviewPath(cachedXai) ?? scan.gradCamPath;
+        await scan.save();
+
+        return res.json({
+            message: "Visual explanation view updated",
+            xai: cachedXai,
+            scan,
+            cached: true,
+        });
+    }
+
     const modelApiBase =
         process.env.MODEL_API_URL?.replace(/\/scans\/analyze\/?$/, "") ||
         "http://127.0.0.1:8000";
@@ -474,7 +506,7 @@ const runScanXai = asyncHandler(async (req, res) => {
 
     try {
         const xaiResult = await postJson(xaiUrl, {
-            xaiMethod: req.body.xaiMethod || "gradcam++",
+            xaiMethod: methodId,
             targetClass: req.body.targetClass ?? null,
             targetLayer: req.body.targetLayer ?? null,
             displayChannel: req.body.displayChannel ?? null,
@@ -482,20 +514,18 @@ const runScanXai = asyncHandler(async (req, res) => {
             attributionReduction: req.body.attributionReduction || "mean",
         });
 
-        scan.xai = xaiResult;
+        const mergedXai = mergeXaiResult(existingXai, xaiResult);
+        scan.xai = mergedXai;
         scan.xaiError = null;
-        const lastStage = xaiResult.stages?.[xaiResult.stages.length - 1];
-        const channelOverlay =
-            lastStage?.channelMaps?.[lastStage.channelMaps.length - 1]
-                ?.overlayPath;
         scan.gradCamPath =
-            channelOverlay ?? lastStage?.overlayPath ?? xaiResult.overlayPath;
+            pickXaiPreviewPath(mergedXai) ?? scan.gradCamPath;
         await scan.save();
 
         res.json({
-            message: "XAI explanation updated",
-            xai: xaiResult,
+            message: "Visual explanation updated",
+            xai: mergedXai,
             scan,
+            cached: false,
         });
     } catch (error) {
         return res.status(502).json({
@@ -516,11 +546,7 @@ const deleteScan = asyncHandler(async (req, res) => {
 
     const pathsToDelete = [
         ...scan.files.map((file) => file.rawPath),
-        ...(scan.xai?.stages ?? []).flatMap((stage) => [
-            stage.originalPath,
-            stage.heatmapPath,
-            stage.overlayPath,
-        ]),
+        ...collectXaiAssetPaths(scan.xai),
         scan.xai?.originalPath,
         scan.xai?.heatmapPath,
         scan.xai?.overlayPath,

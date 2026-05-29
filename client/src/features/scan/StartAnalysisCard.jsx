@@ -52,7 +52,7 @@ export default function StartAnalysisCard({ patientData }) {
                 <p>All 4 {is3DScan ? '3D volume' : 'MRI image'} modalities validated successfully</p>
             </div>
             <div className='bg-primary/15 px-4 py-2 rounded-lg'>
-                <p className='text-blue-900 dark:text-blue-100 font-semibold'>The AI model will analyze all 4 modalities and provide:</p>
+                <p className='text-blue-900 dark:text-blue-100 font-semibold'>The system will analyze all 4 modalities and provide:</p>
                 <ul className='flex flex-col gap-1 mt-2 ml-2 text-blue-800 dark:text-blue-200 text-[15px] list-inside'>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
@@ -60,15 +60,11 @@ export default function StartAnalysisCard({ patientData }) {
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Multi-modality confidence scoring and probability distribution</span>
+                        <span>Confidence scoring and probability distribution</span>
                     </li>
                     <li className='flex items-center gap-1'>
                         <span>•</span>
-                        <span>Grad-CAM visualization for the analyzed scan</span>
-                    </li>
-                    <li className='flex items-center gap-1'>
-                        <span>•</span>
-                        <span>Cross-modality consistency analysis</span>
+                        <span>Visual explanation highlighting regions that influenced the result</span>
                     </li>
                 </ul>
             </div>
