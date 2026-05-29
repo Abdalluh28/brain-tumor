@@ -239,7 +239,7 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
     existing_xai = scan.get("xai")
     cached_view = apply_active_xai_view(existing_xai, payload.xaiMethod)
     if cached_view is not None:
-        preview = cascade_stage_preview_overlay(
+        preview = _cascade_preview_overlay(
             CascadeXaiResultOut(
                 xaiMethod=cached_view["xaiMethod"],
                 cascadePrediction=cached_view["cascadePrediction"],
@@ -289,7 +289,7 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
         ) from exc
 
     merged_xai = merge_xai_result(existing_xai, xai_result)
-    preview = cascade_stage_preview_overlay(xai_result)
+    preview = _cascade_preview_overlay(xai_result)
 
     await database.scans.update_one(
         {"_id": object_id},

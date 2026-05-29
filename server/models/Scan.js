@@ -129,35 +129,10 @@ const scanSchema = new mongoose.Schema(
                     },
                 },
             ],
+            // methodId -> { stages: [...] } (plain object; reliable JSON + cache lookups)
             cache: {
-                type: Map,
-                of: {
-                    stages: [
-                        {
-                            stage: Number,
-                            targetClassIndex: Number,
-                            targetClassLabel: String,
-                            displayChannel: Number,
-                            displayModality: String,
-                            originalPath: String,
-                            heatmapPath: String,
-                            overlayPath: String,
-                            channelMaps: [
-                                {
-                                    modality: String,
-                                    channelIndex: Number,
-                                    channelImportance: Number,
-                                    originalPath: String,
-                                    heatmapPath: String,
-                                    overlayPath: String,
-                                },
-                            ],
-                            metadata: {
-                                type: Object,
-                            },
-                        },
-                    ],
-                },
+                type: mongoose.Schema.Types.Mixed,
+                default: {},
             },
         },
 

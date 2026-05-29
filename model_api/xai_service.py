@@ -56,8 +56,24 @@ from .xai.utils import (
 AttributionReduction = Literal["mean", "max"]
 
 
-def cascade_stage_preview_overlay(stage: XaiStageResultOut) -> str | None:
+def cascade_stage_preview_overlay(
+    stage: XaiStageResultOut | dict[str, object],
+) -> str | None:
     """Best overlay URL for thumbnails (grad or per-channel methods)."""
+    if isinstance(stage, dict):
+        channel_maps = stage.get("channelMaps") or []
+        if channel_maps:
+            last = channel_maps[-1]
+            overlay = (
+                last.get("overlayPath")
+                if isinstance(last, dict)
+                else getattr(last, "overlayPath", None)
+            )
+            if overlay:
+                return str(overlay)
+        overlay = stage.get("overlayPath")
+        return str(overlay) if overlay else None
+
     if stage.channelMaps:
         return stage.channelMaps[-1].overlayPath
     return stage.overlayPath or None

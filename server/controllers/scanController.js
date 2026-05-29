@@ -480,7 +480,9 @@ const runScanXai = asyncHandler(async (req, res) => {
     }
 
     const methodId = req.body.xaiMethod || "gradcam++";
-    const existingXai = scan.xai?.toObject?.() ?? scan.xai;
+    const existingXai = normalizeXaiDocument(
+        scan.xai?.toObject?.() ?? scan.xai,
+    );
 
     if (hasCachedXaiView(existingXai, methodId)) {
         const cachedXai = applyActiveXaiView(existingXai, methodId);

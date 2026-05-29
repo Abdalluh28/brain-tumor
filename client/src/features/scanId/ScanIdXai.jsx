@@ -3,6 +3,7 @@ import {
     ALTERNATE_XAI_METHOD,
     hasCachedXaiView,
     isPermutationMethod,
+    methodIdForViewOption,
     PRIMARY_XAI_METHOD,
     viewOptionForMethod,
     XAI_VIEW_OPTIONS,
@@ -68,11 +69,7 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
         if (viewId === activeView || isLoading) {
             return;
         }
-        const methodId =
-            viewId === ALTERNATE_XAI_METHOD.id
-                ? ALTERNATE_XAI_METHOD.id
-                : PRIMARY_XAI_METHOD.id;
-        runXai(methodId);
+        runXai(methodIdForViewOption(viewId));
     };
 
     return (
@@ -97,7 +94,10 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                     >
                         {XAI_VIEW_OPTIONS.map((option) => {
                             const isActive = activeView === option.id;
-                            const isSaved = hasCachedXaiView(xai, option.id);
+                            const isSaved = hasCachedXaiView(
+                                xai,
+                                methodIdForViewOption(option.id),
+                            );
 
                             return (
                             <button

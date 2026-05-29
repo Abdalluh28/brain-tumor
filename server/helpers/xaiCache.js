@@ -1,6 +1,62 @@
 /** @typedef {{ stages?: object[] }} XaiCacheEntry */
 
 /**
+ * @param {unknown} value
+ */
+function isNonEmptyPath(value) {
+    return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * True when a stage has at least one overlay URL to display.
+ * @param {object | null | undefined} stage
+ */
+function stageHasRenderableOverlay(stage) {
+    if (!stage || typeof stage !== "object") {
+        return false;
+    }
+
+    const channelMaps = stage.channelMaps;
+    if (Array.isArray(channelMaps) && channelMaps.length > 0) {
+        return channelMaps.some((channel) =>
+            isNonEmptyPath(channel?.overlayPath),
+        );
+    }
+
+    return isNonEmptyPath(stage.overlayPath);
+}
+
+/**
+ * @param {object | null | undefined} entry
+ */
+function cacheEntryHasImageLinks(entry) {
+    if (!entry?.stages?.length) {
+        return false;
+    }
+
+    return entry.stages.every(stageHasRenderableOverlay);
+}
+
+/**
+ * @param {unknown} cache
+ */
+function plainCacheObject(cache) {
+    if (!cache) {
+        return {};
+    }
+
+    if (cache instanceof Map) {
+        return Object.fromEntries(cache.entries());
+    }
+
+    if (typeof cache === "object") {
+        return { ...cache };
+    }
+
+    return {};
+}
+
+/**
  * Ensure legacy single-method xai documents expose a cache map.
  * @param {object | null | undefined} xai
  */
@@ -10,25 +66,24 @@ function normalizeXaiDocument(xai) {
     }
 
     const normalized = { ...xai };
-
-    if (!normalized.cache || typeof normalized.cache !== "object") {
-        normalized.cache = {};
-    } else {
-        normalized.cache = { ...normalized.cache };
-    }
+    const cache = plainCacheObject(normalized.cache);
 
     if (
         Array.isArray(normalized.stages) &&
         normalized.stages.length > 0 &&
         normalized.xaiMethod &&
-        !normalized.cache[normalized.xaiMethod]
+        !cache[normalized.xaiMethod] &&
+        cacheEntryHasImageLinks({ stages: normalized.stages })
     ) {
-        normalized.cache[normalized.xaiMethod] = {
+        cache[normalized.xaiMethod] = {
             stages: normalized.stages,
         };
     }
 
-    normalized.availableViews = Object.keys(normalized.cache);
+    normalized.cache = cache;
+    normalized.availableViews = Object.keys(cache).filter((methodId) =>
+        cacheEntryHasImageLinks(cache[methodId]),
+    );
     return normalized;
 }
 
@@ -43,7 +98,7 @@ function getCachedXaiEntry(xai, methodId) {
     }
 
     const entry = normalized.cache?.[methodId];
-    if (entry?.stages?.length) {
+    if (cacheEntryHasImageLinks(entry)) {
         return entry;
     }
 
@@ -66,7 +121,7 @@ function hasCachedXaiView(xai, methodId) {
 function applyActiveXaiView(xai, methodId) {
     const normalized = normalizeXaiDocument(xai);
     const entry = getCachedXaiEntry(normalized, methodId);
-    if (!entry) {
+    if (!entry || !normalized) {
         return null;
     }
 
@@ -74,7 +129,9 @@ function applyActiveXaiView(xai, methodId) {
         ...normalized,
         xaiMethod: methodId,
         stages: entry.stages,
-        availableViews: Object.keys(normalized.cache),
+        availableViews: Object.keys(normalized.cache).filter((id) =>
+            cacheEntryHasImageLinks(normalized.cache[id]),
+        ),
     };
 }
 
@@ -89,7 +146,13 @@ function mergeXaiResult(existingXai, xaiResult) {
     };
     const method = xaiResult.xaiMethod;
 
-    const cache = { ...normalized.cache };
+    if (!cacheEntryHasImageLinks({ stages: xaiResult.stages })) {
+        throw new Error(
+            `XAI result for '${method}' has no overlay image URLs to cache.`,
+        );
+    }
+
+    const cache = plainCacheObject(normalized.cache);
     cache[method] = { stages: xaiResult.stages };
 
     return {
@@ -98,7 +161,9 @@ function mergeXaiResult(existingXai, xaiResult) {
             xaiResult.cascadePrediction ?? normalized.cascadePrediction,
         stages: xaiResult.stages,
         cache,
-        availableViews: Object.keys(cache),
+        availableViews: Object.keys(cache).filter((id) =>
+            cacheEntryHasImageLinks(cache[id]),
+        ),
     };
 }
 
@@ -158,7 +223,7 @@ function collectXaiAssetPaths(xai) {
         }
     };
 
-    for (const entry of Object.values(normalized.cache ?? {})) {
+    for (const entry of Object.values(plainCacheObject(normalized.cache))) {
         addStagePaths(entry.stages);
     }
 
@@ -175,4 +240,6 @@ module.exports = {
     mergeXaiResult,
     pickXaiPreviewPath,
     collectXaiAssetPaths,
+    stageHasRenderableOverlay,
+    cacheEntryHasImageLinks,
 };
