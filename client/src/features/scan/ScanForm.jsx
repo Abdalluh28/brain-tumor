@@ -5,6 +5,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import UploadScanCard from "./UploadScanCard";
 import { useDispatch, useSelector } from "react-redux";
 import { clearFiles } from "./scanSlice";
+import NewPatientToggle from "./NewPatientToggle";
 
 export default function ScanForm() {
 
@@ -181,6 +182,7 @@ export default function ScanForm() {
                         </div>
                     )} />
 
+                <NewPatientToggle />
             </form>
             {scanType && <UploadScanCard />}
         </FormProvider>
