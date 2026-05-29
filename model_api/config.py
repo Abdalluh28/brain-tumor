@@ -42,11 +42,13 @@ STAGE2_GRADCAM_TARGET_LAYER: str | None = "block7a_project_conv"
 # ---------------------------------------------------------------------------
 # Permutation XAI (PCI, occlusion, SHAP) — edit here, restart model API.
 # ---------------------------------------------------------------------------
-PERMUTATION_OCCLUSION_PATCH_SIZE = 32
-PERMUTATION_OCCLUSION_STRIDE = 8
+PERMUTATION_OCCLUSION_PATCH_SIZE = 40
+PERMUTATION_OCCLUSION_STRIDE = 20
 PERMUTATION_PCI_GRID_ROWS = 8
 PERMUTATION_PCI_GRID_COLS = 8
 PERMUTATION_PCI_PERMUTATIONS_PER_CELL = 2
+# Full-channel PCI: shuffle entire channel per sample (not grid cells)
+PERMUTATION_FULL_CHANNEL_PCI_SAMPLES = 8
 PERMUTATION_SHAP_BACKGROUND_SAMPLES = 8
 # Channel ranking: shuffle repeats + zero-out / mean-fill occlusion
 PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES = 8

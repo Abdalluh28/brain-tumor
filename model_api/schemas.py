@@ -83,6 +83,7 @@ XaiMethod = Literal[
     "integrated_gradients",
     "vanilla_saliency",
     "pci",
+    "pci_full_channel",
     "occlusion",
     "shap",
 ]

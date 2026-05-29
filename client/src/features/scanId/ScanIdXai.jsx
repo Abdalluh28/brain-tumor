@@ -22,7 +22,8 @@ const METHOD_LABELS = {
     "gradcam++": "Grad-CAM++",
     integrated_gradients: "Integrated Gradients",
     vanilla_saliency: "Vanilla Saliency",
-    pci: "PCI (per-channel)",
+    pci: "PCI grid (per-channel)",
+    pci_full_channel: "PCI full-channel (per-channel)",
     occlusion: "Occlusion (per-channel)",
     shap: "SHAP (per-channel)",
 };
@@ -125,7 +126,8 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                     )}
                     {isPermutation && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            PCI, occlusion, and SHAP show one overlay per MRI
+                            PCI, occlusion, SHAP, and related methods show one
+                            overlay per MRI
                             channel so you can see which modality drove the
                             decision. Grad-CAM methods use a single combined map.
                         </p>
@@ -211,6 +213,7 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                         key={stageResult.stage}
                         stageResult={stageResult}
                         isPermutation={isPermutation}
+                        xaiMethod={activeMethod}
                     />
                 ))}
             </div>
@@ -255,7 +258,20 @@ function MethodGroup({
     );
 }
 
-function StageXaiSection({ stageResult, isPermutation }) {
+function formatImportanceValue(value, metadata, modality) {
+    const percentMap = metadata?.permutationImportancePercent;
+    if (percentMap && modality in percentMap) {
+        const pct = Number(percentMap[modality]);
+        const decimals = pct > 0 && pct < 1 ? 2 : 1;
+        return `${pct.toFixed(decimals)}%`;
+    }
+    if (value != null && value <= 1.01) {
+        return `${(Number(value) * 100).toFixed(1)}%`;
+    }
+    return Number(value ?? 0).toFixed(4);
+}
+
+function StageXaiSection({ stageResult, isPermutation, xaiMethod }) {
     const title =
         STAGE_TITLES[stageResult.stage]
         ?? `Stage ${stageResult.stage}`;
@@ -265,7 +281,9 @@ function StageXaiSection({ stageResult, isPermutation }) {
     const hasChannelMaps = channelMaps.length > 0;
 
     if (hasChannelMaps) {
-        const importances = stageResult.metadata?.permutationImportance;
+        const importances =
+            stageResult.metadata?.permutationImportancePercent
+            ?? stageResult.metadata?.permutationImportance;
 
         return (
             <section className="flex flex-col gap-4 border-t border-slate-200 dark:border-slate-700 pt-6 first:border-t-0 first:pt-0">
@@ -275,6 +293,9 @@ function StageXaiSection({ stageResult, isPermutation }) {
                         Explaining class: <strong>{subtitle}</strong>
                         {" — "}
                         one heatmap per input channel
+                        {isPermutation && (
+                            <> — importance shown as % of total channel effect</>
+                        )}
                     </p>
                 </div>
 
@@ -286,7 +307,13 @@ function StageXaiSection({ stageResult, isPermutation }) {
                                 className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1"
                             >
                                 {MODALITY_LABELS[modality] ?? modality}:{" "}
-                                <strong>{Number(value).toFixed(4)}</strong>
+                                <strong>
+                                    {formatImportanceValue(
+                                        value,
+                                        stageResult.metadata,
+                                        modality,
+                                    )}
+                                </strong>
                             </span>
                         ))}
                     </div>
@@ -294,7 +321,12 @@ function StageXaiSection({ stageResult, isPermutation }) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {channelMaps.map((channel) => (
-                        <ChannelMapPanel key={channel.modality} channel={channel} />
+                        <ChannelMapPanel
+                            key={channel.modality}
+                            channel={channel}
+                            xaiMethod={xaiMethod}
+                            metadata={stageResult.metadata}
+                        />
                     ))}
                 </div>
             </section>
@@ -335,7 +367,7 @@ function StageXaiSection({ stageResult, isPermutation }) {
     );
 }
 
-function ChannelMapPanel({ channel }) {
+function ChannelMapPanel({ channel, xaiMethod, metadata }) {
     const label = MODALITY_LABELS[channel.modality] ?? channel.modality;
 
     return (
@@ -344,7 +376,13 @@ function ChannelMapPanel({ channel }) {
                 <p className="font-medium">{label}</p>
                 <span className="text-xs text-slate-500">
                     importance{" "}
-                    <strong>{channel.channelImportance?.toFixed(4) ?? "—"}</strong>
+                    <strong>
+                        {formatImportanceValue(
+                            channel.channelImportance,
+                            metadata,
+                            channel.modality,
+                        )}
+                    </strong>
                 </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

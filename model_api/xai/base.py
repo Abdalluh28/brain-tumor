@@ -12,6 +12,7 @@ from .exceptions import (
 )
 from .channel_attribution import (
     ChannelExplanationResult,
+    PermutationXaiMethod,
     generate_channel_explanations,
 )
 from .gradcam import compute_gradcam
@@ -21,7 +22,7 @@ from .saliency import compute_vanilla_saliency
 from .utils import find_last_conv2d_layer, normalize_heatmap, resolve_target_layer
 
 GradXaiMethod = Literal["gradcam", "gradcam++", "integrated_gradients", "vanilla_saliency"]
-PermutationXaiMethodName = Literal["pci", "occlusion", "shap"]
+PermutationXaiMethodName = Literal["pci", "pci_full_channel", "occlusion", "shap"]
 XaiMethod = GradXaiMethod | PermutationXaiMethodName
 
 GRAD_XAI_METHODS: tuple[GradXaiMethod, ...] = (
@@ -33,6 +34,7 @@ GRAD_XAI_METHODS: tuple[GradXaiMethod, ...] = (
 
 PERMUTATION_XAI_METHODS: tuple[PermutationXaiMethodName, ...] = (
     "pci",
+    "pci_full_channel",
     "occlusion",
     "shap",
 )

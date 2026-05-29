@@ -16,7 +16,8 @@ export const GRAD_XAI_METHODS = [
 
 /** Permutation / occlusion / SHAP — one heatmap per MRI channel (stage 2). */
 export const PERMUTATION_XAI_METHODS = [
-    { id: "pci", label: "PCI (per-channel permutation)" },
+    { id: "pci", label: "PCI grid (per-channel)" },
+    { id: "pci_full_channel", label: "PCI full-channel (per-channel)" },
     { id: "occlusion", label: "Occlusion (per-channel)" },
     { id: "shap", label: "SHAP (per-channel)" },
 ];
