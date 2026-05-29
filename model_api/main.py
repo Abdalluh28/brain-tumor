@@ -51,6 +51,8 @@ def _serialize_scan(scan: dict) -> dict:
 
     serialized["_id"] = str(serialized["_id"])
     serialized["userId"] = str(serialized["userId"])
+    if serialized.get("patient") is not None:
+        serialized["patient"] = str(serialized["patient"])
 
     for key in ("createdAt", "updatedAt"):
         if isinstance(serialized.get(key), datetime):
@@ -72,6 +74,75 @@ def _get_file_url(raw_path: str, backend_public_url: str | None) -> str | None:
         upload_path = normalized.split(marker, 1)[1]
         return f"{backend_public_url.rstrip('/')}/uploads/{quote(upload_path)}"
     return None
+
+
+async def _resolve_patient_id(
+    payload: AnalyzeScanRequest,
+    user_id: ObjectId,
+) -> ObjectId:
+    database = get_database()
+    patients = database.patients
+    patient_id = payload.patientId.strip() if payload.patientId else None
+    if patient_id in {"undefined", "null", ""}:
+        patient_id = None
+
+    if patient_id:
+        patient_filter = (
+            {
+                "userId": user_id,
+                "$or": [
+                    {"_id": ObjectId(patient_id)},
+                    {"patientId": patient_id},
+                ],
+            }
+            if ObjectId.is_valid(patient_id)
+            else {"userId": user_id, "patientId": patient_id}
+        )
+        patient = await patients.find_one(patient_filter)
+        if patient:
+            return patient["_id"]
+
+        if not all(
+            [
+                payload.patientName,
+                payload.patientAge,
+                payload.patientGender,
+                payload.patientPhone,
+            ]
+        ):
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+    if not all(
+        [
+            payload.patientName,
+            payload.patientAge,
+            payload.patientGender,
+            payload.patientPhone,
+        ]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Patient information is required when patientId is not provided",
+        )
+
+    now = datetime.now(timezone.utc)
+    patient = {
+        "userId": user_id,
+        "name": payload.patientName,
+        "age": payload.patientAge,
+        "gender": payload.patientGender,
+        "phone": payload.patientPhone,
+        "email": payload.patientEmail,
+        "notes": payload.notes or "",
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    if patient_id:
+        patient["patientId"] = patient_id
+
+    insert_result = await patients.insert_one(patient)
+    return insert_result.inserted_id
+
 
 @app.get("/health")
 async def health():
@@ -248,6 +319,7 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         ) from exc
 
     now = datetime.now(timezone.utc)
+    patient_id = await _resolve_patient_id(payload, user_id)
 
     # ------------------
     # Create Scan Document
@@ -256,13 +328,8 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         # User
         "userId": user_id,
 
-        # Patient Information
-        "patientName": payload.patientName,
-        "patientId": payload.patientId,
-        "patientAge": payload.patientAge,
-        "patientGender": payload.patientGender,
-        "patientPhone": payload.patientPhone,
-        "notes": payload.notes,
+        # Patient
+        "patient": patient_id,
         "scanType": payload.scanType,
 
         # Files
