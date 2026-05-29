@@ -6,7 +6,7 @@ export const PRIMARY_XAI_METHOD = {
     label: "Grad-CAM++",
 };
 
-/** Gradient / activation methods (single combined heatmap per stage). */
+/** Gradient / activation methods (single combined heatmap, stage 2). */
 export const GRAD_XAI_METHODS = [
     PRIMARY_XAI_METHOD,
     { id: "gradcam", label: "Grad-CAM" },
@@ -14,7 +14,7 @@ export const GRAD_XAI_METHODS = [
     { id: "vanilla_saliency", label: "Vanilla Saliency" },
 ];
 
-/** Permutation / occlusion / SHAP — one heatmap per input channel. */
+/** Permutation / occlusion / SHAP — one heatmap per MRI channel (stage 2). */
 export const PERMUTATION_XAI_METHODS = [
     { id: "pci", label: "PCI (per-channel permutation)" },
     { id: "occlusion", label: "Occlusion (per-channel)" },
@@ -23,9 +23,8 @@ export const PERMUTATION_XAI_METHODS = [
 
 export const XAI_METHODS = [...GRAD_XAI_METHODS, ...PERMUTATION_XAI_METHODS];
 
-export const OTHER_XAI_METHODS = XAI_METHODS.filter(
-    (m) => m.id !== PRIMARY_XAI_METHOD.id,
-);
+/** All selectable methods in the dialog (includes Grad-CAM++). */
+export const OTHER_XAI_METHODS = XAI_METHODS;
 
 export const PERMUTATION_METHOD_IDS = new Set(
     PERMUTATION_XAI_METHODS.map((m) => m.id),

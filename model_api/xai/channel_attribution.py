@@ -6,17 +6,18 @@ from typing import Literal
 import numpy as np
 import tensorflow as tf
 
+from ..config import (
+    PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES,
+    PERMUTATION_OCCLUSION_PATCH_SIZE,
+    PERMUTATION_OCCLUSION_STRIDE,
+    PERMUTATION_PCI_GRID_COLS,
+    PERMUTATION_PCI_GRID_ROWS,
+    PERMUTATION_PCI_PERMUTATIONS_PER_CELL,
+    PERMUTATION_SHAP_BACKGROUND_SAMPLES,
+)
 from .utils import IMG_HEIGHT, IMG_WIDTH, normalize_heatmap
 
 PermutationXaiMethod = Literal["pci", "occlusion", "shap"]
-
-# Spatial resolution trade-off (240×240 inputs).
-OCCLUSION_PATCH_SIZE = 40
-OCCLUSION_STRIDE = 20
-PCI_GRID_ROWS = 6
-PCI_GRID_COLS = 6
-PCI_PERMUTATIONS_PER_CELL = 2
-SHAP_BACKGROUND_SAMPLES = 8
 
 
 @dataclass(frozen=True)
@@ -41,25 +42,65 @@ def _channel_baseline(batch: np.ndarray, channel_index: int) -> float:
     return float(np.mean(batch[0, :, :, channel_index]))
 
 
-def _full_channel_permutation_importance(
+def _channel_importance_scores(
     model,
     batch: tf.Tensor,
     class_index: int,
     num_channels: int,
+    heatmaps: list[np.ndarray] | None = None,
 ) -> list[float]:
-    """Shuffle an entire channel and measure score drop (global channel ranking)."""
+    """
+    Rank modalities by how much the target-class score changes when each
+    channel is disrupted (zero-out, mean-fill, and repeated shuffles).
+
+    Uses |baseline - score| so importance is non-negative even when
+    permutation increases the target probability.
+    """
     baseline = _target_score(model, batch, class_index)
     base_np = batch.numpy().copy()
+    rng = np.random.default_rng(class_index * 97 + num_channels * 13)
     importances: list[float] = []
 
     for channel_index in range(num_channels):
-        permuted = base_np.copy()
-        flat = permuted[0, :, :, channel_index].reshape(-1)
-        rng = np.random.default_rng(class_index * 31 + channel_index)
-        rng.shuffle(flat)
-        permuted[0, :, :, channel_index] = flat.reshape(IMG_HEIGHT, IMG_WIDTH)
-        score = _target_score(model, tf.constant(permuted, dtype=tf.float32), class_index)
-        importances.append(max(0.0, baseline - score))
+        candidates: list[float] = []
+
+        zeroed = base_np.copy()
+        zeroed[0, :, :, channel_index] = 0.0
+        candidates.append(
+            abs(baseline - _target_score(model, tf.constant(zeroed, dtype=tf.float32), class_index))
+        )
+
+        mean_filled = base_np.copy()
+        mean_filled[0, :, :, channel_index] = _channel_baseline(base_np, channel_index)
+        candidates.append(
+            abs(
+                baseline
+                - _target_score(
+                    model, tf.constant(mean_filled, dtype=tf.float32), class_index
+                )
+            )
+        )
+
+        for sample in range(PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES):
+            permuted = base_np.copy()
+            flat = permuted[0, :, :, channel_index].reshape(-1)
+            rng.shuffle(flat)
+            permuted[0, :, :, channel_index] = flat.reshape(IMG_HEIGHT, IMG_WIDTH)
+            candidates.append(
+                abs(
+                    baseline
+                    - _target_score(
+                        model, tf.constant(permuted, dtype=tf.float32), class_index
+                    )
+                )
+            )
+
+        importance = float(max(candidates)) if candidates else 0.0
+
+        if importance <= 1e-9 and heatmaps is not None:
+            importance = float(np.mean(heatmaps[channel_index]))
+
+        importances.append(importance)
 
     return importances
 
@@ -77,8 +118,8 @@ def _occlusion_channel_heatmap(
     heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
     counts = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
 
-    patch = OCCLUSION_PATCH_SIZE
-    stride = OCCLUSION_STRIDE
+    patch = PERMUTATION_OCCLUSION_PATCH_SIZE
+    stride = PERMUTATION_OCCLUSION_STRIDE
 
     for row in range(0, IMG_HEIGHT - patch + 1, stride):
         for col in range(0, IMG_WIDTH - patch + 1, stride):
@@ -92,7 +133,7 @@ def _occlusion_channel_heatmap(
             score = _target_score(
                 model, tf.constant(occluded, dtype=tf.float32), class_index
             )
-            drop = max(0.0, baseline - score)
+            drop = abs(baseline - score)
             heatmap[row : row + patch, col : col + patch] += drop
             counts[row : row + patch, col : col + patch] += 1.0
 
@@ -111,19 +152,19 @@ def _pci_channel_heatmap(
     """
     baseline = _target_score(model, batch, class_index)
     base_np = batch.numpy().copy()
-    cell_h = max(1, IMG_HEIGHT // PCI_GRID_ROWS)
-    cell_w = max(1, IMG_WIDTH // PCI_GRID_COLS)
+    cell_h = max(1, IMG_HEIGHT // PERMUTATION_PCI_GRID_ROWS)
+    cell_w = max(1, IMG_WIDTH // PERMUTATION_PCI_GRID_COLS)
     heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
 
-    for row_idx in range(PCI_GRID_ROWS):
-        for col_idx in range(PCI_GRID_COLS):
+    for row_idx in range(PERMUTATION_PCI_GRID_ROWS):
+        for col_idx in range(PERMUTATION_PCI_GRID_COLS):
             row_start = row_idx * cell_h
             col_start = col_idx * cell_w
             row_end = min(row_start + cell_h, IMG_HEIGHT)
             col_end = min(col_start + cell_w, IMG_WIDTH)
 
             drops: list[float] = []
-            for perm_idx in range(PCI_PERMUTATIONS_PER_CELL):
+            for perm_idx in range(PERMUTATION_PCI_PERMUTATIONS_PER_CELL):
                 permuted = base_np.copy()
                 cell = permuted[
                     0, row_start:row_end, col_start:col_end, channel_index
@@ -138,7 +179,7 @@ def _pci_channel_heatmap(
                 score = _target_score(
                     model, tf.constant(permuted, dtype=tf.float32), class_index
                 )
-                drops.append(max(0.0, baseline - score))
+                drops.append(abs(baseline - score))
 
             cell_value = float(np.mean(drops)) if drops else 0.0
             heatmap[row_start:row_end, col_start:col_end] = cell_value
@@ -166,8 +207,9 @@ def _shap_channel_heatmaps(
         ) from exc
 
     input_np = batch.numpy()
-    background = np.repeat(input_np, SHAP_BACKGROUND_SAMPLES, axis=0).astype(np.float32)
-    # small jitter
+    background = np.repeat(input_np, PERMUTATION_SHAP_BACKGROUND_SAMPLES, axis=0).astype(
+        np.float32
+    )
     rng = np.random.default_rng(42)
     background += rng.normal(0, 0.02, background.shape).astype(np.float32)
     background = np.clip(background, 0.0, 1.0)
@@ -195,13 +237,13 @@ def _shap_channel_heatmaps(
             heatmaps.append(normalize_heatmap(channel_attr))
         return heatmaps, "shap_gradient"
     except Exception:
-        importances = _full_channel_permutation_importance(
-            model, batch, class_index, num_channels
-        )
         heatmaps = [
             _occlusion_channel_heatmap(model, batch, class_index, channel_index)
             for channel_index in range(num_channels)
         ]
+        importances = _channel_importance_scores(
+            model, batch, class_index, num_channels, heatmaps=heatmaps
+        )
         max_imp = max(importances) if importances else 1.0
         if max_imp > 0:
             heatmaps = [
@@ -226,10 +268,7 @@ def generate_channel_explanations(
             f"got tensor shape {batch.shape}"
         )
 
-    importances = _full_channel_permutation_importance(
-        model, batch, class_index, num_channels
-    )
-    extra_meta: dict = {"permutationImportance": dict(zip(modalities, importances))}
+    extra_meta: dict = {}
 
     if method == "occlusion":
         heatmaps = [
@@ -248,6 +287,13 @@ def generate_channel_explanations(
         extra_meta["shapBackend"] = shap_backend
     else:
         raise ValueError(f"Unsupported permutation method: {method}")
+
+    importances = _channel_importance_scores(
+        model, batch, class_index, num_channels, heatmaps=heatmaps
+    )
+    extra_meta["permutationImportance"] = {
+        mod: round(float(val), 6) for mod, val in zip(modalities, importances, strict=True)
+    }
 
     return ChannelExplanationResult(
         heatmaps=heatmaps,

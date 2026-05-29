@@ -13,9 +13,11 @@ from ..config import (
     MODALITY_ORDER,
     STAGE1_MODALITIES,
     STAGE1_MODEL_PATH,
+    STAGE2_GRADCAM_TARGET_LAYER,
     STAGE2_MODEL_PATH,
     STAGE3_MODEL_PATH,
 )
+from ..stage2_loader import load_stage2_model
 from ..preprocessing import build_multichannel_tensor, map_files_to_modalities
 from ..schemas import ScanFileIn
 from .exceptions import UnsupportedStageError
@@ -48,8 +50,7 @@ STAGE_CONFIGS: dict[int, StageXaiConfig] = {
         class_labels=("GLI", "METS", "OTHER"),
         default_display_modality="t1c",
         input_channels=4,
-        # block5_conv3 (7×7 after pool) is too coarse; block4_conv3 keeps 30×30 features.
-        gradcam_target_layer="block4_conv3",
+        gradcam_target_layer=STAGE2_GRADCAM_TARGET_LAYER,
     ),
     1: StageXaiConfig(
         stage=1,
@@ -91,6 +92,10 @@ def load_stage_model(stage: int):
 
     if not Path(config.model_path).exists():
         raise FileNotFoundError(f"Stage {stage} model not found: {config.model_path}")
+
+    if stage == 2:
+        model = load_stage2_model()
+        return model, config
 
     keras.config.enable_unsafe_deserialization()
     model = keras.models.load_model(config.model_path, compile=False)

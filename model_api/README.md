@@ -6,7 +6,7 @@ the scan result in MongoDB.
 ## Pipeline
 
 1. **Stage 1** (`custom_cnn_lowdrop_best (2).keras`): Healthy vs Tumor using T1 + T2 (`t1n`, `t2w`).
-2. **Stage 2** (`custom_cnn_3class_finetune_stage2_best.keras`): GLI vs METS vs OTHER using all 4 modalities.
+2. **Stage 2** (`efficientnet_3class_finetune_stage2.keras` or `model.keras`): EfficientNetB0, GLI vs METS vs OTHER, 4 modalities.
 3. **Stage 3** (`best_densenet_stage2_more_finetune_lessdrop.keras`): HGG vs LGG for glioma cases.
 
 Upload slot mapping (4 files from the backend):
@@ -40,7 +40,7 @@ Class labels: Background, NCR/NET, Edema, Enhancing Tumor.
 
 ## XAI (Explainable AI) — Stages 1, 2, and 3
 
-Cascade analysis runs XAI on the stage that produced the final label (Healthy → stage 1, Metastasis/Others → stage 2, HGG/LGG → stage 3). `POST /xai/explain` can target any stage explicitly.
+Cascade classification uses stages 1–3; **XAI is generated for stage 2 only** (EfficientNet). `POST /xai/explain` can still target stages 1–3 explicitly for debugging.
 
 Returns base64 PNGs for:
 
