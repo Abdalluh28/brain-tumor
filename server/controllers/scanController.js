@@ -1,10 +1,12 @@
 const multer = require("multer");
 const asyncHandler = require("../middleware/asyncHandler");
 const Scan = require("../models/Scan");
+const Patient = require("../models/Patient");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
+const getOrCreatePatient = require("./helpers/getOrCreatePatient");
 
 // ------------------
 // Multer Local Storage (Better for ML processing)
@@ -121,6 +123,72 @@ const removeUploadedFiles = (files = []) => {
     });
 };
 
+const toObjectIdString = (value) => {
+    if (!value) {
+        return null;
+    }
+
+    if (typeof value === "string") {
+        return value;
+    }
+
+    if (value._id) {
+        return value._id.toString();
+    }
+
+    return value.toString();
+};
+
+const saveNewPatient = async (patientPayload, userId) => {
+    const patientData = patientPayload.modelPayload;
+
+    if (patientPayload.patient) {
+        return patientPayload.patient;
+    }
+
+    const createPayload = {
+        userId,
+        name: patientData.patientName,
+        age: patientData.patientAge,
+        gender: patientData.patientGender,
+        phone: patientData.patientPhone,
+        email: patientData.patientEmail,
+        notes: patientData.notes || "",
+    };
+
+    if (patientData.patientId) {
+        createPayload.patientId = patientData.patientId;
+    }
+
+    return Patient.create(createPayload);
+};
+
+const normalizeReturnedScanPatient = async (scan, patientPayload, userId) => {
+    if (!scan?._id || scan.patient) {
+        return scan;
+    }
+
+    const patient = await saveNewPatient(patientPayload, userId);
+
+    const updatedScan = await Scan.findByIdAndUpdate(
+        scan._id,
+        {
+            $set: { patient: patient._id },
+            $unset: {
+                patientName: "",
+                patientId: "",
+                patientAge: "",
+                patientGender: "",
+                patientPhone: "",
+                notes: "",
+            },
+        },
+        { new: true, strict: false },
+    ).populate("patient");
+
+    return updatedScan || { ...scan, patient: toObjectIdString(patient._id) };
+};
+
 // ------------------
 // Create Scan
 // ------------------
@@ -138,25 +206,26 @@ const createScan = asyncHandler(async (req, res) => {
             // ------------------
             // Validate Patient Data
             // ------------------
-            const {
-                patientName,
-                patientId,
-                patientAge,
-                patientGender,
-                patientPhone,
-                notes,
-                scanType,
-            } = req.body;
-            console.log(req.body)
+            const { scanType } = req.body;
 
-            if (
-                !patientName ||
-                !patientId ||
-                !patientAge ||
-                !patientGender ||
-                !patientPhone ||
-                !scanType
-            ) {
+            let patientPayload;
+
+            try {
+                patientPayload = await getOrCreatePatient(
+                    req.body,
+                    req.user.id,
+                );
+            } catch (error) {
+                removeUploadedFiles(req.files);
+
+                return res
+                    .status(error.message === "Patient not found" ? 404 : 400)
+                    .json({
+                        message: error.message,
+                    });
+            }
+
+            if (!patientPayload?.modelPayload || !scanType) {
                 removeUploadedFiles(req.files);
 
                 return res.status(400).json({
@@ -228,12 +297,7 @@ const createScan = asyncHandler(async (req, res) => {
                     userId: req.user.id,
 
                     // Patient Info
-                    patientName,
-                    patientId,
-                    patientAge,
-                    patientGender,
-                    patientPhone,
-                    notes,
+                    ...patientPayload.modelPayload,
                     scanType,
 
                     // Files
@@ -247,6 +311,11 @@ const createScan = asyncHandler(async (req, res) => {
                 });
 
                 scan = result.scan;
+                scan = await normalizeReturnedScanPatient(
+                    scan,
+                    patientPayload,
+                    req.user.id,
+                );
             } catch (error) {
                 removeUploadedFiles(req.files);
 
@@ -333,24 +402,19 @@ const getScans = asyncHandler(async (req, res) => {
         }
     }
 
-    // SEARCH by scan ID or doctor name
+    // SEARCH by doctor name or patient name
     if (search && search.trim() !== "") {
+        const matchingPatients = await Patient.find({
+            userId: req.user.id,
+            name: { $regex: search, $options: "i" },
+        }).select("_id");
+
         const searchConditions = [
             { radiologist: { $regex: search, $options: "i" } },
 
-            { patientName: { $regex: search, $options: "i" } },
-
-            { patientId: { $regex: search, $options: "i" } },
-
-            { patientPhone: { $regex: search, $options: "i" } },
-
             {
-                $expr: {
-                    $regexMatch: {
-                        input: { $toString: "$_id" },
-                        regex: search,
-                        options: "i",
-                    },
+                patient: {
+                    $in: matchingPatients.map((patient) => patient._id),
                 },
             },
         ];
@@ -364,6 +428,7 @@ const getScans = asyncHandler(async (req, res) => {
     const total = await Scan.countDocuments(filter);
 
     const scans = await Scan.find(filter)
+        .populate("patient")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -382,7 +447,7 @@ const getScans = asyncHandler(async (req, res) => {
 // Get Single Scan
 // ------------------
 const getScanById = asyncHandler(async (req, res) => {
-    const scan = await Scan.findById(req.params.id);
+    const scan = await Scan.findById(req.params.id).populate("patient");
 
     if (!scan) {
         return res.status(404).json({ message: "Scan not found" });
@@ -424,9 +489,7 @@ const runScanXai = asyncHandler(async (req, res) => {
             lastStage?.channelMaps?.[lastStage.channelMaps.length - 1]
                 ?.overlayPath;
         scan.gradCamPath =
-            channelOverlay
-            ?? lastStage?.overlayPath
-            ?? xaiResult.overlayPath;
+            channelOverlay ?? lastStage?.overlayPath ?? xaiResult.overlayPath;
         await scan.save();
 
         res.json({
