@@ -23,6 +23,11 @@ from .xai.exceptions import (
     InvalidXaiMethodError,
     UnsupportedStageError,
 )
+from .xai_cache import (
+    apply_active_xai_view,
+    cascade_result_from_stored,
+    merge_xai_result,
+)
 from .xai_service import (
     cascade_stage_preview_overlay,
     rerun_scan_xai_from_document,
@@ -51,6 +56,8 @@ def _serialize_scan(scan: dict) -> dict:
 
     serialized["_id"] = str(serialized["_id"])
     serialized["userId"] = str(serialized["userId"])
+    if serialized.get("patient") is not None:
+        serialized["patient"] = str(serialized["patient"])
 
     for key in ("createdAt", "updatedAt"):
         if isinstance(serialized.get(key), datetime):
@@ -73,6 +80,75 @@ def _get_file_url(raw_path: str, backend_public_url: str | None) -> str | None:
         return f"{backend_public_url.rstrip('/')}/uploads/{quote(upload_path)}"
     return None
 
+
+async def _resolve_patient_id(
+    payload: AnalyzeScanRequest,
+    user_id: ObjectId,
+) -> ObjectId:
+    database = get_database()
+    patients = database.patients
+    patient_id = payload.patientId.strip() if payload.patientId else None
+    if patient_id in {"undefined", "null", ""}:
+        patient_id = None
+
+    if patient_id:
+        patient_filter = (
+            {
+                "userId": user_id,
+                "$or": [
+                    {"_id": ObjectId(patient_id)},
+                    {"patientId": patient_id},
+                ],
+            }
+            if ObjectId.is_valid(patient_id)
+            else {"userId": user_id, "patientId": patient_id}
+        )
+        patient = await patients.find_one(patient_filter)
+        if patient:
+            return patient["_id"]
+
+        if not all(
+            [
+                payload.patientName,
+                payload.patientAge,
+                payload.patientGender,
+                payload.patientPhone,
+            ]
+        ):
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+    if not all(
+        [
+            payload.patientName,
+            payload.patientAge,
+            payload.patientGender,
+            payload.patientPhone,
+        ]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Patient information is required when patientId is not provided",
+        )
+
+    now = datetime.now(timezone.utc)
+    patient = {
+        "userId": user_id,
+        "name": payload.patientName,
+        "age": payload.patientAge,
+        "gender": payload.patientGender,
+        "phone": payload.patientPhone,
+        "email": payload.patientEmail,
+        "notes": payload.notes or "",
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    if patient_id:
+        patient["patientId"] = patient_id
+
+    insert_result = await patients.insert_one(patient)
+    return insert_result.inserted_id
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -86,11 +162,12 @@ async def list_xai_methods():
             {"id": "gradcam++", "label": "Grad-CAM++"},
             {"id": "integrated_gradients", "label": "Integrated Gradients"},
             {"id": "vanilla_saliency", "label": "Vanilla Saliency"},
-            {"id": "pci", "label": "PCI (per-channel permutation)"},
+            {"id": "pci", "label": "PCI grid (per-channel)"},
+            {"id": "pci_full_channel", "label": "PCI full-channel (per-channel)"},
             {"id": "occlusion", "label": "Occlusion (per-channel)"},
             {"id": "shap", "label": "SHAP (per-channel)"},
         ],
-        "perChannelMethods": ["pci", "occlusion", "shap"],
+        "perChannelMethods": ["pci", "pci_full_channel", "occlusion", "shap"],
         "supportedStages": [1, 2, 3],
         "cascadeDefaultMethod": "gradcam++",
     }
@@ -159,6 +236,28 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
 
+    existing_xai = scan.get("xai")
+    cached_view = apply_active_xai_view(existing_xai, payload.xaiMethod)
+    if cached_view is not None:
+        preview = cascade_stage_preview_overlay(
+            CascadeXaiResultOut(
+                xaiMethod=cached_view["xaiMethod"],
+                cascadePrediction=cached_view["cascadePrediction"],
+                stages=cached_view["stages"],
+            )
+        )
+        await database.scans.update_one(
+            {"_id": object_id},
+            {
+                "$set": {
+                    "xai": cached_view,
+                    "gradCamPath": preview,
+                    "updatedAt": datetime.now(timezone.utc),
+                }
+            },
+        )
+        return cascade_result_from_stored(cached_view)
+
     backend_public_url = os.getenv(
         "BACKEND_PUBLIC_URL",
         "http://127.0.0.1:3000",
@@ -189,12 +288,15 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
             detail=f"XAI explanation failed: {exc}",
         ) from exc
 
+    merged_xai = merge_xai_result(existing_xai, xai_result)
+    preview = cascade_stage_preview_overlay(xai_result)
+
     await database.scans.update_one(
         {"_id": object_id},
         {
             "$set": {
-                "xai": xai_result.model_dump(),
-                "gradCamPath": _cascade_preview_overlay(xai_result),
+                "xai": merged_xai,
+                "gradCamPath": preview,
                 "updatedAt": datetime.now(timezone.utc),
             }
         },
@@ -247,6 +349,7 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         ) from exc
 
     now = datetime.now(timezone.utc)
+    patient_id = await _resolve_patient_id(payload, user_id)
 
     # ------------------
     # Create Scan Document
@@ -255,13 +358,8 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         # User
         "userId": user_id,
 
-        # Patient Information
-        "patientName": payload.patientName,
-        "patientId": payload.patientId,
-        "patientAge": payload.patientAge,
-        "patientGender": payload.patientGender,
-        "patientPhone": payload.patientPhone,
-        "notes": payload.notes,
+        # Patient
+        "patient": patient_id,
         "scanType": payload.scanType,
 
         # Files
@@ -282,7 +380,11 @@ async def analyze_scan(payload: AnalyzeScanRequest):
         "confidenceScores": result.confidenceScores,
         "confidence": result.confidence,
         "gradCamPath": result.gradCamPath,
-        "xai": result.xai.model_dump() if result.xai is not None else None,
+        "xai": (
+            merge_xai_result(None, result.xai)
+            if result.xai is not None
+            else None
+        ),
         "xaiError": result.xaiError,
         "segmentation": (
             result.segmentation.model_dump()

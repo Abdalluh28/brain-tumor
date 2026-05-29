@@ -6,7 +6,6 @@ export default function ScanIdSegmentation({ segmentation }) {
     }
 
     const {
-        modelType,
         maskPath,
         overlayPath,
         classStats = [],
@@ -18,7 +17,8 @@ export default function ScanIdSegmentation({ segmentation }) {
             <div className="flex flex-col gap-1">
                 <p className="font-semibold text-xl">Tumor Segmentation</p>
                 <p className="text-slate-600 dark:text-slate-400 text-sm">
-                    {modelType} model — mask, T1 overlay, class legend, and pixel distribution
+                    Segmentation mask, T1 overlay, class legend, and region
+                    breakdown
                 </p>
                 {metadata.tumorPercentage != null && (
                     <p className="text-sm text-slate-500 dark:text-slate-400">

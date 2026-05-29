@@ -4,7 +4,6 @@ import { PREDICTION_CONFIG } from '@/config/predictionConfig';
 export default function ScanIdResult({
     prediction,
     confidence,
-    modelVersion,
     processedTimeMs,
 }) {
     const safeProcessedTime = processedTimeMs ?? 0;
@@ -30,8 +29,7 @@ export default function ScanIdResult({
 
                 <div className="flex gap-4">
                     <InfoBlock label="Confidence" value={`${confidence} %`} color={textColor} size='font-semibold text-lg' />
-                    <InfoBlock label="Model Version" value={modelVersion ?? 'N/A'} />
-                    <InfoBlock label="Processed Time" value={`${(safeProcessedTime / 1000).toFixed(2)} s`} />
+                    <InfoBlock label="Processing time" value={`${(safeProcessedTime / 1000).toFixed(2)} s`} />
                 </div>
             </div>
 

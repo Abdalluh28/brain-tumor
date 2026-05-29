@@ -11,12 +11,14 @@ export async function createScanApi(data) {
 
     // Append other data to FormData
     const { patientData } = data;
-    formData.append("patientName", patientData.patientName);
     formData.append("patientId", patientData.patientId);
-    formData.append("patientAge", patientData.patientAge);
-    formData.append("patientGender", patientData.patientGender);
-    formData.append("patientPhone", patientData.patientPhone);
-    formData.append("notes", patientData.notes);
+    if (patientData.patientName) {
+        formData.append("patientName", patientData.patientName);
+        formData.append("patientAge", patientData.patientAge);
+        formData.append("patientGender", patientData.patientGender);
+        formData.append("patientPhone", patientData.patientPhone);
+        formData.append("notes", patientData.notes);
+    }
     formData.append("scanType", patientData.scanType);
 
     const res = await api.post("/scan", formData, {

@@ -68,6 +68,7 @@ export default function HistoryTable() {
                         <th className='p-4 font-medium'>Date & Time</th>
                         <th className='p-4 font-medium'>Prediction</th>
                         <th className='p-4 font-medium'>Confidence</th>
+                        <th className='p-4 font-medium'>Explanations</th>
                         <th className='p-4 font-medium'>Status</th>
                         <th className='p-4 font-medium'>Radiologist</th>
                         <th className='p-4 font-medium'>Action</th>

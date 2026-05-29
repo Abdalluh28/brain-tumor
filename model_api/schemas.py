@@ -25,27 +25,39 @@ class ScanFileIn(BaseModel):
 
 class AnalyzeScanRequest(BaseModel):
     userId: str
-    # Patient Information
-    patientName: str = Field(
-        min_length=2,
-        max_length=100,
-    )
-
-    patientId: str = Field(
+    # Existing patient id, or the stored patient identifier when full patient
+    # information is provided for a new patient.
+    patientId: str | None = Field(
+        default=None,
         min_length=1,
         max_length=50,
     )
 
-    patientAge: int = Field(
+    # New patient information. Required only when patientId does not resolve to
+    # an existing patient.
+    patientName: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=100,
+    )
+
+    patientAge: int | None = Field(
+        default=None,
         gt=0,
         lt=120,
     )
 
-    patientGender: Gender
+    patientGender: Gender | None = None
 
-    patientPhone: str = Field(
+    patientPhone: str | None = Field(
+        default=None,
         min_length=6,
         max_length=20,
+    )
+
+    patientEmail: str | None = Field(
+        default=None,
+        max_length=255,
     )
 
     notes: str | None = Field(
@@ -83,6 +95,7 @@ XaiMethod = Literal[
     "integrated_gradients",
     "vanilla_saliency",
     "pci",
+    "pci_full_channel",
     "occlusion",
     "shap",
 ]

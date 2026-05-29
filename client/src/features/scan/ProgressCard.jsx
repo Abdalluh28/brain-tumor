@@ -23,7 +23,7 @@ export default function ProgressCard() {
                     <span>
                         {progressValue === 0 && 'Preprocessing MRI images...'}
                         {progressValue > 0 && progressValue <= 25 && 'Running neural network on all views...'}
-                        {progressValue > 25 && progressValue <= 50 && 'Generating Grad-CAM++ visualizations...'}
+                        {progressValue > 25 && progressValue <= 50 && 'Generating visual explanations...'}
                         {progressValue > 50 && progressValue <= 75 && 'Combining multi-view predictions...'}
                         {progressValue > 75 && 'Finalizing results...'}
                     </span>

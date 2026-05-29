@@ -21,14 +21,15 @@ export function useRunScanXai(scanId) {
                 gradCamPath: lastOverlay ?? data.scan?.gradCamPath,
             };
             queryClient.setQueryData(["scan", scanId], scan);
-            const count = xai?.stages?.length ?? 0;
             toast.success(
-                `XAI updated (${xai?.xaiMethod || "gradcam++"}, ${count} stage${count === 1 ? "" : "s"})`,
+                data.cached
+                    ? "Switched explanation view"
+                    : "Visual explanation updated",
             );
         },
         onError: (err) => {
             const message =
-                err?.response?.data?.message || "XAI explanation failed";
+                err?.response?.data?.message || "Could not update the visual explanation";
             toast.error(message);
         },
     });

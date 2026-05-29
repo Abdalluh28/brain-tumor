@@ -52,40 +52,15 @@ const scanSchema = new mongoose.Schema(
             required: true,
         },
 
-        patientName: {
-            type: String,
+        patient: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Patient",
             required: true,
-        },
-
-        patientId: {
-            type: String,
-            required: true,
-        },
-
-        patientAge: {
-            type: Number,
-            required: true,
-        },
-
-        patientGender: {
-            type: String,
-            enum: ["male", "female"],
-            required: true,
-        },
-
-        patientPhone: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-
-        notes: {
-            type: String,
         },
 
         scanType: {
             type: String,
-            enum: ["MRI", '3D'],
+            enum: ["MRI", "3D"],
             required: true,
         },
 
@@ -128,6 +103,7 @@ const scanSchema = new mongoose.Schema(
         xai: {
             xaiMethod: String,
             cascadePrediction: String,
+            availableViews: [String],
             stages: [
                 {
                     stage: Number,
@@ -153,6 +129,36 @@ const scanSchema = new mongoose.Schema(
                     },
                 },
             ],
+            cache: {
+                type: Map,
+                of: {
+                    stages: [
+                        {
+                            stage: Number,
+                            targetClassIndex: Number,
+                            targetClassLabel: String,
+                            displayChannel: Number,
+                            displayModality: String,
+                            originalPath: String,
+                            heatmapPath: String,
+                            overlayPath: String,
+                            channelMaps: [
+                                {
+                                    modality: String,
+                                    channelIndex: Number,
+                                    channelImportance: Number,
+                                    originalPath: String,
+                                    heatmapPath: String,
+                                    overlayPath: String,
+                                },
+                            ],
+                            metadata: {
+                                type: Object,
+                            },
+                        },
+                    ],
+                },
+            },
         },
 
         segmentation: {

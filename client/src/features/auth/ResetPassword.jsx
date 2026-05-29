@@ -60,7 +60,7 @@ export default function ResetPassword() {
                         Advanced AI-Powered Brain Tumor Classification
                     </p>
                     <p className=' text-slate-600 dark:text-slate-400'>
-                        Accurate diagnosis with explainable AI technology using Grad-CAM visualization
+                        Accurate diagnosis with clear visual explanations of each prediction
                     </p>
                 </div>
             </div>
