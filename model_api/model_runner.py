@@ -12,7 +12,7 @@ from .segmentation import (
     resolve_segmentation_output_dir,
     run_segmentation,
 )
-from .xai_service import run_cascade_xai
+from .xai_service import cascade_stage_preview_overlay, run_cascade_xai
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
@@ -126,7 +126,9 @@ def run_model(
                     backend_public_url=backend_public_url,
                     job_id=xai_job_id,
                 )
-                grad_cam_path = xai_result.stages[-1].overlayPath
+                preview = cascade_stage_preview_overlay(xai_result.stages[-1])
+                if preview:
+                    grad_cam_path = preview
                 xai_error = None
                 if method != xai_method:
                     logger.info(

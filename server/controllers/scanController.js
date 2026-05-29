@@ -419,8 +419,13 @@ const runScanXai = asyncHandler(async (req, res) => {
 
         scan.xai = xaiResult;
         scan.xaiError = null;
+        const lastStage = xaiResult.stages?.[xaiResult.stages.length - 1];
+        const channelOverlay =
+            lastStage?.channelMaps?.[lastStage.channelMaps.length - 1]
+                ?.overlayPath;
         scan.gradCamPath =
-            xaiResult.stages?.[xaiResult.stages.length - 1]?.overlayPath
+            channelOverlay
+            ?? lastStage?.overlayPath
             ?? xaiResult.overlayPath;
         await scan.save();
 

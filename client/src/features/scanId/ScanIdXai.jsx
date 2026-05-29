@@ -10,7 +10,9 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    isPermutationMethod,
     OTHER_XAI_METHODS,
+    PERMUTATION_XAI_METHODS,
     PRIMARY_XAI_METHOD,
 } from "@/services/xaiApi";
 import { useRunScanXai } from "./useRunScanXai";
@@ -20,6 +22,9 @@ const METHOD_LABELS = {
     "gradcam++": "Grad-CAM++",
     integrated_gradients: "Integrated Gradients",
     vanilla_saliency: "Vanilla Saliency",
+    pci: "PCI (per-channel)",
+    occlusion: "Occlusion (per-channel)",
+    shap: "SHAP (per-channel)",
 };
 
 const STAGE_TITLES = {
@@ -28,13 +33,20 @@ const STAGE_TITLES = {
     3: "Stage 3 — HGG vs LGG",
 };
 
+const MODALITY_LABELS = {
+    t1n: "T1n",
+    t1c: "T1c",
+    t2w: "T2w",
+    t2f: "FLAIR",
+};
+
 /** Normalize legacy single-stage xai documents. */
 function normalizeXaiStages(xai) {
     if (!xai) return [];
     if (Array.isArray(xai.stages) && xai.stages.length > 0) {
         return xai.stages;
     }
-    if (xai.stage != null && xai.overlayPath) {
+    if (xai.stage != null && (xai.overlayPath || xai.channelMaps)) {
         return [xai];
     }
     return [];
@@ -80,6 +92,7 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
     const activeMethod = xai.xaiMethod;
     const activeLabel = METHOD_LABELS[activeMethod] || activeMethod;
     const isPrimaryMethod = activeMethod === PRIMARY_XAI_METHOD.id;
+    const isPermutation = isPermutationMethod(activeMethod);
     const cascadePrediction = xai.cascadePrediction;
 
     const handleApplyOtherMethod = () => {
@@ -102,16 +115,33 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                         <strong>{cascadePrediction}</strong>
                         {" — "}
                         <strong>{activeLabel}</strong>
-                        {" · "}
-                        {stages.length} heatmap
-                        {stages.length === 1 ? "" : "s"}
-                        {" "}
-                        (stages {stages.map((s) => s.stage).join(", ")})
+                        {isPermutation ? (
+                            <>
+                                {" · "}
+                                per-modality heatmaps (stages{" "}
+                                {stages.map((s) => s.stage).join(", ")})
+                            </>
+                        ) : (
+                            <>
+                                {" · "}
+                                {stages.length} heatmap
+                                {stages.length === 1 ? "" : "s"}
+                                {" "}
+                                (stages {stages.map((s) => s.stage).join(", ")})
+                            </>
+                        )}
                     </p>
                     {!isPrimaryMethod && (
                         <p className="text-xs text-amber-700 dark:text-amber-400">
                             Showing an alternate XAI method. New scans use{" "}
                             {PRIMARY_XAI_METHOD.label} by default.
+                        </p>
+                    )}
+                    {isPermutation && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            PCI, occlusion, and SHAP show one overlay per MRI
+                            channel so you can see which modality drove the
+                            decision. Grad-CAM methods use a single combined map.
                         </p>
                     )}
                 </div>
@@ -128,38 +158,37 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                             Other XAI methods
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Other XAI methods</DialogTitle>
                             <DialogDescription>
                                 Re-run explainability for all cascade stages on
-                                this scan (1–3 heatmaps depending on prediction).
+                                this scan. Permutation methods (PCI, occlusion,
+                                SHAP) may take longer.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="flex flex-col gap-2 py-2">
-                            {OTHER_XAI_METHODS.map((method) => (
-                                <button
-                                    key={method.id}
-                                    type="button"
-                                    disabled={isLoading}
-                                    onClick={() => setSelectedMethod(method.id)}
-                                    className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                                        selectedMethod === method.id
-                                            ? "border-primary bg-primary/5"
-                                            : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/40"
-                                    }`}
-                                >
-                                    <span className="font-medium">
-                                        {method.label}
-                                    </span>
-                                    {activeMethod === method.id && (
-                                        <span className="text-xs text-slate-500">
-                                            Current
-                                        </span>
-                                    )}
-                                </button>
-                            ))}
+                        <div className="flex flex-col gap-4 py-2">
+                            <MethodGroup
+                                title="Gradient methods"
+                                description="One heatmap per cascade stage"
+                                methods={OTHER_XAI_METHODS.filter(
+                                    (m) => !isPermutationMethod(m.id),
+                                )}
+                                selectedMethod={selectedMethod}
+                                activeMethod={activeMethod}
+                                isLoading={isLoading}
+                                onSelect={setSelectedMethod}
+                            />
+                            <MethodGroup
+                                title="Permutation / attribution"
+                                description="One heatmap per MRI channel"
+                                methods={PERMUTATION_XAI_METHODS}
+                                selectedMethod={selectedMethod}
+                                activeMethod={activeMethod}
+                                isLoading={isLoading}
+                                onSelect={setSelectedMethod}
+                            />
                         </div>
 
                         <DialogFooter>
@@ -197,6 +226,7 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                     <StageXaiSection
                         key={stageResult.stage}
                         stageResult={stageResult}
+                        isPermutation={isPermutation}
                     />
                 ))}
             </div>
@@ -204,15 +234,88 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
     );
 }
 
-function StageXaiSection({ stageResult }) {
+function MethodGroup({
+    title,
+    description,
+    methods,
+    selectedMethod,
+    activeMethod,
+    isLoading,
+    onSelect,
+}) {
+    return (
+        <div className="flex flex-col gap-2">
+            <div>
+                <p className="text-sm font-medium">{title}</p>
+                <p className="text-xs text-slate-500">{description}</p>
+            </div>
+            {methods.map((method) => (
+                <button
+                    key={method.id}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => onSelect(method.id)}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                        selectedMethod === method.id
+                            ? "border-primary bg-primary/5"
+                            : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                    }`}
+                >
+                    <span className="font-medium">{method.label}</span>
+                    {activeMethod === method.id && (
+                        <span className="text-xs text-slate-500">Current</span>
+                    )}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function StageXaiSection({ stageResult, isPermutation }) {
     const title =
         STAGE_TITLES[stageResult.stage]
         ?? `Stage ${stageResult.stage}`;
-    const subtitle = `${stageResult.targetClassLabel}${
-        stageResult.displayModality
-            ? ` · display ${stageResult.displayModality}`
-            : ""
-    }`;
+    const subtitle = stageResult.targetClassLabel;
+
+    const channelMaps = stageResult.channelMaps ?? [];
+    const hasChannelMaps = channelMaps.length > 0;
+
+    if (hasChannelMaps) {
+        const importances = stageResult.metadata?.permutationImportance;
+
+        return (
+            <section className="flex flex-col gap-4 border-t border-slate-200 dark:border-slate-700 pt-6 first:border-t-0 first:pt-0">
+                <div>
+                    <h3 className="text-lg font-semibold">{title}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Explaining class: <strong>{subtitle}</strong>
+                        {" — "}
+                        one heatmap per input channel
+                    </p>
+                </div>
+
+                {importances && (
+                    <div className="flex flex-wrap gap-3 text-xs">
+                        {Object.entries(importances).map(([modality, value]) => (
+                            <span
+                                key={modality}
+                                className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1"
+                            >
+                                {MODALITY_LABELS[modality] ?? modality}:{" "}
+                                <strong>{Number(value).toFixed(4)}</strong>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {channelMaps.map((channel) => (
+                        <ChannelMapPanel key={channel.modality} channel={channel} />
+                    ))}
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="flex flex-col gap-4 border-t border-slate-200 dark:border-slate-700 pt-6 first:border-t-0 first:pt-0">
@@ -220,6 +323,12 @@ function StageXaiSection({ stageResult }) {
                 <h3 className="text-lg font-semibold">{title}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                     Explaining class: <strong>{subtitle}</strong>
+                    {stageResult.displayModality && (
+                        <>
+                            {" · "}
+                            display {stageResult.displayModality}
+                        </>
+                    )}
                 </p>
             </div>
 
@@ -242,17 +351,44 @@ function StageXaiSection({ stageResult }) {
     );
 }
 
-function ImagePanel({ title, src }) {
+function ChannelMapPanel({ channel }) {
+    const label = MODALITY_LABELS[channel.modality] ?? channel.modality;
+
+    return (
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-600 p-4">
+            <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">{label}</p>
+                <span className="text-xs text-slate-500">
+                    importance{" "}
+                    <strong>{channel.channelImportance?.toFixed(4) ?? "—"}</strong>
+                </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <ImagePanel title="Original" src={channel.originalPath} compact />
+                <ImagePanel title="Heatmap" src={channel.heatmapPath} compact />
+                <ImagePanel title="Overlay" src={channel.overlayPath} compact />
+            </div>
+        </div>
+    );
+}
+
+function ImagePanel({ title, src, compact = false }) {
     if (!src) return null;
 
     return (
         <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-600 p-3">
             <p className="text-sm font-medium">{title}</p>
-            <div className="flex justify-center items-center min-h-[180px] bg-slate-50 dark:bg-slate-900/40 rounded-md">
+            <div
+                className={`flex justify-center items-center bg-slate-50 dark:bg-slate-900/40 rounded-md ${
+                    compact ? "min-h-[120px]" : "min-h-[180px]"
+                }`}
+            >
                 <img
                     src={src}
                     alt={title}
-                    className="max-h-56 w-full object-contain rounded-md"
+                    className={`w-full object-contain rounded-md ${
+                        compact ? "max-h-36" : "max-h-56"
+                    }`}
                 />
             </div>
         </div>

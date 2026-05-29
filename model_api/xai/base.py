@@ -10,20 +10,42 @@ from .exceptions import (
     InvalidTargetLayerError,
     InvalidXaiMethodError,
 )
+from .channel_attribution import (
+    ChannelExplanationResult,
+    generate_channel_explanations,
+)
 from .gradcam import compute_gradcam
 from .gradcam_pp import compute_gradcam_pp
 from .integrated_gradients import compute_integrated_gradients
 from .saliency import compute_vanilla_saliency
 from .utils import find_last_conv2d_layer, normalize_heatmap, resolve_target_layer
 
-XaiMethod = Literal["gradcam", "gradcam++", "integrated_gradients", "vanilla_saliency"]
+GradXaiMethod = Literal["gradcam", "gradcam++", "integrated_gradients", "vanilla_saliency"]
+PermutationXaiMethodName = Literal["pci", "occlusion", "shap"]
+XaiMethod = GradXaiMethod | PermutationXaiMethodName
 
-XAI_METHODS: tuple[XaiMethod, ...] = (
+GRAD_XAI_METHODS: tuple[GradXaiMethod, ...] = (
     "gradcam",
     "gradcam++",
     "integrated_gradients",
     "vanilla_saliency",
 )
+
+PERMUTATION_XAI_METHODS: tuple[PermutationXaiMethodName, ...] = (
+    "pci",
+    "occlusion",
+    "shap",
+)
+
+XAI_METHODS: tuple[XaiMethod, ...] = GRAD_XAI_METHODS + PERMUTATION_XAI_METHODS
+
+
+def is_permutation_method(method: str) -> bool:
+    return method in PERMUTATION_XAI_METHODS
+
+
+def is_grad_method(method: str) -> bool:
+    return method in GRAD_XAI_METHODS
 
 
 @dataclass(frozen=True)
@@ -59,9 +81,11 @@ def generate_explanation(
         ig_steps: Integration steps for Integrated Gradients.
         attribution_reduction: Channel reduction for IG / saliency maps.
     """
-    if method not in XAI_METHODS:
+    if method not in GRAD_XAI_METHODS:
         raise InvalidXaiMethodError(
-            f"Invalid xai method '{method}'. Supported: {', '.join(XAI_METHODS)}"
+            f"'{method}' is not a gradient-based method. "
+            f"Use generate_permutation_channel_explanations for: "
+            f"{', '.join(PERMUTATION_XAI_METHODS)}"
         )
 
     try:
@@ -118,3 +142,30 @@ def generate_explanation(
 
 def auto_detect_conv_layer(model):
     return find_last_conv2d_layer(model)
+
+
+def generate_permutation_channel_explanations(
+    model,
+    input_tensor,
+    method: PermutationXaiMethod,
+    class_index: int,
+    modalities: list[str],
+) -> ChannelExplanationResult:
+    """Per-channel maps for PCI, occlusion, and SHAP (not used for Grad-CAM)."""
+    if method not in PERMUTATION_XAI_METHODS:
+        raise InvalidXaiMethodError(
+            f"'{method}' is not a permutation-based method. "
+            f"Use: {', '.join(PERMUTATION_XAI_METHODS)}"
+        )
+    try:
+        return generate_channel_explanations(
+            model,
+            input_tensor,
+            method,
+            class_index,
+            list(modalities),
+        )
+    except Exception as exc:
+        raise ExplanationGenerationError(
+            f"Failed to generate '{method}' channel explanations: {exc}"
+        ) from exc

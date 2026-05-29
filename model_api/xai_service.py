@@ -13,12 +13,18 @@ from .schemas import (
     CascadeXaiResultOut,
     Prediction,
     ScanFileIn,
+    XaiChannelMapOut,
     XaiExplainResponse,
     XaiImageOut,
     XaiMetadataOut,
     XaiStageResultOut,
 )
-from .xai.base import XaiMethod, generate_explanation
+from .xai.base import (
+    XaiMethod,
+    generate_explanation,
+    generate_permutation_channel_explanations,
+    is_permutation_method,
+)
 from .xai.cascade import (
     resolve_cascade_target_class_index,
     resolve_cascade_xai_stages,
@@ -48,6 +54,13 @@ from .xai.utils import (
 )
 
 AttributionReduction = Literal["mean", "max"]
+
+
+def cascade_stage_preview_overlay(stage: XaiStageResultOut) -> str | None:
+    """Best overlay URL for thumbnails (grad or per-channel methods)."""
+    if stage.channelMaps:
+        return stage.channelMaps[-1].overlayPath
+    return stage.overlayPath or None
 
 
 def _xai_method_filename_slug(method: str) -> str:
@@ -180,6 +193,114 @@ def _build_xai_core(
     )
 
 
+def _build_channel_xai_core(
+    files: list[ScanFileIn],
+    *,
+    stage: int,
+    xai_method: XaiMethod,
+    cascade_class_index: int,
+    output_dir: Path,
+    method_slug: str,
+    backend_public_url: str | None,
+) -> tuple:
+    """Per-modality heatmaps for PCI, occlusion, or SHAP."""
+    model, config = load_stage_model(stage)
+    local_files = _scan_files_with_local_paths(files)
+    input_tensor = prepare_stage_input(local_files, config)
+
+    predicted_index, predicted_label, probabilities, raw_probs = predict_stage(
+        model, input_tensor, config
+    )
+    class_index = cascade_class_index
+
+    if class_index < 0 or class_index >= len(config.class_labels):
+        raise ValueError(
+            f"target_class {class_index} out of range for stage {stage} "
+            f"(0-{len(config.class_labels) - 1})"
+        )
+
+    batch = tf.constant(np.expand_dims(input_tensor, axis=0), dtype=tf.float32)
+    channel_result = generate_permutation_channel_explanations(
+        model,
+        batch,
+        xai_method,
+        class_index,
+        list(config.modalities),
+    )
+
+    channel_maps_out: list[XaiChannelMapOut] = []
+    for channel_index, modality in enumerate(config.modalities):
+        heatmap = channel_result.heatmaps[channel_index]
+        grayscale = extract_display_channel(batch.numpy(), channel_index)
+        heatmap_rgb = heatmap_to_rgb(heatmap)
+        overlay_rgb = blend_overlay(grayscale, heatmap)
+        importance = float(channel_result.channel_importances[channel_index])
+
+        original_file = output_dir / f"original_stage{stage}_{modality}.png"
+        heatmap_file = output_dir / f"heatmap_stage{stage}_{modality}_{method_slug}.png"
+        overlay_file = output_dir / f"overlay_stage{stage}_{modality}_{method_slug}.png"
+
+        save_png(grayscale, original_file)
+        save_png(heatmap_rgb, heatmap_file)
+        save_png(overlay_rgb, overlay_file)
+
+        channel_maps_out.append(
+            XaiChannelMapOut(
+                modality=modality,
+                channelIndex=channel_index,
+                channelImportance=round(importance, 6),
+                originalPath=build_public_upload_url(
+                    backend_public_url, original_file
+                ),
+                heatmapPath=build_public_upload_url(
+                    backend_public_url, heatmap_file
+                ),
+                overlayPath=build_public_upload_url(
+                    backend_public_url, overlay_file
+                ),
+            )
+        )
+
+    display_index = 0
+    display_modality = config.modalities[0]
+    top_channel = int(
+        np.argmax(channel_result.channel_importances)
+        if channel_result.channel_importances
+        else 0
+    )
+    display_index = top_channel
+    display_modality = config.modalities[top_channel]
+
+    metadata = {
+        "stage": stage,
+        "stageLabels": list(config.class_labels),
+        "inputShape": list(input_tensor.shape),
+        "displayModality": display_modality,
+        "displayChannelIndex": display_index,
+        "attributionMode": "per_channel",
+        "targetLayer": None,
+        "rawProbabilities": {
+            label: float(value)
+            for label, value in zip(config.class_labels, raw_probs, strict=True)
+        },
+        "stagePredictedLabel": predicted_label,
+        "stagePredictedIndex": predicted_index,
+        **channel_result.metadata,
+    }
+
+    return (
+        config,
+        class_index,
+        predicted_label,
+        predicted_index,
+        probabilities,
+        display_index,
+        display_modality,
+        channel_maps_out,
+        metadata,
+    )
+
+
 def run_cascade_xai(
     files: list[ScanFileIn],
     pipeline_result: PipelineResult,
@@ -210,32 +331,54 @@ def run_cascade_xai(
         class_index = resolve_stage_class_index(stage, pipeline_result)
 
         try:
-            (
-                config,
-                class_index,
-                _predicted_label,
-                _predicted_index,
-                _probabilities,
-                display_index,
-                display_modality,
-                grayscale,
-                heatmap_rgb,
-                overlay_rgb,
-                _explanation,
-                metadata,
-            ) = _build_xai_core(
-                files,
-                stage=stage,
-                xai_method=xai_method,
-                target_class=None,
-                target_layer=target_layer,
-                display_channel=display_channel,
-                ig_steps=ig_steps,
-                attribution_reduction=attribution_reduction,
-                cascade_prediction=None,
-                pipeline_result=None,
-                cascade_class_index=class_index,
-            )
+            if is_permutation_method(xai_method):
+                (
+                    config,
+                    class_index,
+                    _predicted_label,
+                    _predicted_index,
+                    _probabilities,
+                    display_index,
+                    display_modality,
+                    channel_maps,
+                    metadata,
+                ) = _build_channel_xai_core(
+                    files,
+                    stage=stage,
+                    xai_method=xai_method,
+                    cascade_class_index=class_index,
+                    output_dir=output_dir,
+                    method_slug=method_slug,
+                    backend_public_url=backend_public_url,
+                )
+            else:
+                (
+                    config,
+                    class_index,
+                    _predicted_label,
+                    _predicted_index,
+                    _probabilities,
+                    display_index,
+                    display_modality,
+                    grayscale,
+                    heatmap_rgb,
+                    overlay_rgb,
+                    _explanation,
+                    metadata,
+                ) = _build_xai_core(
+                    files,
+                    stage=stage,
+                    xai_method=xai_method,
+                    target_class=None,
+                    target_layer=target_layer,
+                    display_channel=display_channel,
+                    ig_steps=ig_steps,
+                    attribution_reduction=attribution_reduction,
+                    cascade_prediction=None,
+                    pipeline_result=None,
+                    cascade_class_index=class_index,
+                )
+                channel_maps = None
         except (
             InvalidXaiMethodError,
             InvalidTargetLayerError,
@@ -249,37 +392,50 @@ def run_cascade_xai(
                 f"Stage {stage} XAI failed: {exc}"
             ) from exc
 
-        original_file = output_dir / f"original_stage{stage}.png"
-        heatmap_file = output_dir / f"heatmap_stage{stage}.png"
-        overlay_file = output_dir / f"overlay_stage{stage}_{method_slug}.png"
-
-        save_png(grayscale, original_file)
-        save_png(heatmap_rgb, heatmap_file)
-        save_png(overlay_rgb, overlay_file)
-
         metadata["cascadePrediction"] = cascade_prediction
         metadata["explainedClassIndex"] = class_index
         metadata["explainedClassLabel"] = config.class_labels[class_index]
 
-        stage_results.append(
-            XaiStageResultOut(
-                stage=stage,
-                targetClassIndex=class_index,
-                targetClassLabel=config.class_labels[class_index],
-                displayChannel=display_index,
-                displayModality=display_modality,
-                originalPath=build_public_upload_url(
-                    backend_public_url, original_file
-                ),
-                heatmapPath=build_public_upload_url(
-                    backend_public_url, heatmap_file
-                ),
-                overlayPath=build_public_upload_url(
-                    backend_public_url, overlay_file
-                ),
-                metadata=metadata,
+        if is_permutation_method(xai_method):
+            stage_results.append(
+                XaiStageResultOut(
+                    stage=stage,
+                    targetClassIndex=class_index,
+                    targetClassLabel=config.class_labels[class_index],
+                    displayChannel=display_index,
+                    displayModality=display_modality,
+                    channelMaps=channel_maps,
+                    metadata=metadata,
+                )
             )
-        )
+        else:
+            original_file = output_dir / f"original_stage{stage}.png"
+            heatmap_file = output_dir / f"heatmap_stage{stage}.png"
+            overlay_file = output_dir / f"overlay_stage{stage}_{method_slug}.png"
+
+            save_png(grayscale, original_file)
+            save_png(heatmap_rgb, heatmap_file)
+            save_png(overlay_rgb, overlay_file)
+
+            stage_results.append(
+                XaiStageResultOut(
+                    stage=stage,
+                    targetClassIndex=class_index,
+                    targetClassLabel=config.class_labels[class_index],
+                    displayChannel=display_index,
+                    displayModality=display_modality,
+                    originalPath=build_public_upload_url(
+                        backend_public_url, original_file
+                    ),
+                    heatmapPath=build_public_upload_url(
+                        backend_public_url, heatmap_file
+                    ),
+                    overlayPath=build_public_upload_url(
+                        backend_public_url, overlay_file
+                    ),
+                    metadata=metadata,
+                )
+            )
 
     total_ms = round((time.perf_counter() - started) * 1000, 2)
     for result in stage_results:

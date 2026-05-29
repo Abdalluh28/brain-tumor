@@ -9,7 +9,11 @@ export function useRunScanXai(scanId) {
         mutationFn: (xaiMethod) => runScanXaiApi(scanId, { xaiMethod }),
         onSuccess: (data) => {
             const xai = data.xai ?? data.scan?.xai;
-            const lastOverlay = xai?.stages?.[xai.stages.length - 1]?.overlayPath;
+            const lastStage = xai?.stages?.[xai.stages.length - 1];
+            const channelMaps = lastStage?.channelMaps;
+            const lastOverlay =
+                channelMaps?.[channelMaps.length - 1]?.overlayPath
+                ?? lastStage?.overlayPath;
             const scan = {
                 ...data.scan,
                 xai,

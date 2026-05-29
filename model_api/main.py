@@ -23,7 +23,11 @@ from .xai.exceptions import (
     InvalidXaiMethodError,
     UnsupportedStageError,
 )
-from .xai_service import rerun_scan_xai_from_document, run_stage_xai
+from .xai_service import (
+    cascade_stage_preview_overlay,
+    rerun_scan_xai_from_document,
+    run_stage_xai,
+)
 
 app = FastAPI(title="Brain Tumor Model API")
 
@@ -34,6 +38,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _cascade_preview_overlay(xai_result: CascadeXaiResultOut) -> str | None:
+    if not xai_result.stages:
+        return None
+    return cascade_stage_preview_overlay(xai_result.stages[-1])
 
 
 def _serialize_scan(scan: dict) -> dict:
@@ -76,7 +86,11 @@ async def list_xai_methods():
             {"id": "gradcam++", "label": "Grad-CAM++"},
             {"id": "integrated_gradients", "label": "Integrated Gradients"},
             {"id": "vanilla_saliency", "label": "Vanilla Saliency"},
+            {"id": "pci", "label": "PCI (per-channel permutation)"},
+            {"id": "occlusion", "label": "Occlusion (per-channel)"},
+            {"id": "shap", "label": "SHAP (per-channel)"},
         ],
+        "perChannelMethods": ["pci", "occlusion", "shap"],
         "supportedStages": [1, 2, 3],
         "cascadeDefaultMethod": "gradcam++",
     }
@@ -180,7 +194,7 @@ async def rerun_scan_xai(scan_id: str, payload: ScanXaiMethodRequest):
         {
             "$set": {
                 "xai": xai_result.model_dump(),
-                "gradCamPath": xai_result.stages[-1].overlayPath,
+                "gradCamPath": _cascade_preview_overlay(xai_result),
                 "updatedAt": datetime.now(timezone.utc),
             }
         },

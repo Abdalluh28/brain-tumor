@@ -138,6 +138,16 @@ const scanSchema = new mongoose.Schema(
                     originalPath: String,
                     heatmapPath: String,
                     overlayPath: String,
+                    channelMaps: [
+                        {
+                            modality: String,
+                            channelIndex: Number,
+                            channelImportance: Number,
+                            originalPath: String,
+                            heatmapPath: String,
+                            overlayPath: String,
+                        },
+                    ],
                     metadata: {
                         type: Object,
                     },

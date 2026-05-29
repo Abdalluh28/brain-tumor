@@ -77,7 +77,15 @@ class SegmentationResult(BaseModel):
     metadata: dict
 
 
-XaiMethod = Literal["gradcam", "gradcam++", "integrated_gradients", "vanilla_saliency"]
+XaiMethod = Literal[
+    "gradcam",
+    "gradcam++",
+    "integrated_gradients",
+    "vanilla_saliency",
+    "pci",
+    "occlusion",
+    "shap",
+]
 AttributionReduction = Literal["mean", "max"]
 
 
@@ -136,6 +144,17 @@ class XaiExplainResponse(BaseModel):
     metadata: XaiMetadataOut
 
 
+class XaiChannelMapOut(BaseModel):
+    """Per-modality heatmap for permutation / occlusion / SHAP methods."""
+
+    modality: str
+    channelIndex: int
+    channelImportance: float
+    originalPath: str
+    heatmapPath: str
+    overlayPath: str
+
+
 class XaiStageResultOut(BaseModel):
     """Per-stage XAI artifacts along the cascade path."""
 
@@ -144,9 +163,10 @@ class XaiStageResultOut(BaseModel):
     targetClassLabel: str
     displayChannel: int
     displayModality: str
-    originalPath: str
-    heatmapPath: str
-    overlayPath: str
+    originalPath: str = ""
+    heatmapPath: str = ""
+    overlayPath: str = ""
+    channelMaps: list[XaiChannelMapOut] | None = None
     metadata: dict
 
 
