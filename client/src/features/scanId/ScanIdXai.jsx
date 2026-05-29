@@ -10,8 +10,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    GRAD_XAI_METHODS,
     isPermutationMethod,
-    OTHER_XAI_METHODS,
     PERMUTATION_XAI_METHODS,
     PRIMARY_XAI_METHOD,
 } from "@/services/xaiApi";
@@ -55,11 +55,7 @@ function normalizeXaiStages(xai) {
 export default function ScanIdXai({ scanId, xai, xaiError }) {
     const { runXai, isLoading } = useRunScanXai(scanId);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedMethod, setSelectedMethod] = useState(
-        OTHER_XAI_METHODS.find((m) => m.id !== PRIMARY_XAI_METHOD.id)?.id
-            ?? OTHER_XAI_METHODS[0]?.id
-            ?? "gradcam",
-    );
+    const [selectedMethod, setSelectedMethod] = useState("gradcam");
 
     const stages = normalizeXaiStages(xai);
 
@@ -111,25 +107,15 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                 <div className="flex flex-col gap-2">
                     <p className="font-semibold text-xl">Explainable AI (XAI)</p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Cascade path for{" "}
+                        Final prediction{" "}
                         <strong>{cascadePrediction}</strong>
                         {" — "}
                         <strong>{activeLabel}</strong>
-                        {isPermutation ? (
-                            <>
-                                {" · "}
-                                per-modality heatmaps (stages{" "}
-                                {stages.map((s) => s.stage).join(", ")})
-                            </>
-                        ) : (
-                            <>
-                                {" · "}
-                                {stages.length} heatmap
-                                {stages.length === 1 ? "" : "s"}
-                                {" "}
-                                (stages {stages.map((s) => s.stage).join(", ")})
-                            </>
-                        )}
+                        {" · "}
+                        Stage 2 (EfficientNet GLI / METS / OTHER)
+                        {isPermutation
+                            ? " · per-modality heatmaps"
+                            : " · combined heatmap"}
                     </p>
                     {!isPrimaryMethod && (
                         <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -162,19 +148,17 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                         <DialogHeader>
                             <DialogTitle>Other XAI methods</DialogTitle>
                             <DialogDescription>
-                                Re-run explainability for all cascade stages on
-                                this scan. Permutation methods (PCI, occlusion,
-                                SHAP) may take longer.
+                                Re-run stage-2 explainability on this scan.
+                                Permutation methods (PCI, occlusion, SHAP) may
+                                take longer.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div className="flex flex-col gap-4 py-2">
                             <MethodGroup
                                 title="Gradient methods"
-                                description="One heatmap per cascade stage"
-                                methods={OTHER_XAI_METHODS.filter(
-                                    (m) => !isPermutationMethod(m.id),
-                                )}
+                                description="One combined heatmap (stage 2)"
+                                methods={GRAD_XAI_METHODS}
                                 selectedMethod={selectedMethod}
                                 activeMethod={activeMethod}
                                 isLoading={isLoading}
@@ -384,6 +368,7 @@ function ImagePanel({ title, src, compact = false }) {
                 }`}
             >
                 <img
+                    key={src}
                     src={src}
                     alt={title}
                     className={`w-full object-contain rounded-md ${

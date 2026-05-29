@@ -13,6 +13,7 @@ from .config import (
     STAGE2_MODEL_PATH,
     STAGE3_MODEL_PATH,
 )
+from .stage2_loader import load_stage2_model
 from .preprocessing import build_multichannel_tensor, map_files_to_modalities
 from .schemas import Prediction, ScanFileIn
 
@@ -64,7 +65,7 @@ def _load_models() -> tuple:
             raise FileNotFoundError(f"Model file not found: {path}")
 
     stage1 = keras.models.load_model(STAGE1_MODEL_PATH, compile=False)
-    stage2 = keras.models.load_model(STAGE2_MODEL_PATH, compile=False)
+    stage2 = load_stage2_model()
     stage3 = keras.models.load_model(STAGE3_MODEL_PATH, compile=False)
     return stage1, stage2, stage3
 

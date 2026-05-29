@@ -4,12 +4,17 @@ from ..pipeline import PipelineResult, STAGE2_LABELS
 from ..schemas import Prediction
 
 
-def resolve_cascade_xai_stages(pipeline_result: PipelineResult) -> list[int]:
+def resolve_cascade_xai_stages(_pipeline_result: PipelineResult) -> list[int]:
     """
-    Stages executed on this scan's cascade path (and thus to explain).
+    Stages to explain with XAI.
 
-    Healthy -> [1]; Metastasis/Others -> [1, 2]; HGG/LGG -> [1, 2, 3].
+    Product policy: only stage 2 (EfficientNet GLI / METS / OTHER) is shown.
     """
+    return [2]
+
+
+def resolve_cascade_xai_stages_full_path(pipeline_result: PipelineResult) -> list[int]:
+    """Stages executed on the cascade path (classification only, not XAI)."""
     order = {"stage1": 1, "stage2": 2, "stage3": 3}
     return [order[key] for key in pipeline_result.stages_run if key in order]
 

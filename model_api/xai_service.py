@@ -315,9 +315,10 @@ def run_cascade_xai(
     attribution_reduction: AttributionReduction = "mean",
 ) -> CascadeXaiResultOut:
     """
-    Generate Grad-CAM++ (or fallback) heatmaps for every stage on the cascade path.
+    Generate XAI heatmaps for stage 2 only (EfficientNet GLI / METS / OTHER).
 
-    Healthy -> stage 1 only; Metastasis/Others -> stages 1–2; HGG/LGG -> stages 1–3.
+    The full cascade still runs at classification time; explainability is fixed
+    to stage 2 so users compare modalities on the same model.
     """
     started = time.perf_counter()
     stages_to_run = resolve_cascade_xai_stages(pipeline_result)
@@ -328,7 +329,12 @@ def run_cascade_xai(
     stage_results: list[XaiStageResultOut] = []
 
     for stage in stages_to_run:
-        class_index = resolve_stage_class_index(stage, pipeline_result)
+        stage_key = f"stage{stage}"
+        if stage_key in pipeline_result.stage_details:
+            class_index = resolve_stage_class_index(stage, pipeline_result)
+        else:
+            # e.g. Healthy scans stop before stage 2 — explain predicted stage-2 class
+            class_index = None
 
         try:
             if is_permutation_method(xai_method):
@@ -410,7 +416,7 @@ def run_cascade_xai(
             )
         else:
             original_file = output_dir / f"original_stage{stage}.png"
-            heatmap_file = output_dir / f"heatmap_stage{stage}.png"
+            heatmap_file = output_dir / f"heatmap_stage{stage}_{method_slug}.png"
             overlay_file = output_dir / f"overlay_stage{stage}_{method_slug}.png"
 
             save_png(grayscale, original_file)
@@ -586,60 +592,37 @@ def _resolve_stages_for_rerun(
     scan: dict,
     prediction: Prediction,
 ) -> tuple[list[int], dict]:
-    """Build stage list and synthetic stage_details when DB lacks pipeline info."""
-    from .pipeline import StagePrediction
+    """Stage-2-only XAI rerun metadata."""
+    from .pipeline import STAGE2_LABELS, StagePrediction
+
+    stages = [2]
+    stage_details: dict[str, StagePrediction] = {}
 
     existing = scan.get("xai")
     if isinstance(existing, dict) and existing.get("stages"):
-        stages = [int(item["stage"]) for item in existing["stages"]]
-        stage_details = {}
         for item in existing["stages"]:
-            key = f"stage{item['stage']}"
-            label = item.get("targetClassLabel") or item.get("metadata", {}).get(
-                "explainedClassLabel"
-            )
-            if label:
-                stage_details[key] = StagePrediction(
-                    label=label,
-                    confidence=1.0,
-                    probabilities={label: 1.0},
+            if int(item.get("stage", 0)) == 2:
+                label = item.get("targetClassLabel") or item.get("metadata", {}).get(
+                    "explainedClassLabel"
                 )
-        if len(stage_details) == len(stages):
-            return stages, stage_details
+                if label and label in STAGE2_LABELS:
+                    stage_details["stage2"] = StagePrediction(
+                        label=label,
+                        confidence=1.0,
+                        probabilities={label: 1.0},
+                    )
+                    return stages, stage_details
 
-    if prediction == "Healthy":
-        stages = [1]
-    elif prediction in ("Metastasis", "Others"):
-        stages = [1, 2]
-    else:
-        stages = [1, 2, 3]
-
-    stage_details = {}
-    if 1 in stages:
-        stage_details["stage1"] = StagePrediction(
-            label="Healthy" if prediction == "Healthy" else "Tumor",
-            confidence=1.0,
-            probabilities={"Healthy": 0.5, "Tumor": 0.5},
-        )
-    if 2 in stages:
-        label = (
-            "METS"
-            if prediction == "Metastasis"
-            else "OTHER"
-            if prediction == "Others"
-            else "GLI"
-        )
-        stage_details["stage2"] = StagePrediction(
-            label=label,
-            confidence=1.0,
-            probabilities={"GLI": 0.34, "METS": 0.33, "OTHER": 0.33},
-        )
-    if 3 in stages:
-        label = "HGG" if prediction == "HGG" else "LGG"
-        stage_details["stage3"] = StagePrediction(
-            label=label,
-            confidence=1.0,
-            probabilities={"HGG": 0.5, "LGG": 0.5},
-        )
-
+    label = (
+        "METS"
+        if prediction == "Metastasis"
+        else "OTHER"
+        if prediction == "Others"
+        else "GLI"
+    )
+    stage_details["stage2"] = StagePrediction(
+        label=label,
+        confidence=1.0,
+        probabilities={"GLI": 0.34, "METS": 0.33, "OTHER": 0.33},
+    )
     return stages, stage_details
