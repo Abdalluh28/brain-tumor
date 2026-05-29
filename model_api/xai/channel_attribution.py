@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
 
@@ -8,13 +9,16 @@ import tensorflow as tf
 
 from ..config import (
     PERMUTATION_FULL_CHANNEL_PCI_SAMPLES,
+    PERMUTATION_INFERENCE_BATCH_SIZE,
     PERMUTATION_OCCLUSION_PATCH_SIZE,
     PERMUTATION_OCCLUSION_STRIDE,
+    PERMUTATION_PARALLEL_CHANNEL_BUILD,
     PERMUTATION_PCI_GRID_COLS,
     PERMUTATION_PCI_GRID_ROWS,
     PERMUTATION_PCI_PERMUTATIONS_PER_CELL,
     PERMUTATION_SHAP_BACKGROUND_SAMPLES,
 )
+from ..tf_device import configure_tensorflow
 from .utils import IMG_HEIGHT, IMG_WIDTH, normalize_heatmap
 
 PermutationXaiMethod = Literal["pci", "pci_full_channel", "occlusion", "shap"]
@@ -31,7 +35,37 @@ class ChannelExplanationResult:
     metadata: dict
 
 
+def _batched_target_scores(
+    model,
+    inputs: np.ndarray,
+    class_index: int,
+    *,
+    batch_size: int | None = None,
+) -> np.ndarray:
+    """Run many forward passes in GPU-friendly batches."""
+    configure_tensorflow()
+
+    if inputs.ndim != 4:
+        raise ValueError(f"Expected (N,H,W,C) inputs, got {inputs.shape}")
+
+    batch_size = batch_size or PERMUTATION_INFERENCE_BATCH_SIZE
+    total = inputs.shape[0]
+    scores = np.empty(total, dtype=np.float32)
+
+    for start in range(0, total, batch_size):
+        end = min(start + batch_size, total)
+        chunk = tf.constant(inputs[start:end], dtype=tf.float32)
+        predictions = model(chunk, training=False)
+        if predictions.shape[-1] == 1:
+            scores[start:end] = predictions[:, 0].numpy()
+        else:
+            scores[start:end] = predictions[:, class_index].numpy()
+
+    return scores
+
+
 def _target_score(model, batch: tf.Tensor, class_index: int) -> float:
+    configure_tensorflow()
     predictions = model(batch, training=False)
     if predictions.shape[-1] == 1:
         return float(predictions[0, 0].numpy())
@@ -74,258 +108,250 @@ def _build_permutation_importance_metadata(
     }
 
 
-def _grid_pci_channel_importance(
-    model,
-    batch: tf.Tensor,
-    class_index: int,
-    channel_index: int,
-) -> float:
-    """Mean |Δp| when permuting each grid cell on this channel (grid PCI)."""
-    baseline = _target_score(model, batch, class_index)
-    base_np = batch.numpy().copy()
+def _grid_cell_bounds(row_idx: int, col_idx: int) -> tuple[int, int, int, int]:
     cell_h = max(1, IMG_HEIGHT // PERMUTATION_PCI_GRID_ROWS)
     cell_w = max(1, IMG_WIDTH // PERMUTATION_PCI_GRID_COLS)
-    deltas: list[float] = []
+    row_start = row_idx * cell_h
+    col_start = col_idx * cell_w
+    row_end = min(row_start + cell_h, IMG_HEIGHT)
+    col_end = min(col_start + cell_w, IMG_WIDTH)
+    return row_start, row_end, col_start, col_end
+
+
+def _permute_grid_cell(
+    base_np: np.ndarray,
+    channel_index: int,
+    class_index: int,
+    row_idx: int,
+    col_idx: int,
+    perm_idx: int,
+) -> np.ndarray:
+    row_start, row_end, col_start, col_end = _grid_cell_bounds(row_idx, col_idx)
+    permuted = base_np.copy()
+    cell = permuted[0, row_start:row_end, col_start:col_end, channel_index].reshape(-1)
+    rng = np.random.default_rng(
+        class_index * 1000 + channel_index * 100 + row_idx * 10 + col_idx + perm_idx
+    )
+    rng.shuffle(cell)
+    permuted[0, row_start:row_end, col_start:col_end, channel_index] = cell.reshape(
+        row_end - row_start, col_end - col_start
+    )
+    return permuted[0]
+
+
+def _build_grid_pci_stack(
+    base_np: np.ndarray,
+    channel_index: int,
+    class_index: int,
+) -> tuple[np.ndarray, list[tuple[int, int, int, int, int, int]]]:
+    """Stack all grid PCI perturbations for one channel (CPU)."""
+    stacks: list[np.ndarray] = []
+    meta: list[tuple[int, int, int, int, int, int]] = []
 
     for row_idx in range(PERMUTATION_PCI_GRID_ROWS):
         for col_idx in range(PERMUTATION_PCI_GRID_COLS):
-            row_start = row_idx * cell_h
-            col_start = col_idx * cell_w
-            row_end = min(row_start + cell_h, IMG_HEIGHT)
-            col_end = min(col_start + cell_w, IMG_WIDTH)
-
+            row_start, row_end, col_start, col_end = _grid_cell_bounds(row_idx, col_idx)
             for perm_idx in range(PERMUTATION_PCI_PERMUTATIONS_PER_CELL):
-                permuted = base_np.copy()
-                cell = permuted[
-                    0, row_start:row_end, col_start:col_end, channel_index
-                ].reshape(-1)
-                rng = np.random.default_rng(
-                    class_index * 1000 + channel_index * 100 + row_idx * 10 + col_idx + perm_idx
+                stacks.append(
+                    _permute_grid_cell(
+                        base_np,
+                        channel_index,
+                        class_index,
+                        row_idx,
+                        col_idx,
+                        perm_idx,
+                    )
                 )
-                rng.shuffle(cell)
-                permuted[0, row_start:row_end, col_start:col_end, channel_index] = (
-                    cell.reshape(row_end - row_start, col_end - col_start)
+                meta.append(
+                    (row_idx, col_idx, row_start, row_end, col_start, col_end),
                 )
-                score = _target_score(
-                    model, tf.constant(permuted, dtype=tf.float32), class_index
-                )
-                deltas.append(abs(baseline - score))
 
-    return float(np.mean(deltas)) if deltas else 0.0
+    return np.stack(stacks, axis=0).astype(np.float32), meta
 
 
-def _full_channel_pci_channel_importance(
-    model,
-    batch: tf.Tensor,
-    class_index: int,
-    channel_index: int,
-) -> float:
-    """Mean |Δp| when shuffling the entire channel (full-channel PCI)."""
-    baseline = _target_score(model, batch, class_index)
-    base_np = batch.numpy().copy()
-    deltas: list[float] = []
+def _heatmap_from_grid_pci_scores(
+    scores: np.ndarray,
+    baseline: float,
+    meta: list[tuple[int, int, int, int, int, int]],
+) -> tuple[np.ndarray, float]:
+    heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
+    drops = np.abs(baseline - scores)
+    per_cell = PERMUTATION_PCI_PERMUTATIONS_PER_CELL
+    num_cells = len(meta) // per_cell
 
-    for perm_idx in range(PERMUTATION_FULL_CHANNEL_PCI_SAMPLES):
-        permuted = base_np.copy()
-        flat = permuted[0, :, :, channel_index].reshape(-1).copy()
-        rng = np.random.default_rng(
-            class_index * 5000 + channel_index * 100 + perm_idx
-        )
-        rng.shuffle(flat)
-        permuted[0, :, :, channel_index] = flat.reshape(IMG_HEIGHT, IMG_WIDTH)
-        score = _target_score(
-            model, tf.constant(permuted, dtype=tf.float32), class_index
-        )
-        deltas.append(abs(baseline - score))
+    for cell_index in range(num_cells):
+        _row_idx, _col_idx, row_start, row_end, col_start, col_end = meta[
+            cell_index * per_cell
+        ]
+        cell_drops = drops[cell_index * per_cell : (cell_index + 1) * per_cell]
+        cell_value = float(np.mean(cell_drops)) if len(cell_drops) else 0.0
+        heatmap[row_start:row_end, col_start:col_end] = cell_value
 
-    return float(np.mean(deltas)) if deltas else 0.0
+    importance = float(np.mean(drops)) if len(drops) else 0.0
+    return normalize_heatmap(heatmap), importance
 
 
-def _occlusion_channel_importance(
-    model,
-    batch: tf.Tensor,
-    class_index: int,
-    channel_index: int,
-) -> float:
-    """Mean |Δp| from sliding occlusion on this channel only."""
-    baseline = _target_score(model, batch, class_index)
-    base_np = batch.numpy().copy()
-    fill_value = _channel_baseline(base_np, channel_index)
-    patch = PERMUTATION_OCCLUSION_PATCH_SIZE
-    stride = PERMUTATION_OCCLUSION_STRIDE
-    deltas: list[float] = []
+def _parallel_build_channel_stacks(
+    builder,
+    num_channels: int,
+) -> list:
+    if not PERMUTATION_PARALLEL_CHANNEL_BUILD or num_channels <= 1:
+        return [builder(channel_index) for channel_index in range(num_channels)]
 
-    for row in range(0, IMG_HEIGHT - patch + 1, stride):
-        for col in range(0, IMG_WIDTH - patch + 1, stride):
-            occluded = base_np.copy()
-            occluded[
-                0,
-                row : row + patch,
-                col : col + patch,
-                channel_index,
-            ] = fill_value
-            score = _target_score(
-                model, tf.constant(occluded, dtype=tf.float32), class_index
-            )
-            deltas.append(abs(baseline - score))
-
-    return float(np.mean(deltas)) if deltas else 0.0
+    results: list = [None] * num_channels
+    with ThreadPoolExecutor(max_workers=num_channels) as executor:
+        futures = {
+            executor.submit(builder, channel_index): channel_index
+            for channel_index in range(num_channels)
+        }
+        for future in futures:
+            channel_index = futures[future]
+            results[channel_index] = future.result()
+    return results
 
 
-def _importances_for_method(
+def _grid_pci_all_channels(
     model,
     batch: tf.Tensor,
     class_index: int,
     num_channels: int,
-    method: PermutationXaiMethod,
-    heatmaps: list[np.ndarray] | None = None,
-) -> tuple[list[float], list[float]]:
-    if method == "pci":
-        raw = [
-            _grid_pci_channel_importance(model, batch, class_index, channel_index)
-            for channel_index in range(num_channels)
-        ]
-    elif method == "pci_full_channel":
-        raw = [
-            _full_channel_pci_channel_importance(
-                model, batch, class_index, channel_index
-            )
-            for channel_index in range(num_channels)
-        ]
-    elif method == "occlusion":
-        raw = [
-            _occlusion_channel_importance(model, batch, class_index, channel_index)
-            for channel_index in range(num_channels)
-        ]
-    elif method == "shap":
-        if heatmaps is None:
-            raise ValueError("SHAP importances require heatmaps")
-        raw = [float(np.mean(heatmap)) for heatmap in heatmaps]
-    else:
-        raise ValueError(f"Unsupported method: {method}")
+) -> tuple[list[np.ndarray], list[float]]:
+    """Batched grid PCI: stack perturbations on CPU, infer on GPU in batches."""
+    base_np = batch.numpy().copy()
+    baseline = _target_score(model, batch, class_index)
 
-    if heatmaps is not None and max(raw) <= 1e-12:
-        raw = [float(np.mean(heatmap)) for heatmap in heatmaps]
+    channel_stacks = _parallel_build_channel_stacks(
+        lambda channel_index: _build_grid_pci_stack(
+            base_np, channel_index, class_index
+        ),
+        num_channels,
+    )
 
-    return _normalize_channel_importances(raw, num_channels)
+    heatmaps: list[np.ndarray] = []
+    importances: list[float] = []
+    for stack, meta in channel_stacks:
+        scores = _batched_target_scores(model, stack, class_index)
+        heatmap, importance = _heatmap_from_grid_pci_scores(scores, baseline, meta)
+        heatmaps.append(heatmap)
+        importances.append(importance)
+
+    return heatmaps, importances
 
 
-def _occlusion_channel_heatmap(
+def _build_full_channel_pci_stack(
+    base_np: np.ndarray,
+    channel_index: int,
+    class_index: int,
+) -> np.ndarray:
+    stacks: list[np.ndarray] = []
+    for perm_idx in range(PERMUTATION_FULL_CHANNEL_PCI_SAMPLES):
+        permuted = base_np.copy()
+        flat = permuted[0, :, :, channel_index].reshape(-1).copy()
+        rng = np.random.default_rng(class_index * 5000 + channel_index * 100 + perm_idx)
+        rng.shuffle(flat)
+        permuted[0, :, :, channel_index] = flat.reshape(IMG_HEIGHT, IMG_WIDTH)
+        stacks.append(permuted[0])
+    return np.stack(stacks, axis=0).astype(np.float32)
+
+
+def _full_channel_pci_all_channels(
     model,
     batch: tf.Tensor,
     class_index: int,
-    channel_index: int,
-) -> np.ndarray:
-    """Occlusion sensitivity map on a single input channel."""
-    baseline = _target_score(model, batch, class_index)
+    num_channels: int,
+) -> tuple[list[np.ndarray], list[float]]:
     base_np = batch.numpy().copy()
-    fill_value = _channel_baseline(base_np, channel_index)
-    heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
-    counts = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
+    baseline = _target_score(model, batch, class_index)
+    heatmaps: list[np.ndarray] = []
+    importances: list[float] = []
 
+    for channel_index in range(num_channels):
+        stack = _build_full_channel_pci_stack(base_np, channel_index, class_index)
+        scores = _batched_target_scores(model, stack, class_index)
+        drops = np.abs(baseline - scores)
+        importances.append(float(np.mean(drops)) if len(drops) else 0.0)
+
+        orig = base_np[0, :, :, channel_index].astype(np.float32)
+        heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
+        for perm_idx, drop in enumerate(drops):
+            shuffled = stack[perm_idx, :, :, channel_index]
+            heatmap += np.abs(orig - shuffled) * float(drop)
+        heatmap /= max(PERMUTATION_FULL_CHANNEL_PCI_SAMPLES, 1)
+        heatmaps.append(normalize_heatmap(heatmap))
+
+    return heatmaps, importances
+
+
+def _build_occlusion_stack(
+    base_np: np.ndarray,
+    channel_index: int,
+) -> tuple[np.ndarray, list[tuple[int, int]]]:
+    fill_value = _channel_baseline(base_np, channel_index)
     patch = PERMUTATION_OCCLUSION_PATCH_SIZE
     stride = PERMUTATION_OCCLUSION_STRIDE
+    stacks: list[np.ndarray] = []
+    positions: list[tuple[int, int]] = []
 
     for row in range(0, IMG_HEIGHT - patch + 1, stride):
         for col in range(0, IMG_WIDTH - patch + 1, stride):
             occluded = base_np.copy()
-            occluded[
-                0,
-                row : row + patch,
-                col : col + patch,
-                channel_index,
-            ] = fill_value
-            score = _target_score(
-                model, tf.constant(occluded, dtype=tf.float32), class_index
-            )
-            drop = abs(baseline - score)
-            heatmap[row : row + patch, col : col + patch] += drop
-            counts[row : row + patch, col : col + patch] += 1.0
+            occluded[0, row : row + patch, col : col + patch, channel_index] = fill_value
+            stacks.append(occluded[0])
+            positions.append((row, col))
+
+    if not stacks:
+        return np.empty((0, IMG_HEIGHT, IMG_WIDTH, base_np.shape[-1]), dtype=np.float32), []
+
+    return np.stack(stacks, axis=0).astype(np.float32), positions
+
+
+def _occlusion_heatmap_from_scores(
+    scores: np.ndarray,
+    baseline: float,
+    positions: list[tuple[int, int]],
+) -> np.ndarray:
+    patch = PERMUTATION_OCCLUSION_PATCH_SIZE
+    heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
+    counts = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
+    drops = np.abs(baseline - scores)
+
+    for (row, col), drop in zip(positions, drops, strict=True):
+        heatmap[row : row + patch, col : col + patch] += drop
+        counts[row : row + patch, col : col + patch] += 1.0
 
     heatmap /= np.maximum(counts, 1.0)
     return normalize_heatmap(heatmap)
 
 
-def _pci_grid_channel_heatmap(
+def _occlusion_all_channels(
     model,
     batch: tf.Tensor,
     class_index: int,
-    channel_index: int,
-) -> np.ndarray:
-    """Grid PCI: shuffle pixels inside each grid cell on one channel."""
-    baseline = _target_score(model, batch, class_index)
+    num_channels: int,
+) -> tuple[list[np.ndarray], list[float]]:
     base_np = batch.numpy().copy()
-    cell_h = max(1, IMG_HEIGHT // PERMUTATION_PCI_GRID_ROWS)
-    cell_w = max(1, IMG_WIDTH // PERMUTATION_PCI_GRID_COLS)
-    heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
-
-    for row_idx in range(PERMUTATION_PCI_GRID_ROWS):
-        for col_idx in range(PERMUTATION_PCI_GRID_COLS):
-            row_start = row_idx * cell_h
-            col_start = col_idx * cell_w
-            row_end = min(row_start + cell_h, IMG_HEIGHT)
-            col_end = min(col_start + cell_w, IMG_WIDTH)
-
-            drops: list[float] = []
-            for perm_idx in range(PERMUTATION_PCI_PERMUTATIONS_PER_CELL):
-                permuted = base_np.copy()
-                cell = permuted[
-                    0, row_start:row_end, col_start:col_end, channel_index
-                ].reshape(-1)
-                rng = np.random.default_rng(
-                    class_index * 1000 + channel_index * 100 + row_idx * 10 + col_idx + perm_idx
-                )
-                rng.shuffle(cell)
-                permuted[0, row_start:row_end, col_start:col_end, channel_index] = (
-                    cell.reshape(row_end - row_start, col_end - col_start)
-                )
-                score = _target_score(
-                    model, tf.constant(permuted, dtype=tf.float32), class_index
-                )
-                drops.append(abs(baseline - score))
-
-            cell_value = float(np.mean(drops)) if drops else 0.0
-            heatmap[row_start:row_end, col_start:col_end] = cell_value
-
-    return normalize_heatmap(heatmap)
-
-
-def _pci_full_channel_spatial_heatmap(
-    model,
-    batch: tf.Tensor,
-    class_index: int,
-    channel_index: int,
-) -> np.ndarray:
-    """
-    Spatial full-channel PCI: where shuffling this channel changes pixels,
-    weighted by |Δp| for that shuffle (same perturbations as importance).
-    """
     baseline = _target_score(model, batch, class_index)
-    base_np = batch.numpy().copy()
-    orig = base_np[0, :, :, channel_index].astype(np.float32)
-    heatmap = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32)
 
-    for perm_idx in range(PERMUTATION_FULL_CHANNEL_PCI_SAMPLES):
-        permuted = base_np.copy()
-        flat = permuted[0, :, :, channel_index].reshape(-1).copy()
-        rng = np.random.default_rng(
-            class_index * 5000 + channel_index * 100 + perm_idx
-        )
-        rng.shuffle(flat)
-        shuffled = flat.reshape(IMG_HEIGHT, IMG_WIDTH)
-        permuted[0, :, :, channel_index] = shuffled
-        score = _target_score(
-            model, tf.constant(permuted, dtype=tf.float32), class_index
-        )
-        drop = abs(baseline - score)
-        heatmap += np.abs(orig - shuffled) * drop
+    channel_stacks = _parallel_build_channel_stacks(
+        lambda channel_index: _build_occlusion_stack(base_np, channel_index),
+        num_channels,
+    )
 
-    heatmap /= max(PERMUTATION_FULL_CHANNEL_PCI_SAMPLES, 1)
-    return normalize_heatmap(heatmap)
+    heatmaps: list[np.ndarray] = []
+    importances: list[float] = []
+    for stack, positions in channel_stacks:
+        if stack.shape[0] == 0:
+            heatmaps.append(np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=np.float32))
+            importances.append(0.0)
+            continue
+        scores = _batched_target_scores(model, stack, class_index)
+        heatmaps.append(_occlusion_heatmap_from_scores(scores, baseline, positions))
+        importances.append(float(np.mean(np.abs(baseline - scores))))
+
+    return heatmaps, importances
 
 
 def _importance_tinted_heatmap(normalized_importance: float) -> np.ndarray:
-    """Fallback when spatial PCI is flat; do not min-max a constant field."""
     return np.full(
         (IMG_HEIGHT, IMG_WIDTH),
         np.clip(float(normalized_importance), 0.0, 1.0),
@@ -339,12 +365,6 @@ def _shap_channel_heatmaps(
     class_index: int,
     num_channels: int,
 ) -> tuple[list[np.ndarray], str]:
-    """
-    SHAP attributions split per input channel.
-
-    Uses GradientExplainer when available; otherwise falls back to
-    occlusion heatmaps.
-    """
     try:
         import shap
     except ImportError as exc:
@@ -352,6 +372,7 @@ def _shap_channel_heatmaps(
             "SHAP is not installed. Add 'shap' to model_api requirements."
         ) from exc
 
+    configure_tensorflow()
     input_np = batch.numpy()
     background = np.repeat(input_np, PERMUTATION_SHAP_BACKGROUND_SAMPLES, axis=0).astype(
         np.float32
@@ -383,10 +404,15 @@ def _shap_channel_heatmaps(
             heatmaps.append(normalize_heatmap(channel_attr))
         return heatmaps, "shap_gradient"
     except Exception:
-        heatmaps = [
-            _occlusion_channel_heatmap(model, batch, class_index, channel_index)
-            for channel_index in range(num_channels)
-        ]
+        heatmaps, importances = _occlusion_all_channels(
+            model, batch, class_index, num_channels
+        )
+        max_imp = max(importances) if importances else 1.0
+        if max_imp > 0:
+            heatmaps = [
+                normalize_heatmap(heatmap * (importances[i] / max_imp))
+                for i, heatmap in enumerate(heatmaps)
+            ]
         return heatmaps, "shap_occlusion_fallback"
 
 
@@ -398,6 +424,8 @@ def generate_channel_explanations(
     modalities: list[str],
 ) -> ChannelExplanationResult:
     """Build one spatial attribution map per model input channel."""
+    configure_tensorflow()
+
     num_channels = len(modalities)
     if batch.shape[-1] != num_channels:
         raise ValueError(
@@ -405,61 +433,49 @@ def generate_channel_explanations(
             f"got tensor shape {batch.shape}"
         )
 
-    extra_meta: dict = {}
+    extra_meta: dict = {
+        "inferenceBatchSize": PERMUTATION_INFERENCE_BATCH_SIZE,
+        "parallelChannelBuild": PERMUTATION_PARALLEL_CHANNEL_BUILD,
+    }
 
     if method == "occlusion":
         extra_meta["occlusionPatchSize"] = PERMUTATION_OCCLUSION_PATCH_SIZE
         extra_meta["occlusionStride"] = PERMUTATION_OCCLUSION_STRIDE
-        heatmaps = [
-            _occlusion_channel_heatmap(model, batch, class_index, channel_index)
-            for channel_index in range(num_channels)
-        ]
-    elif method == "pci":
-        heatmaps = [
-            _pci_grid_channel_heatmap(model, batch, class_index, channel_index)
-            for channel_index in range(num_channels)
-        ]
-    elif method == "pci_full_channel":
-        raw_probe, normalized_probe = _importances_for_method(
-            model, batch, class_index, num_channels, method
+        heatmaps, raw_importances = _occlusion_all_channels(
+            model, batch, class_index, num_channels
         )
-        heatmaps = []
-        for channel_index in range(num_channels):
-            spatial = _pci_full_channel_spatial_heatmap(
-                model, batch, class_index, channel_index
-            )
-            if float(spatial.max()) > 1e-6:
-                heatmaps.append(spatial)
-            else:
-                heatmaps.append(
-                    _importance_tinted_heatmap(normalized_probe[channel_index])
-                )
-        raw, normalized = raw_probe, normalized_probe
-        extra_meta.update(_build_permutation_importance_metadata(modalities, raw, normalized))
-        extra_meta["fullChannelPciHeatmap"] = "spatial_shuffle_diff"
+    elif method == "pci":
+        heatmaps, raw_importances = _grid_pci_all_channels(
+            model, batch, class_index, num_channels
+        )
+    elif method == "pci_full_channel":
+        heatmaps, raw_importances = _full_channel_pci_all_channels(
+            model, batch, class_index, num_channels
+        )
+        extra_meta["fullChannelPciHeatmap"] = "spatial_shuffle_diff_batched"
     elif method == "shap":
         heatmaps, shap_backend = _shap_channel_heatmaps(
             model, batch, class_index, num_channels
         )
         extra_meta["shapBackend"] = shap_backend
-        raw, normalized = _importances_for_method(
-            model, batch, class_index, num_channels, method, heatmaps=heatmaps
-        )
-        extra_meta.update(_build_permutation_importance_metadata(modalities, raw, normalized))
+        raw_importances = [float(np.mean(heatmap)) for heatmap in heatmaps]
     else:
         raise ValueError(f"Unsupported permutation method: {method}")
 
-    if method not in ("pci_full_channel", "shap"):
-        raw, normalized = _importances_for_method(
-            model, batch, class_index, num_channels, method, heatmaps=heatmaps
-        )
-        extra_meta.update(_build_permutation_importance_metadata(modalities, raw, normalized))
+    raw, normalized = _normalize_channel_importances(raw_importances, num_channels)
 
-    importances = normalized
+    if method == "pci_full_channel":
+        for channel_index, heatmap in enumerate(heatmaps):
+            if float(heatmap.max()) <= 1e-6:
+                heatmaps[channel_index] = _importance_tinted_heatmap(
+                    normalized[channel_index]
+                )
+
+    extra_meta.update(_build_permutation_importance_metadata(modalities, raw, normalized))
 
     return ChannelExplanationResult(
         heatmaps=heatmaps,
-        channel_importances=importances,
+        channel_importances=normalized,
         method=method,
         target_class_index=class_index,
         metadata=extra_meta,

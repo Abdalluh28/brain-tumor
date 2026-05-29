@@ -17,7 +17,7 @@ export default function ScanIdGrad({ gradCamPath }) {
             <div className='rounded-lg p-4 flex justify-center items-center'>
                 <img
                     src={gradCamPath}
-                    alt="Grad-CAM Heatmap"
+                    alt="Explanation overlay"
                     className="max-h-105 w-auto object-contain rounded-md shadow-sm"
                 />
             </div>

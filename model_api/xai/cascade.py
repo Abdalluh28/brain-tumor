@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+from ..config import ANALYZE_XAI_STAGES
 from ..pipeline import PipelineResult, STAGE2_LABELS
 from ..schemas import Prediction
 
 
 def resolve_cascade_xai_stages(_pipeline_result: PipelineResult) -> list[int]:
-    """
-    Stages to explain with XAI.
+    """Default XAI stages (stage 2 EfficientNet)."""
+    return list(ANALYZE_XAI_STAGES)
 
-    Product policy: only stage 2 (EfficientNet GLI / METS / OTHER) is shown.
-    """
-    return [2]
+
+def resolve_xai_stages_for_run(
+    _pipeline_result: PipelineResult,
+    _method: str,
+    *,
+    analyze_upload: bool = False,
+) -> list[int]:
+    """Stages explained for upload, tab re-run, and PCI (default: stage 2 only)."""
+    del analyze_upload  # reserved; analyze vs tab differs only in allowed methods
+    return list(ANALYZE_XAI_STAGES)
 
 
 def resolve_cascade_xai_stages_full_path(pipeline_result: PipelineResult) -> list[int]:

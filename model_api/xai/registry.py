@@ -18,7 +18,9 @@ from ..config import (
     STAGE3_MODEL_PATH,
 )
 from ..stage2_loader import load_stage2_model
+from ..inference import keras_predict_proba
 from ..preprocessing import build_multichannel_tensor, map_files_to_modalities
+from ..scan_inputs import PreparedScanInputs
 from ..schemas import ScanFileIn
 from .exceptions import UnsupportedStageError
 
@@ -131,9 +133,17 @@ def resolve_display_channel_index(
 def prepare_stage_input(
     files: list[ScanFileIn],
     config: StageXaiConfig,
+    *,
+    prepared: PreparedScanInputs | None = None,
 ) -> np.ndarray:
-    modality_map = map_files_to_modalities(files)
-    tensor = build_multichannel_tensor(modality_map, list(config.modalities))
+    if prepared is not None:
+        if config.stage == 1:
+            tensor = prepared.stage1_tensor
+        else:
+            tensor = prepared.stage4_tensor
+    else:
+        modality_map = map_files_to_modalities(files)
+        tensor = build_multichannel_tensor(modality_map, list(config.modalities))
 
     expected_shape = (IMG_HEIGHT, IMG_WIDTH, config.input_channels)
     if tensor.shape != expected_shape:
@@ -149,8 +159,7 @@ def predict_stage(
     input_tensor: np.ndarray,
     config: StageXaiConfig,
 ) -> tuple[int, str, dict[str, float], np.ndarray]:
-    batch = np.expand_dims(input_tensor, axis=0).astype(np.float32)
-    probabilities = model.predict(batch, verbose=0)[0]
+    probabilities = keras_predict_proba(model, input_tensor)
     class_index = int(np.argmax(probabilities))
     label = config.class_labels[class_index]
     prob_dict = {

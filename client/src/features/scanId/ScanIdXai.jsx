@@ -81,8 +81,8 @@ export default function ScanIdXai({ scanId, xai, xaiError }) {
                         Regions associated with the{" "}
                         <strong>{cascadePrediction}</strong> classification.
                         {isPerModality
-                            ? " One overlay per MRI sequence."
-                            : " Combined overlay across all sequences."}
+                            ? " One overlay per MRI sequence. Generated the first time you open this view; saved results load instantly."
+                            : " Single overlay across all sequences, created when the scan was analyzed."}
                     </p>
                 </div>
 

@@ -27,8 +27,8 @@ from .xai.base import (
 )
 from .xai.cascade import (
     resolve_cascade_target_class_index,
-    resolve_cascade_xai_stages,
     resolve_stage_class_index,
+    resolve_xai_stages_for_run,
 )
 from .xai.exceptions import (
     ExplanationGenerationError,
@@ -36,6 +36,7 @@ from .xai.exceptions import (
     InvalidXaiMethodError,
     UnsupportedStageError,
 )
+from .scan_inputs import PreparedScanInputs
 from .xai.registry import (
     get_stage_config,
     load_stage_model,
@@ -129,10 +130,11 @@ def _build_xai_core(
     cascade_prediction: Prediction | None = None,
     pipeline_result: PipelineResult | None = None,
     cascade_class_index: int | None = None,
+    prepared: PreparedScanInputs | None = None,
 ) -> tuple:
     model, config = load_stage_model(stage)
     local_files = _scan_files_with_local_paths(files)
-    input_tensor = prepare_stage_input(local_files, config)
+    input_tensor = prepare_stage_input(local_files, config, prepared=prepared)
 
     predicted_index, predicted_label, probabilities, raw_probs = predict_stage(
         model, input_tensor, config
@@ -218,11 +220,12 @@ def _build_channel_xai_core(
     output_dir: Path,
     method_slug: str,
     backend_public_url: str | None,
+    prepared: PreparedScanInputs | None = None,
 ) -> tuple:
     """Per-modality heatmaps for PCI, occlusion, or SHAP."""
     model, config = load_stage_model(stage)
     local_files = _scan_files_with_local_paths(files)
-    input_tensor = prepare_stage_input(local_files, config)
+    input_tensor = prepare_stage_input(local_files, config, prepared=prepared)
 
     predicted_index, predicted_label, probabilities, raw_probs = predict_stage(
         model, input_tensor, config
@@ -329,15 +332,27 @@ def run_cascade_xai(
     display_channel: int | str | None = None,
     ig_steps: int = 50,
     attribution_reduction: AttributionReduction = "mean",
+    prepared: PreparedScanInputs | None = None,
+    analyze_upload: bool = False,
 ) -> CascadeXaiResultOut:
     """
-    Generate XAI heatmaps for stage 2 only (EfficientNet GLI / METS / OTHER).
+    Generate cascade XAI heatmaps.
 
-    The full cascade still runs at classification time; explainability is fixed
-    to stage 2 so users compare modalities on the same model.
+    analyze_upload=True: grad methods only, stages from ANALYZE_XAI_STAGES (default
+    stage 2). Permutation methods (PCI, etc.) must use POST /scans/{id}/xai from the UI.
     """
+    if analyze_upload and is_permutation_method(xai_method):
+        raise InvalidXaiMethodError(
+            f"Method '{xai_method}' is not run during analyze. "
+            "Use the per-modality tab after upload (cached on first request)."
+        )
+
     started = time.perf_counter()
-    stages_to_run = resolve_cascade_xai_stages(pipeline_result)
+    stages_to_run = resolve_xai_stages_for_run(
+        pipeline_result,
+        xai_method,
+        analyze_upload=analyze_upload,
+    )
     local_files = _scan_files_with_local_paths(files)
     output_dir = resolve_xai_output_dir(local_files, job_id or uuid.uuid4().hex)
     method_slug = _xai_method_filename_slug(xai_method)
@@ -372,6 +387,7 @@ def run_cascade_xai(
                     output_dir=output_dir,
                     method_slug=method_slug,
                     backend_public_url=backend_public_url,
+                    prepared=prepared,
                 )
             else:
                 (
@@ -399,6 +415,7 @@ def run_cascade_xai(
                     cascade_prediction=None,
                     pipeline_result=None,
                     cascade_class_index=class_index,
+                    prepared=prepared,
                 )
                 channel_maps = None
         except (

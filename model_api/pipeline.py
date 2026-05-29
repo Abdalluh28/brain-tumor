@@ -14,7 +14,10 @@ from .config import (
     STAGE3_MODEL_PATH,
 )
 from .stage2_loader import load_stage2_model
+from .inference import keras_predict_proba
+from .tf_device import configure_tensorflow
 from .preprocessing import build_multichannel_tensor, map_files_to_modalities
+from .scan_inputs import PreparedScanInputs
 from .schemas import Prediction, ScanFileIn
 
 STAGE1_LABELS = ("Healthy", "Tumor")
@@ -51,8 +54,7 @@ def _softmax_dict(labels: tuple[str, ...], probs: np.ndarray) -> dict[str, float
 
 
 def _predict_stage(model, tensor: np.ndarray) -> tuple[int, np.ndarray]:
-    batch = np.expand_dims(tensor, axis=0)
-    probs = model.predict(batch, verbose=0)[0]
+    probs = keras_predict_proba(model, tensor)
     return int(np.argmax(probs)), probs
 
 
@@ -85,14 +87,24 @@ def _finalize_scores(joint_probs: dict[Prediction, float]) -> dict[Prediction, f
     return percentages
 
 
-def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
-    modality_map = map_files_to_modalities(files)
+def run_pipeline(
+    files: list[ScanFileIn],
+    *,
+    prepared: PreparedScanInputs | None = None,
+) -> PipelineResult:
+    configure_tensorflow()
+
+    if prepared is None:
+        from .scan_inputs import prepare_scan_inputs
+
+        prepared = prepare_scan_inputs(files)
+
     stage1_model, stage2_model, stage3_model = _load_models()
 
     stage_details: dict[str, StagePrediction] = {}
     stages_run: list[str] = ["stage1"]
 
-    stage1_tensor = build_multichannel_tensor(modality_map, STAGE1_MODALITIES)
+    stage1_tensor = prepared.stage1_tensor
     stage1_idx, stage1_probs = _predict_stage(stage1_model, stage1_tensor)
     stage1_pred = StagePrediction(
         label=STAGE1_LABELS[stage1_idx],
@@ -121,10 +133,7 @@ def run_pipeline(files: list[ScanFileIn]) -> PipelineResult:
             stage_details=stage_details,
         )
 
-    stage4_tensor = build_multichannel_tensor(
-        modality_map,
-        ["t1n", "t1c", "t2w", "t2f"],
-    )
+    stage4_tensor = prepared.stage4_tensor
     stages_run.append("stage2")
     stage2_idx, stage2_probs = _predict_stage(stage2_model, stage4_tensor)
     stage2_pred = StagePrediction(

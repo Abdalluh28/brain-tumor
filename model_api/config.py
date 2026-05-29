@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 MODEL_API_ROOT = Path(__file__).resolve().parent
@@ -52,6 +53,32 @@ PERMUTATION_FULL_CHANNEL_PCI_SAMPLES = 8
 PERMUTATION_SHAP_BACKGROUND_SAMPLES = 8
 # Channel ranking: shuffle repeats + zero-out / mean-fill occlusion
 PERMUTATION_CHANNEL_IMPORTANCE_SAMPLES = 8
+
+# GPU + batched permutation inference (PCI / occlusion)
+TF_ENABLE_GPU = os.environ.get("TF_ENABLE_GPU", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+TF_GPU_MEMORY_GROWTH = True
+# Forward passes per model.call during permutation XAI (higher = faster on GPU)
+PERMUTATION_INFERENCE_BATCH_SIZE = 64
+# Build perturbed tensors for multiple channels concurrently (CPU)
+PERMUTATION_PARALLEL_CHANNEL_BUILD = True
+
+# Main analyze path (classification + default XAI + segmentation)
+ANALYZE_PRELOAD_MODELS_AT_STARTUP = True
+ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
+
+# Upload/analyze: Grad-CAM++ on stage 2 only (fast). PCI runs from UI tab via POST /scans/{id}/xai.
+ANALYZE_DEFAULT_XAI_METHOD = "gradcam++"
+ANALYZE_XAI_STAGES: tuple[int, ...] = (2,)
+# Fallbacks if gradcam++ fails — never includes pci (on-demand only).
+ANALYZE_XAI_FALLBACK_METHODS: tuple[str, ...] = (
+    "gradcam",
+    "vanilla_saliency",
+    "integrated_gradients",
+)
 
 MODEL_VERSION = "cascade-v1.2.0-efficientnet-s2-xai"
 

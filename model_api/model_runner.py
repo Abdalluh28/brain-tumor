@@ -2,10 +2,17 @@ import logging
 import os
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote
 
+from .config import (
+    ANALYZE_DEFAULT_XAI_METHOD,
+    ANALYZE_PARALLEL_SEGMENTATION_AND_XAI,
+    ANALYZE_XAI_FALLBACK_METHODS,
+)
 from .pipeline import get_model_version, run_pipeline
+from .scan_inputs import prepare_scan_inputs
 from .schemas import ModelResult, ScanFileIn, SegmentationClassStatOut, SegmentationResult
 from .segmentation import (
     prediction_supports_segmentation,
@@ -19,13 +26,8 @@ VOLUME_FORMATS = {"nii", "nii.gz", "dcm"}
 
 logger = logging.getLogger(__name__)
 
-# Tried in order when generating cascade XAI (GLI/HGG/LGG uses stage 3 DenseNet).
-CASCADE_XAI_METHODS = (
-    "gradcam++",
-    "gradcam",
-    "vanilla_saliency",
-    "integrated_gradients",
-)
+# Grad-CAM fallbacks on analyze upload (PCI is on-demand via the UI only).
+ANALYZE_XAI_METHODS_TO_TRY = (ANALYZE_DEFAULT_XAI_METHOD,) + ANALYZE_XAI_FALLBACK_METHODS
 
 
 def _grad_cam_path(files: list[ScanFileIn], backend_public_url: str | None) -> str:
@@ -88,14 +90,66 @@ def _to_segmentation_result(artifacts) -> SegmentationResult:
     )
 
 
+def _run_cascade_xai_for_analyze(
+    files: list[ScanFileIn],
+    pipeline_result,
+    *,
+    xai_method: str,
+    backend_public_url: str | None,
+    xai_job_id: str,
+    prepared,
+) -> tuple:
+    methods_to_try = tuple(
+        dict.fromkeys(
+            (xai_method,) + tuple(m for m in ANALYZE_XAI_METHODS_TO_TRY if m != xai_method)
+        )
+    )
+    last_error: str | None = None
+
+    for method in methods_to_try:
+        try:
+            xai_result = run_cascade_xai(
+                files,
+                pipeline_result,
+                cascade_prediction=pipeline_result.prediction,
+                xai_method=method,
+                backend_public_url=backend_public_url,
+                job_id=xai_job_id,
+                prepared=prepared,
+                analyze_upload=True,
+            )
+            if method != xai_method:
+                logger.info(
+                    "Cascade XAI succeeded with fallback method '%s' "
+                    "(requested '%s') for prediction %s",
+                    method,
+                    xai_method,
+                    pipeline_result.prediction,
+                )
+            return xai_result, None
+        except Exception as exc:
+            last_error = str(exc)
+            logger.warning(
+                "Cascade XAI failed for prediction %s with method '%s': %s",
+                pipeline_result.prediction,
+                method,
+                exc,
+                exc_info=True,
+            )
+
+    return None, last_error
+
+
 def run_model(
     files: list[ScanFileIn],
     backend_public_url: str | None = None,
     scan_type: str | None = None,
     *,
     run_xai: bool = True,
-    xai_method: str = "gradcam++",
+    xai_method: str | None = None,
 ) -> ModelResult:
+    if xai_method is None:
+        xai_method = ANALYZE_DEFAULT_XAI_METHOD
     started_at = time.perf_counter()
 
     for scan_file in files:
@@ -104,62 +158,70 @@ def run_model(
 
     _validate_scan_type_files(files, scan_type)
 
-    pipeline_result = run_pipeline(files)
+    prepared = prepare_scan_inputs(files)
+    pipeline_result = run_pipeline(files, prepared=prepared)
+
     segmentation_result: SegmentationResult | None = None
     xai_result = None
     xai_error: str | None = None
     grad_cam_path = _grad_cam_path(files, backend_public_url)
 
-    if run_xai:
-        methods_to_try = (xai_method,) + tuple(
-            m for m in CASCADE_XAI_METHODS if m != xai_method
-        )
-        xai_job_id = uuid.uuid4().hex
+    needs_segmentation = prediction_supports_segmentation(pipeline_result.prediction)
+    xai_job_id = uuid.uuid4().hex
 
-        for method in methods_to_try:
-            try:
-                xai_result = run_cascade_xai(
-                    files,
-                    pipeline_result,
-                    cascade_prediction=pipeline_result.prediction,
-                    xai_method=method,
-                    backend_public_url=backend_public_url,
-                    job_id=xai_job_id,
-                )
-                preview = cascade_stage_preview_overlay(xai_result.stages[-1])
-                if preview:
-                    grad_cam_path = preview
-                xai_error = None
-                if method != xai_method:
-                    logger.info(
-                        "Cascade XAI succeeded with fallback method '%s' "
-                        "(requested '%s') for prediction %s",
-                        method,
-                        xai_method,
-                        pipeline_result.prediction,
-                    )
-                break
-            except Exception as exc:
-                xai_error = str(exc)
-                logger.warning(
-                    "Cascade XAI failed for prediction %s with method '%s': %s",
-                    pipeline_result.prediction,
-                    method,
-                    exc,
-                    exc_info=True,
-                )
-                xai_result = None
+    if run_xai and needs_segmentation and ANALYZE_PARALLEL_SEGMENTATION_AND_XAI:
+        seg_job_id = uuid.uuid4().hex
+        seg_output_dir = resolve_segmentation_output_dir(files, seg_job_id)
 
-    if prediction_supports_segmentation(pipeline_result.prediction):
-        job_id = uuid.uuid4().hex
-        output_dir = resolve_segmentation_output_dir(files, job_id)
-        artifacts = run_segmentation(
-            files,
-            pipeline_result.prediction,
-            output_dir,
-            backend_public_url,
-        )
-        segmentation_result = _to_segmentation_result(artifacts)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            xai_future = executor.submit(
+                _run_cascade_xai_for_analyze,
+                files,
+                pipeline_result,
+                xai_method=xai_method,
+                backend_public_url=backend_public_url,
+                xai_job_id=xai_job_id,
+                prepared=prepared,
+            )
+            seg_future = executor.submit(
+                run_segmentation,
+                files,
+                pipeline_result.prediction,
+                seg_output_dir,
+                backend_public_url,
+                prepared=prepared,
+            )
+
+            xai_result, xai_error = xai_future.result()
+            segmentation_result = _to_segmentation_result(seg_future.result())
+
+    else:
+        if run_xai:
+            xai_result, xai_error = _run_cascade_xai_for_analyze(
+                files,
+                pipeline_result,
+                xai_method=xai_method,
+                backend_public_url=backend_public_url,
+                xai_job_id=xai_job_id,
+                prepared=prepared,
+            )
+
+        if needs_segmentation:
+            seg_job_id = uuid.uuid4().hex
+            output_dir = resolve_segmentation_output_dir(files, seg_job_id)
+            artifacts = run_segmentation(
+                files,
+                pipeline_result.prediction,
+                output_dir,
+                backend_public_url,
+                prepared=prepared,
+            )
+            segmentation_result = _to_segmentation_result(artifacts)
+
+    if xai_result and xai_result.stages:
+        preview = cascade_stage_preview_overlay(xai_result.stages[-1])
+        if preview:
+            grad_cam_path = preview
 
     return ModelResult(
         prediction=pipeline_result.prediction,

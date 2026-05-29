@@ -38,9 +38,22 @@ Outputs are saved under `server/uploads/segmentation/<job-id>/`:
 
 Class labels: Background, NCR/NET, Edema, Enhancing Tumor.
 
+## Analyze performance (upload path)
+
+On `POST /scans/analyze` the service:
+
+- Loads each MRI **once** (`prepare_scan_inputs`) and reuses tensors for classification, XAI, and segmentation.
+- Runs **Grad-CAM++ on stage 2 only** (`ANALYZE_XAI_STAGES` in `config.py`). PCI and other per-channel methods are **not** run on upload.
+- Runs segmentation in **parallel** with XAI when `ANALYZE_PARALLEL_SEGMENTATION_AND_XAI` is true.
+- Uses **GPU** when `TF_ENABLE_GPU=true` and TensorFlow sees a GPU (largest win for classify + XAI + segmentation).
+
+In the UI, open **Per-modality** to run PCI (cached after the first request). **Combined heatmap** uses the Grad-CAM++ result from analyze.
+
+Restart the model API after changing `config.py` (parallel path, GPU, XAI stages).
+
 ## XAI (Explainable AI) — Stages 1, 2, and 3
 
-Cascade classification uses stages 1–3; **XAI is generated for stage 2 only** (EfficientNet). `POST /xai/explain` can still target stages 1–3 explicitly for debugging.
+Cascade classification uses stages 1–3; **default cascade XAI is stage 2 only** (EfficientNet). `POST /xai/explain` can still target stages 1–3 explicitly for debugging.
 
 Returns base64 PNGs for:
 
@@ -82,6 +95,7 @@ The service reads `MONGO_URL` from `.env` or `server/.env`. Optional values:
 
 - `MONGO_DB`: database name when the Mongo URL does not include one. Defaults to `test`.
 - `MODEL_VERSION`: version string saved on each scan. Defaults to `cascade-v1.1.0-seg`.
+- `TF_ENABLE_GPU`: set to `1` (default) to use a GPU when TensorFlow is built with CUDA. Check `GET /health` for `gpu_available`. Install `tensorflow` with GPU support on the host if `gpu_available` is false.
 
 The Express server calls:
 

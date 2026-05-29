@@ -1,15 +1,15 @@
 import { api } from "./api";
 
-/** Default explanation (Grad-CAM++ on the backend). */
+/** Default combined explanation view (backend id: gradcam++). */
 export const PRIMARY_XAI_METHOD = {
     id: "gradcam++",
-    label: "Combined heatmap",
+    label: "Combined view",
 };
 
-/** Alternate user-facing view (grid PCI on the backend). */
+/** Per-sequence explanation view (backend id: pci). */
 export const ALTERNATE_XAI_METHOD = {
     id: "pci",
-    label: "Per-modality heatmaps",
+    label: "By MRI sequence",
 };
 
 /** Options shown in the scan UI — ids are sent to the API unchanged. */

@@ -10,6 +10,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_database
 from .model_runner import run_model
+from .config import (
+    ANALYZE_DEFAULT_XAI_METHOD,
+    ANALYZE_PRELOAD_MODELS_AT_STARTUP,
+    ANALYZE_XAI_STAGES,
+)
+from .model_registry import warmup_models
+from .tf_device import configure_tensorflow, get_tensorflow_device_info
+
+configure_tensorflow()
+if ANALYZE_PRELOAD_MODELS_AT_STARTUP:
+    warmup_models()
 from .schemas import (
     AnalyzeScanRequest,
     ScanXaiMethodRequest,
@@ -151,7 +162,10 @@ async def _resolve_patient_id(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "tensorflow": get_tensorflow_device_info(),
+    }
 
 
 @app.get("/xai/methods")
@@ -170,6 +184,9 @@ async def list_xai_methods():
         "perChannelMethods": ["pci", "pci_full_channel", "occlusion", "shap"],
         "supportedStages": [1, 2, 3],
         "cascadeDefaultMethod": "gradcam++",
+        "analyzeDefaultXaiMethod": ANALYZE_DEFAULT_XAI_METHOD,
+        "analyzeXaiStages": list(ANALYZE_XAI_STAGES),
+        "perChannelOnDemandOnly": True,
     }
 
 

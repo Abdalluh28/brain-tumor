@@ -28,7 +28,9 @@ from .config import (
     SEG_CLASS_NAMES,
     resolve_model_path,
 )
+from .inference import keras_predict_proba
 from .preprocessing import load_modality_slice, map_files_to_modalities
+from .scan_inputs import PreparedScanInputs
 from .schemas import Prediction, ScanFileIn
 
 SegmentationModelType = Literal["GLI", "METS"]
@@ -124,8 +126,7 @@ def _load_segmentation_model(model_type: SegmentationModelType):
 
 def predict_mask(tensor: np.ndarray, model_type: SegmentationModelType) -> np.ndarray:
     model, _ = _load_segmentation_model(model_type)
-    batch = np.expand_dims(tensor, axis=0)
-    probabilities = model.predict(batch, verbose=0)[0]
+    probabilities = keras_predict_proba(model, tensor)
     return np.argmax(probabilities, axis=-1).astype(np.uint8)
 
 
@@ -249,13 +250,19 @@ def run_segmentation(
     prediction: Prediction,
     output_dir: Path,
     backend_public_url: str | None = None,
+    *,
+    prepared: PreparedScanInputs | None = None,
 ) -> SegmentationArtifacts:
     model_type = segmentation_model_type(prediction)
     if model_type is None:
         raise ValueError(f"Segmentation is not available for prediction: {prediction}")
 
-    modality_map = map_files_to_modalities(files)
-    tensor, t1n = build_segmentation_input(modality_map)
+    if prepared is not None:
+        tensor = prepared.segmentation_tensor
+        t1n = prepared.t1n_gray
+    else:
+        modality_map = map_files_to_modalities(files)
+        tensor, t1n = build_segmentation_input(modality_map)
     _, model_path = _load_segmentation_model(model_type)
     mask = predict_mask(tensor, model_type)
 
