@@ -14,7 +14,6 @@ export default function ScanIdBody() {
     const params = useParams();
     const scanId = params.scanId;
     const { scan, isLoading } = useScan({ id: scanId });
-    // still need to get the images properly
     const {
         prediction,
         confidenceScores,
@@ -38,7 +37,8 @@ export default function ScanIdBody() {
 
     return (
         <>
-            <ScanIdHeader scanId={scanId} date={date} time={time} />
+            {/* scan prop enables report download / print in the header */}
+            <ScanIdHeader scanId={scanId} date={date} time={time} scan={scan} />
             <div className='scan flex flex-col lg:grid lg:grid-cols-3 gap-8 m-8'>
                 <ScanIdResult
                     prediction={prediction}
