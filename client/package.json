@@ -23,6 +23,7 @@
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "nifti-reader-js": "^0.6.6",
     "date-fns": "^4.2.1",
     "dayjs": "^1.11.20",
     "lucide-react": "^0.562.0",
