@@ -1,11 +1,13 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tally3 } from "lucide-react";
+import ScanReportActions from "./report/ScanReportActions";
 
-export default function ScanIdHeader({ scanId, date, time }) {
+/** Scan detail header — includes PDF download and print actions when scan is loaded. */
+export default function ScanIdHeader({ scanId, date, time, scan }) {
 
 
     return (
-        <div className='bg-white dark:bg-background dark:border-b dark:border-b-slate-600 flex p-6 shadow-md flex-wrap gap-4'>
+        <div className='bg-white dark:bg-background dark:border-b dark:border-b-slate-600 flex p-6 shadow-md flex-wrap gap-4 justify-between items-start'>
             <div className='flex gap-2'>
                 <div className="md:hidden -translate-x-2">
                     <SidebarTrigger>
@@ -21,6 +23,14 @@ export default function ScanIdHeader({ scanId, date, time }) {
                     </p>
                 </div>
             </div>
+            {scan && (
+                <ScanReportActions
+                    scan={scan}
+                    scanId={scanId}
+                    date={date}
+                    time={time}
+                />
+            )}
         </div>
     )
 }
