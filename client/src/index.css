@@ -198,7 +198,8 @@
     --dashboard-numbers: #052e16;
 }
 
-.dark .scan, .dark .history{
+.dark .scan,
+.dark .history {
     --upload-label-bg: #151f33;
     --upload-icon-bg: #172445;
 
@@ -226,5 +227,27 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* =========================================================
+   SCAN REPORT PRINT (react-to-print)
+   Hide the app UI; only .scan-report-print content is visible.
+   ========================================================= */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .scan-report-print,
+    .scan-report-print * {
+        visibility: visible;
+    }
+
+    .scan-report-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
     }
 }
