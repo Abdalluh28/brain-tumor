@@ -10,6 +10,7 @@ from .preprocessing import (
     load_modality_volume,
     map_files_to_modalities,
     select_slices_for_classification,
+    validate_2d_mri_brain_size,
     validate_matching_volume_shapes,
 )
 from .schemas import ScanFileIn
@@ -106,13 +107,14 @@ def prepare_mri_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
         )
     }
 
+    t1c_index = MODALITY_ORDER.index("t1c")
+    slice_filter = validate_2d_mri_brain_size(stage4_2d[:, :, t1c_index])
     slice_filter = {
-        "slice_info": [{"z": 0, "is_good": True, "slice_status": "good"}],
-        "good_slices": [0],
-        "bad_slices": [],
+        **slice_filter,
         "reference_modality": "t1c",
         "reference_depth": 1,
         "representative_slice": 0,
+        "scan_mode": "2D",
     }
 
     return PreparedScanInputs(

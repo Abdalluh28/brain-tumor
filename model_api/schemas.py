@@ -221,6 +221,12 @@ class TumorSliceOut(BaseModel):
     xaiHeatmap: str = ""
 
 
+class ValidSlicePreviewOut(BaseModel):
+    z: int
+    sliceNumber: int
+    modalities: dict[str, str]
+
+
 class FullCaseResult(BaseModel):
     casePrediction: CasePredictionLabel
     averageConfidence: float = Field(
@@ -231,6 +237,10 @@ class FullCaseResult(BaseModel):
     )
     numValidSlices: int
     numTumorSlices: int
+    validSlicePreviews: list[ValidSlicePreviewOut] = Field(
+        default_factory=list,
+        description="All brain-valid slices exported before per-slice inference.",
+    )
     tumorSlices: list[TumorSliceOut]
     maskMetadata: dict | None = None
 

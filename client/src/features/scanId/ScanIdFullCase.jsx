@@ -8,8 +8,16 @@ const CASE_LABELS = {
     Healthy: 'Healthy (no tumor)',
 };
 
+const MODALITY_LABELS = {
+    t1n: 'T1n',
+    t1c: 'T1c',
+    t2w: 'T2w',
+    t2f: 'FLAIR',
+};
+
 export default function ScanIdFullCase({ fullCase }) {
-    const [expanded, setExpanded] = useState(false);
+    const [validExpanded, setValidExpanded] = useState(false);
+    const [tumorExpanded, setTumorExpanded] = useState(false);
 
     if (!fullCase) {
         return null;
@@ -21,8 +29,12 @@ export default function ScanIdFullCase({ fullCase }) {
         averageConfidence,
         numValidSlices,
         numTumorSlices,
+        validSlicePreviews = [],
+        maskMetadata,
         tumorSlices = [],
     } = fullCase;
+
+    const maskNiftiPath = maskMetadata?.maskNiftiPath;
 
     const confidenceDisplay =
         averageConfidencePercent ??
@@ -40,7 +52,8 @@ export default function ScanIdFullCase({ fullCase }) {
                             Full-case 3D analysis
                         </h2>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Majority vote across {numValidSlices ?? '—'} valid slices (T1c brain-size filter).
+                            Majority vote across {numValidSlices ?? '—'} valid T1c slices
+                            (brain area ≥ 8,000 px, largest component ≥ 2,000 px).
                         </p>
                     </div>
                 </div>
@@ -55,18 +68,56 @@ export default function ScanIdFullCase({ fullCase }) {
                 </div>
             </div>
 
+            {maskNiftiPath ? (
+                <div className="px-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <a
+                        href={maskNiftiPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                        Download 3D segmentation mask (NIfTI)
+                    </a>
+                </div>
+            ) : null}
+
+            {validSlicePreviews.length > 0 ? (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => setValidExpanded((v) => !v)}
+                        className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-100 dark:border-slate-800"
+                    >
+                        <span>
+                            Valid slices — all modalities ({validSlicePreviews.length})
+                        </span>
+                        {validExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
+                    {validExpanded ? (
+                        <div className="px-6 py-4 flex flex-col gap-6 max-h-[70vh] overflow-y-auto border-b border-slate-100 dark:border-slate-800">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Exported from NIfTI before classification. Slice numbers match the MRI viewer (e.g. slice 83 / 155).
+                            </p>
+                            {validSlicePreviews.map((row) => (
+                                <ValidSliceRow key={row.z ?? row.sliceNumber} row={row} />
+                            ))}
+                        </div>
+                    ) : null}
+                </>
+            ) : null}
+
             {tumorSlices.length > 0 ? (
                 <>
                     <button
                         type="button"
-                        onClick={() => setExpanded((v) => !v)}
+                        onClick={() => setTumorExpanded((v) => !v)}
                         className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                     >
                         <span>Tumor-containing slices ({tumorSlices.length})</span>
-                        {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        {tumorExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
 
-                    {expanded ? (
+                    {tumorExpanded ? (
                         <div className="px-6 pb-6 flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
                             {tumorSlices.map((slice) => (
                                 <TumorSliceCard key={slice.z ?? slice.sliceNumber} slice={slice} />
@@ -95,6 +146,28 @@ function Stat({ label, value, highlight = false }) {
                 {value}
             </p>
         </div>
+    );
+}
+
+function ValidSliceRow({ row }) {
+    const z = row.z ?? row.sliceNumber;
+    const modalities = row.modalities || {};
+
+    return (
+        <article className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
+                Slice {z}
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(modalities).map(([mod, src]) => (
+                    <SliceImage
+                        key={mod}
+                        label={MODALITY_LABELS[mod] ?? mod}
+                        src={src}
+                    />
+                ))}
+            </div>
+        </article>
     );
 }
 

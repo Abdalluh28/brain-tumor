@@ -21,6 +21,7 @@ from .schemas import (
     SegmentationClassStatOut,
     SegmentationResult,
     TumorSliceOut,
+    ValidSlicePreviewOut,
 )
 from .segmentation import (
     prediction_supports_segmentation,
@@ -171,12 +172,11 @@ def run_full_case_model(
         averageConfidencePercent=artifacts.average_confidence,
         numValidSlices=artifacts.num_valid_slices,
         numTumorSlices=artifacts.num_tumor_slices,
+        validSlicePreviews=[
+            ValidSlicePreviewOut(**item) for item in artifacts.valid_slice_previews
+        ],
         tumorSlices=[TumorSliceOut(**item) for item in artifacts.tumor_slices],
-        maskMetadata={
-            "maskVolumePath": artifacts.mask_volume_path,
-            "goodSlices": artifacts.slice_filter.get("good_slices", []),
-            "cacheDir": artifacts.slice_filter.get("cacheDir"),
-        },
+        maskMetadata=artifacts.mask_metadata,
     )
 
     grad_cam_path = _grad_cam_path(files, backend_public_url)
@@ -310,5 +310,5 @@ def run_model(
         segmentation=segmentation_result,
         xai=xai_result,
         xaiError=xai_error,
-        sliceFiltering=pipeline_result.slice_filter,
+        sliceFiltering=prepared.slice_filter,
     )

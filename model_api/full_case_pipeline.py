@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from .config import ANALYZE_DEFAULT_XAI_METHOD
 from .pipeline import (
@@ -28,6 +29,7 @@ from .segmentation import (
 from .volume_cache import (
     build_slice_scan_files,
     cache_nifti_volumes,
+    export_mask_nifti,
     export_valid_slices_to_png,
 )
 from .xai_service import cascade_stage_preview_overlay, run_cascade_xai
@@ -43,8 +45,7 @@ class Slice2DRunResult:
     segmentation_mask: np.ndarray | None
     xai_overlay_path: str | None
     xai_error: str | None
-    original_png_path: str
-    t1n_gray: np.ndarray
+    png_paths: dict[str, Path]
 
 
 @dataclass(frozen=True)
@@ -55,12 +56,15 @@ class FullCaseArtifacts:
     confidence_scores: dict
     num_valid_slices: int
     num_tumor_slices: int
+    valid_slice_previews: list[dict]
     tumor_slices: list[dict]
     mask_volume_path: str | None
+    mask_nifti_path: str | None
     slice_filter: dict
     pipeline_result: object
     segmentation: SegmentationArtifacts | None
     xai_error: str | None
+    mask_metadata: dict | None = None
 
 
 def _slice_confidence_from_pipeline(pipeline_result) -> float:
@@ -76,12 +80,13 @@ def _slice_confidence_from_pipeline(pipeline_result) -> float:
 def _run_slice_2d_pipeline(
     z: int,
     slice_files: list[ScanFileIn],
+    png_paths: dict[str, Path],
     *,
     backend_public_url: str | None,
     xai_method: str,
     output_dir: Path,
 ) -> Slice2DRunResult:
-    """Run the full 2D pipeline (classify, XAI, segmentation) on one cached slice."""
+    """Run classify + XAI + segmentation on one cached viewer-aligned slice."""
     prepared = prepare_mri_scan_inputs(slice_files)
     pipeline_result = run_pipeline(slice_files, prepared=prepared)
 
@@ -137,8 +142,7 @@ def _run_slice_2d_pipeline(
         segmentation_mask=mask,
         xai_overlay_path=xai_overlay_path,
         xai_error=xai_error,
-        original_png_path=str(slice_files[0].rawPath),
-        t1n_gray=prepared.t1n_gray,
+        png_paths=png_paths,
     )
 
 
@@ -151,36 +155,46 @@ def run_full_case_pipeline(
 ) -> FullCaseArtifacts:
     """
     3D full-case flow:
-    1. Cache NIfTI volumes
+    1. Cache NIfTI volumes (viewer-aligned slice indices)
     2. Filter valid slices (T1c brain-size)
-    3. Export PNGs per modality per slice
-    4. Run the 2D pipeline on each slice individually
-    5. Majority vote for case prediction
-    6. Stack per-slice masks into one 3D volume
+    3. Export all valid slices to PNG (all modalities) — visible before inference
+    4. Run 2D pipeline per slice (classify, XAI, segmentation)
+    5. Majority vote
+    6. Stack masks → 3D NIfTI + NPZ
     """
     job_id = job_id or uuid.uuid4().hex
     cache_dir, volume_map, _modality_map, slice_filter = cache_nifti_volumes(files, job_id)
     good_slices = list(slice_filter["good_slices"])
     reference_depth = int(slice_filter["reference_depth"])
 
-    png_paths = export_valid_slices_to_png(
-        volume_map, good_slices, reference_depth, cache_dir
+    png_paths, valid_slice_previews = export_valid_slices_to_png(
+        volume_map,
+        good_slices,
+        cache_dir,
+        backend_public_url,
+    )
+
+    logger.info(
+        "Exported %s valid slices × 4 modalities to cache before inference.",
+        len(good_slices),
     )
 
     output_dir = resolve_segmentation_output_dir(files, job_id)
     full_case_dir = output_dir.parent / "full_case" / job_id
     full_case_dir.mkdir(parents=True, exist_ok=True)
-    display_dir = full_case_dir / "slices"
+    display_dir = full_case_dir / "tumor_slices"
     display_dir.mkdir(parents=True, exist_ok=True)
 
     slice_runs: list[Slice2DRunResult] = []
     xai_errors: list[str] = []
 
     for z in good_slices:
-        slice_files = build_slice_scan_files(z, png_paths[z])
+        z_png = png_paths[z]
+        slice_files = build_slice_scan_files(z, z_png)
         run = _run_slice_2d_pipeline(
             z,
             slice_files,
+            z_png,
             backend_public_url=backend_public_url,
             xai_method=xai_method,
             output_dir=full_case_dir,
@@ -205,6 +219,7 @@ def run_full_case_pipeline(
     }
 
     mask_volume_path: str | None = None
+    mask_nifti_path: str | None = None
     if masks_by_z:
         first = next(iter(masks_by_z.values()))
         height, width = first.shape
@@ -215,6 +230,14 @@ def run_full_case_pipeline(
         np.savez_compressed(npz_path, mask=volume_mask)
         mask_volume_path = build_public_upload_url(backend_public_url, npz_path)
 
+        nifti_path = full_case_dir / "segmentation_mask.nii.gz"
+        mask_nifti_path = export_mask_nifti(
+            masks_by_z,
+            slice_filter,
+            nifti_path,
+            backend_public_url,
+        )
+
     tumor_z = sorted(z for z, mask in masks_by_z.items() if int(np.sum(mask > 0)) > 0)
     if not tumor_z and case_prediction != "Healthy":
         tumor_z = sorted(run.z for run in slice_runs if run.cascade.case_label != "Healthy")
@@ -224,14 +247,14 @@ def run_full_case_pipeline(
         if run.z not in tumor_z:
             continue
 
-        original_path = display_dir / f"slice_{run.z}_original.png"
-        gray = (np.clip(run.t1n_gray, 0.0, 1.0) * 255.0).astype(np.uint8)
-        save_png(gray, original_path)
+        t1n_png = run.png_paths["t1n"]
+        original_url = build_public_upload_url(backend_public_url, t1n_png)
 
-        seg_url = ""
+        seg_url = original_url
         if run.segmentation_mask is not None:
+            t1n_arr = np.asarray(Image.open(t1n_png).convert("L"), dtype=np.float32) / 255.0
             seg_path = display_dir / f"slice_{run.z}_segmentation.png"
-            save_png(overlay_mask_on_t1n(run.t1n_gray, run.segmentation_mask), seg_path)
+            save_png(overlay_mask_on_t1n(t1n_arr, run.segmentation_mask), seg_path)
             seg_url = build_public_upload_url(backend_public_url, seg_path)
 
         tumor_slices.append(
@@ -239,11 +262,10 @@ def run_full_case_pipeline(
                 "z": run.z,
                 "sliceNumber": run.z,
                 "confidence": run.cascade.confidence,
-                "originalSlice": build_public_upload_url(backend_public_url, original_path),
-                "segmentation": seg_url
-                or build_public_upload_url(backend_public_url, original_path),
+                "originalSlice": original_url,
+                "segmentation": seg_url,
                 "xai": run.xai_overlay_path or "",
-                "xaiOriginal": build_public_upload_url(backend_public_url, original_path),
+                "xaiOriginal": original_url,
                 "xaiHeatmap": run.xai_overlay_path or "",
             }
         )
@@ -261,6 +283,18 @@ def run_full_case_pipeline(
             prepared=rep_prepared,
         )
 
+    mask_metadata = {
+        "maskVolumePath": mask_volume_path,
+        "maskNiftiPath": mask_nifti_path,
+        "goodSlices": good_slices,
+        "cacheDir": slice_filter.get("cacheDir"),
+        "nativeShape": slice_filter.get("native_shape"),
+        "referenceNiftiPath": slice_filter.get("referenceNiftiPath"),
+    }
+    if segmentation_result is not None:
+        mask_metadata["segmentationModel"] = segmentation_result.model_type
+        mask_metadata.update(segmentation_result.metadata)
+
     return FullCaseArtifacts(
         case_prediction=case_prediction,
         prediction=prediction,
@@ -268,10 +302,13 @@ def run_full_case_pipeline(
         confidence_scores=confidence_scores,
         num_valid_slices=len(good_slices),
         num_tumor_slices=len(tumor_slices),
+        valid_slice_previews=valid_slice_previews,
         tumor_slices=tumor_slices,
         mask_volume_path=mask_volume_path,
+        mask_nifti_path=mask_nifti_path,
         slice_filter=slice_filter,
         pipeline_result=pipeline_result,
         segmentation=segmentation_result,
         xai_error="; ".join(xai_errors) if xai_errors else None,
+        mask_metadata=mask_metadata,
     )

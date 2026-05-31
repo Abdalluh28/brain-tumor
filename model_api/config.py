@@ -74,6 +74,17 @@ ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
 # Full-case 3D: max tumor slices to explain on upload (0 = no limit).
 FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "40"))
 
+# T1c brain-size slice filter (valid slices must meet BOTH thresholds).
+MIN_BRAIN_PIXELS_FOR_SLICE_FILTER = int(
+    os.environ.get("MIN_BRAIN_PIXELS_FOR_SLICE_FILTER", "8000")
+)
+MIN_BRAIN_COMPONENT_PIXELS_FOR_SLICE_FILTER = int(
+    os.environ.get("MIN_BRAIN_COMPONENT_PIXELS_FOR_SLICE_FILTER", "2000")
+)
+SLICE_FILTER_BRAIN_PERCENTILE = int(os.environ.get("SLICE_FILTER_BRAIN_PERCENTILE", "20"))
+SLICE_FILTER_EDGE_MARGIN_RATIO = float(os.environ.get("SLICE_FILTER_EDGE_MARGIN_RATIO", "0.08"))
+SLICE_FILTER_EDGE_RELAX_FACTOR = float(os.environ.get("SLICE_FILTER_EDGE_RELAX_FACTOR", "1.0"))
+
 ANALYZE_DEFAULT_XAI_METHOD = "gradcam++"
 ANALYZE_XAI_STAGES: tuple[int, ...] = (2,)
 # Fallbacks if gradcam++ fails — never includes pci (on-demand only).

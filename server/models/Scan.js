@@ -172,6 +172,15 @@ const scanSchema = new mongoose.Schema(
             averageConfidencePercent: Number,
             numValidSlices: Number,
             numTumorSlices: Number,
+            validSlicePreviews: [
+                {
+                    z: Number,
+                    sliceNumber: Number,
+                    modalities: {
+                        type: mongoose.Schema.Types.Mixed,
+                    },
+                },
+            ],
             tumorSlices: [
                 {
                     z: Number,
