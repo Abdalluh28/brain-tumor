@@ -408,6 +408,7 @@ async def analyze_scan(payload: AnalyzeScanRequest):
             if result.segmentation is not None
             else None
         ),
+        "sliceFiltering": result.sliceFiltering,
 
         # Metadata
         "status": "completed",

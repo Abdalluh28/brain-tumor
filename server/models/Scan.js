@@ -159,6 +159,10 @@ const scanSchema = new mongoose.Schema(
             },
         },
 
+        sliceFiltering: {
+            type: mongoose.Schema.Types.Mixed,
+        },
+
         status: {
             type: String,
             enum: ["pending", "review", "completed", "failed"],

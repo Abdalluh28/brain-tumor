@@ -16,7 +16,6 @@ from .config import (
 from .stage2_loader import load_stage2_model
 from .inference import keras_predict_proba
 from .tf_device import configure_tensorflow
-from .preprocessing import build_multichannel_tensor, map_files_to_modalities
 from .scan_inputs import PreparedScanInputs
 from .schemas import Prediction, ScanFileIn
 
@@ -47,6 +46,7 @@ class PipelineResult:
     confidence_scores: dict[Prediction, float]
     stages_run: list[str]
     stage_details: dict[str, StagePrediction]
+    slice_filter: dict | None = None
 
 
 def _softmax_dict(labels: tuple[str, ...], probs: np.ndarray) -> dict[str, float]:
@@ -131,6 +131,7 @@ def run_pipeline(
             confidence_scores=confidence_scores,
             stages_run=stages_run,
             stage_details=stage_details,
+            slice_filter=prepared.slice_filter,
         )
 
     stage4_tensor = prepared.stage4_tensor
@@ -162,6 +163,7 @@ def run_pipeline(
             confidence_scores=confidence_scores,
             stages_run=stages_run,
             stage_details=stage_details,
+            slice_filter=prepared.slice_filter,
         )
 
     if stage2_idx == 2:
@@ -179,6 +181,7 @@ def run_pipeline(
             confidence_scores=confidence_scores,
             stages_run=stages_run,
             stage_details=stage_details,
+            slice_filter=prepared.slice_filter,
         )
 
     stages_run.append("stage3")
@@ -209,6 +212,7 @@ def run_pipeline(
         confidence_scores=confidence_scores,
         stages_run=stages_run,
         stage_details=stage_details,
+        slice_filter=prepared.slice_filter,
     )
 
 

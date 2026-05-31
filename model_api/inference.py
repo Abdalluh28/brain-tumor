@@ -15,4 +15,7 @@ def keras_predict_proba(model, tensor: np.ndarray) -> np.ndarray:
     if batch.ndim == 3:
         batch = np.expand_dims(batch, axis=0)
     outputs = model(tf.constant(batch, dtype=tf.float32), training=False)
-    return outputs.numpy()[0]
+    probabilities = outputs.numpy()
+    if probabilities.ndim == 2:
+        return probabilities.mean(axis=0)
+    return probabilities[0]

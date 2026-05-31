@@ -219,3 +219,7 @@ class ModelResult(BaseModel):
         default=None,
         description="Set when cascade XAI could not be generated during analyze.",
     )
+    sliceFiltering: dict | None = Field(
+        default=None,
+        description="T1c brain-size slice filter metadata used before classification.",
+    )

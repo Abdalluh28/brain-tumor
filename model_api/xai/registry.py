@@ -138,9 +138,9 @@ def prepare_stage_input(
 ) -> np.ndarray:
     if prepared is not None:
         if config.stage == 1:
-            tensor = prepared.stage1_tensor
+            tensor = prepared.xai_stage1_tensor
         else:
-            tensor = prepared.stage4_tensor
+            tensor = prepared.xai_stage4_tensor
     else:
         modality_map = map_files_to_modalities(files)
         tensor = build_multichannel_tensor(modality_map, list(config.modalities))

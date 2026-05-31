@@ -160,6 +160,12 @@ def run_model(
 
     prepared = prepare_scan_inputs(files)
     pipeline_result = run_pipeline(files, prepared=prepared)
+    logger.info(
+        "Slice filter selected %s good slices and %s bad slices using %s.",
+        len(prepared.slice_filter.get("good_slices", [])),
+        len(prepared.slice_filter.get("bad_slices", [])),
+        prepared.slice_filter.get("reference_modality", "t1c"),
+    )
 
     segmentation_result: SegmentationResult | None = None
     xai_result = None
@@ -167,9 +173,10 @@ def run_model(
     grad_cam_path = _grad_cam_path(files, backend_public_url)
 
     needs_segmentation = prediction_supports_segmentation(pipeline_result.prediction)
+    should_run_xai = run_xai and "stage2" in pipeline_result.stages_run
     xai_job_id = uuid.uuid4().hex
 
-    if run_xai and needs_segmentation and ANALYZE_PARALLEL_SEGMENTATION_AND_XAI:
+    if should_run_xai and needs_segmentation and ANALYZE_PARALLEL_SEGMENTATION_AND_XAI:
         seg_job_id = uuid.uuid4().hex
         seg_output_dir = resolve_segmentation_output_dir(files, seg_job_id)
 
@@ -196,7 +203,7 @@ def run_model(
             segmentation_result = _to_segmentation_result(seg_future.result())
 
     else:
-        if run_xai:
+        if should_run_xai:
             xai_result, xai_error = _run_cascade_xai_for_analyze(
                 files,
                 pipeline_result,
@@ -233,4 +240,5 @@ def run_model(
         segmentation=segmentation_result,
         xai=xai_result,
         xaiError=xai_error,
+        sliceFiltering=pipeline_result.slice_filter,
     )
