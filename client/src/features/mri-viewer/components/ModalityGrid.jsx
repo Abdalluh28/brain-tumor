@@ -2,7 +2,7 @@ import { MODALITY_SLOT_COUNT } from "../constants";
 import ModalitySlot from "./ModalitySlot";
 
 export default function ModalityGrid({
-  volumes,
+  slotMeta,
   sliceIndex,
   canvasRefs,
   onRemoveVolume,
@@ -18,7 +18,7 @@ export default function ModalityGrid({
         <ModalitySlot
           key={idx}
           slotIdx={idx}
-          vol={volumes[idx]}
+          meta={slotMeta[idx]}
           sliceIndex={sliceIndex}
           canvasRef={(el) => {
             canvasRefs.current[idx] = el;

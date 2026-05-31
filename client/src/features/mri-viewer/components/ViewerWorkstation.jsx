@@ -18,7 +18,7 @@ export default function ViewerWorkstation({
   isAnyVolumeLoaded,
   currentDims,
   maxSlices,
-  volumes,
+  slotMeta,
   sliceIndex,
   setSliceIndex,
   canvasRefs,
@@ -69,7 +69,7 @@ export default function ViewerWorkstation({
 
       {isAnyVolumeLoaded && (
         <ModalityGrid
-          volumes={volumes}
+          slotMeta={slotMeta}
           sliceIndex={sliceIndex}
           canvasRefs={canvasRefs}
           onRemoveVolume={onRemoveVolume}

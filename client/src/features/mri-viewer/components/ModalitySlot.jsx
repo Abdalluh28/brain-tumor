@@ -1,17 +1,19 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { FileUp } from "lucide-react";
 import { MODALITY_NAMES } from "../constants";
 import { viewerCard, viewerOverlayChip } from "../viewerTheme";
 
-export default function ModalitySlot({
+function ModalitySlot({
   slotIdx,
-  vol,
+  meta,
   sliceIndex,
   canvasRef,
   onRemove,
   onSlotUpload,
 }) {
   const fileInputRef = useRef(null);
+  const hasVolume = meta !== null;
+
   return (
     <div className={viewerCard}>
       <div
@@ -22,15 +24,17 @@ export default function ModalitySlot({
       <div
         className={`${viewerOverlayChip} absolute top-3 right-3 text-slate-600 dark:text-slate-300 font-mono`}
       >
-        {vol ? `Slice ${sliceIndex + 1}/${vol.slices}` : "No Volume"}
+        {hasVolume
+          ? `Slice ${sliceIndex + 1}/${meta.slices}`
+          : "No Volume"}
       </div>
 
-      {vol ? (
+      {hasVolume ? (
         <>
           <div
             className={`${viewerOverlayChip} absolute bottom-3 left-3 right-3 text-[10px] text-slate-600 dark:text-slate-400 font-mono truncate`}
           >
-            {vol.file.name}
+            {meta.fileName}
           </div>
           <button
             type="button"
@@ -77,3 +81,5 @@ export default function ModalitySlot({
     </div>
   );
 }
+
+export default memo(ModalitySlot);

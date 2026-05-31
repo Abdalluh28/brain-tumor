@@ -38,6 +38,10 @@ export const scanSlice = createSlice({
         setViewerPatientInfo: (state, action) => {
             state.viewerPatientInfo = action.payload;
         },
+        clearViewerCase: (state) => {
+            state.viewerVolumes = [null, null, null, null];
+            state.viewerSliceIndex = 0;
+        },
         clearViewerState: (state) => {
             state.viewerVolumes = [null, null, null, null];
             state.viewerSliceIndex = 0;
@@ -54,6 +58,7 @@ export const {
     setViewerVolumes,
     setViewerSliceIndex,
     setViewerPatientInfo,
+    clearViewerCase,
     clearViewerState
 } = scanSlice.actions;
 
