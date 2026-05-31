@@ -11,7 +11,7 @@ export default function ModalityGrid({
 }) {
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"
+      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full"
       onWheel={onWheel}
     >
       {Array.from({ length: MODALITY_SLOT_COUNT }, (_, idx) => (
