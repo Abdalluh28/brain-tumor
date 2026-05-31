@@ -6,6 +6,7 @@ import ScanIdXai from './ScanIdXai'
 import ScanIdHeader from './ScanIdHeader'
 import ScanIdMRI from './ScanIdMRI'
 import ScanIdProbabilities from './ScanIdProbabilities'
+import ScanIdFullCase from './ScanIdFullCase'
 import ScanIdResult from './ScanIdResult'
 import { useScan } from './useScan'
 
@@ -22,6 +23,8 @@ export default function ScanIdBody() {
         xai,
         xaiError,
         segmentation,
+        fullCase,
+        scanType,
         radiologist,
         status,
         createdAt,
@@ -44,8 +47,11 @@ export default function ScanIdBody() {
                     prediction={prediction}
                     confidence={confidence}
                     processedTimeMs={processedTime}
+                    fullCase={fullCase}
+                    scanType={scanType}
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
+                    {fullCase ? <ScanIdFullCase fullCase={fullCase} /> : null}
                     <ScanIdMRI
                         originalMRI={
                             xai?.stages?.[0]?.originalPath
@@ -54,7 +60,9 @@ export default function ScanIdBody() {
                         }
                         files={files}
                     />
-                    <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                    {scanType !== '3D' ? (
+                        <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                    ) : null}
                     {segmentation ? (
                         <ScanIdSegmentation segmentation={segmentation} />
                     ) : null}

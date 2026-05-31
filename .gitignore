@@ -13,3 +13,13 @@ venv/
 __pycache__/
 *.pyc
 samples/nifti/
+
+
+# Python virtual environments
+.venv/
+venv/
+myenv311/
+
+# Python cache
+__pycache__/
+*.pyc

@@ -13,7 +13,15 @@ from .config import (
 )
 from .pipeline import get_model_version, run_pipeline
 from .scan_inputs import prepare_scan_inputs
-from .schemas import ModelResult, ScanFileIn, SegmentationClassStatOut, SegmentationResult
+from .full_case_pipeline import run_full_case_pipeline
+from .schemas import (
+    FullCaseResult,
+    ModelResult,
+    ScanFileIn,
+    SegmentationClassStatOut,
+    SegmentationResult,
+    TumorSliceOut,
+)
 from .segmentation import (
     prediction_supports_segmentation,
     resolve_segmentation_output_dir,
@@ -140,6 +148,75 @@ def _run_cascade_xai_for_analyze(
     return None, last_error
 
 
+def run_full_case_model(
+    files: list[ScanFileIn],
+    backend_public_url: str | None = None,
+    *,
+    xai_method: str | None = None,
+) -> ModelResult:
+    """3D full-case: per-slice cascade, majority vote, volume segmentation, slice XAI."""
+    if xai_method is None:
+        xai_method = ANALYZE_DEFAULT_XAI_METHOD
+    started_at = time.perf_counter()
+
+    prepared = prepare_scan_inputs(files)
+    artifacts = run_full_case_pipeline(
+        prepared,
+        files,
+        backend_public_url,
+        job_id=uuid.uuid4().hex,
+    )
+    classification = artifacts.classification
+
+    full_case = FullCaseResult(
+        casePrediction=classification.case_prediction,
+        averageConfidence=round(classification.average_confidence / 100.0, 4),
+        averageConfidencePercent=classification.average_confidence,
+        numValidSlices=classification.num_valid_slices,
+        numTumorSlices=artifacts.num_tumor_slices,
+        tumorSlices=[
+            TumorSliceOut(
+                z=item.z,
+                sliceNumber=item.slice_number,
+                confidence=item.confidence,
+                originalSlice=item.original_slice,
+                segmentation=item.segmentation,
+                xai=item.xai,
+                xaiOriginal=item.xai_original,
+                xaiHeatmap=item.xai_heatmap,
+            )
+            for item in artifacts.tumor_slices
+        ],
+        maskMetadata={
+            "maskVolumePath": artifacts.mask_volume_path,
+            "goodSlices": prepared.good_slices,
+        },
+    )
+
+    grad_cam_path = _grad_cam_path(files, backend_public_url)
+    if full_case.tumorSlices:
+        first = full_case.tumorSlices[0]
+        grad_cam_path = first.xai or first.segmentation or first.originalSlice
+
+    segmentation_result: SegmentationResult | None = None
+    if artifacts.segmentation is not None:
+        segmentation_result = _to_segmentation_result(artifacts.segmentation)
+
+    return ModelResult(
+        prediction=classification.prediction,
+        confidenceScores=classification.confidence_scores,
+        confidence=classification.average_confidence,
+        gradCamPath=grad_cam_path,
+        processedTime=round((time.perf_counter() - started_at) * 1000, 2),
+        modelVersion=os.getenv("MODEL_VERSION", get_model_version()) + "-fullcase-3d",
+        segmentation=segmentation_result,
+        xai=None,
+        xaiError=artifacts.xai_error,
+        sliceFiltering=prepared.slice_filter,
+        fullCase=full_case,
+    )
+
+
 def run_model(
     files: list[ScanFileIn],
     backend_public_url: str | None = None,
@@ -157,6 +234,13 @@ def run_model(
             raise FileNotFoundError(f"Input file not found: {scan_file.rawPath}")
 
     _validate_scan_type_files(files, scan_type)
+
+    if scan_type == "3D":
+        return run_full_case_model(
+            files,
+            backend_public_url,
+            xai_method=xai_method,
+        )
 
     prepared = prepare_scan_inputs(files)
     pipeline_result = run_pipeline(files, prepared=prepared)

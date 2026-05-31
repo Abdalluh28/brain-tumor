@@ -163,6 +163,32 @@ const scanSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.Mixed,
         },
 
+        fullCase: {
+            casePrediction: {
+                type: String,
+                enum: ["GLI", "METS", "OTHER", "Healthy"],
+            },
+            averageConfidence: Number,
+            averageConfidencePercent: Number,
+            numValidSlices: Number,
+            numTumorSlices: Number,
+            tumorSlices: [
+                {
+                    z: Number,
+                    sliceNumber: Number,
+                    confidence: Number,
+                    originalSlice: String,
+                    segmentation: String,
+                    xai: String,
+                    xaiOriginal: String,
+                    xaiHeatmap: String,
+                },
+            ],
+            maskMetadata: {
+                type: mongoose.Schema.Types.Mixed,
+            },
+        },
+
         status: {
             type: String,
             enum: ["pending", "review", "completed", "failed"],

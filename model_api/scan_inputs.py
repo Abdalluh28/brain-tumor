@@ -5,7 +5,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from .config import MODALITY_ORDER, STAGE1_MODALITIES
-from .preprocessing import load_modality_volume, map_files_to_modalities, select_slices_for_classification
+from .preprocessing import (
+    load_modality_volume,
+    map_files_to_modalities,
+    select_slices_for_classification,
+    validate_matching_volume_shapes,
+)
 from .schemas import ScanFileIn
 
 
@@ -25,6 +30,7 @@ class PreparedScanInputs:
     """MRI tensors loaded once per analyze / XAI / segmentation run."""
 
     modality_map: dict[str, ScanFileIn]
+    volume_map: dict[str, np.ndarray]
     stage1_tensor: np.ndarray
     stage4_tensor: np.ndarray
     xai_stage1_tensor: np.ndarray
@@ -32,6 +38,8 @@ class PreparedScanInputs:
     segmentation_tensor: np.ndarray
     t1n_gray: np.ndarray
     slice_filter: dict
+    good_slices: list[int]
+    reference_depth: int
 
 
 def _slice_for_reference_z(
@@ -76,6 +84,7 @@ def prepare_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
         modality: load_modality_volume(scan_file.rawPath, scan_file.format)
         for modality, scan_file in modality_map.items()
     }
+    validate_matching_volume_shapes(volume_map, reference_modality="t1c")
 
     t1c_volume = volume_map["t1c"]
     reference_depth = t1c_volume.shape[-1]
@@ -117,11 +126,13 @@ def prepare_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
     slice_filter = {
         **slice_filter,
         "reference_modality": "t1c",
+        "reference_depth": int(reference_depth),
         "representative_slice": int(representative_z),
     }
 
     return PreparedScanInputs(
         modality_map=modality_map,
+        volume_map=volume_map,
         stage1_tensor=stage1_tensor,
         stage4_tensor=stage4_tensor,
         xai_stage1_tensor=xai_stage1_tensor,
@@ -129,4 +140,25 @@ def prepare_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
         segmentation_tensor=segmentation_tensor,
         t1n_gray=seg_channels[0],
         slice_filter=slice_filter,
+        good_slices=good_slices,
+        reference_depth=reference_depth,
     )
+
+
+def build_slice_tensor(
+    volume_map: dict[str, np.ndarray],
+    modalities: list[str],
+    z: int,
+    reference_depth: int,
+    *,
+    normalize_segmentation: bool = False,
+) -> np.ndarray:
+    channels = []
+    for modality in modalities:
+        slice_2d = _slice_for_reference_z(
+            volume_map[modality], z, reference_depth
+        ).astype(np.float32)
+        if normalize_segmentation:
+            slice_2d = _normalize_percentile(slice_2d)
+        channels.append(slice_2d)
+    return np.stack(channels, axis=-1).astype(np.float32)

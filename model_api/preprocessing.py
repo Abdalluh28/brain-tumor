@@ -160,6 +160,31 @@ def load_modality_volume(path: str | Path, file_format: str) -> np.ndarray:
     raise ValueError(f"Unsupported file format: {file_format}")
 
 
+def validate_matching_volume_shapes(
+    volume_map: dict[str, np.ndarray],
+    *,
+    reference_modality: str = "t1c",
+) -> None:
+    """Ensure all modality volumes share the same (H, W, Z) shape."""
+    if reference_modality not in volume_map:
+        raise ValueError(f"Reference modality '{reference_modality}' is missing.")
+
+    reference_shape = volume_map[reference_modality].shape
+    mismatched = {
+        modality: shape
+        for modality, shape in volume_map.items()
+        if shape != reference_shape
+    }
+    if mismatched:
+        details = ", ".join(
+            f"{modality}={shape}" for modality, shape in mismatched.items()
+        )
+        raise ValueError(
+            f"All modality volumes must match {reference_modality} shape "
+            f"{reference_shape}. Mismatched: {details}"
+        )
+
+
 def map_files_to_modalities(files: list[ScanFileIn]) -> dict[str, ScanFileIn]:
     if len(files) != 4:
         raise ValueError("Exactly 4 modality files are required.")
