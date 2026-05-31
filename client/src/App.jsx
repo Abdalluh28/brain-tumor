@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
+import MriViewer from "./pages/MriViewer";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import AuthRoutes from "./components/authRoutes";
 
@@ -58,6 +59,10 @@ export default function App() {
                         {
                             path: '/scan/:scanId',
                             element: <ScanId />
+                        },
+                        {
+                            path: '/viewer',
+                            element: <MriViewer />
                         },
                         {
                             path: '/history',
