@@ -1,20 +1,26 @@
 export default function ViewerLoadingOverlay({ message, progress }) {
+  const showProgress = progress > 0;
+
   return (
-    <div className="absolute inset-0 bg-white/80 dark:bg-slate-950/80 rounded-2xl flex flex-col items-center justify-center gap-4 z-50 backdrop-blur-sm">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary" />
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-xl font-medium text-slate-800 dark:text-slate-200">
-          {message}
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 rounded-2xl bg-white/85 dark:bg-slate-950/85 backdrop-blur-[2px]">
+      <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-primary border-b-primary dark:border-slate-700" />
+      <div className="flex flex-col items-center gap-2 px-6 text-center">
+        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+          {message || "Processing NIfTI volume..."}
         </p>
-        <div className="w-64 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-          <div
-            className="bg-primary h-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-          {progress}% completed
-        </p>
+        {showProgress && (
+          <>
+            <div className="h-2 w-64 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="font-mono text-xs text-slate-500 dark:text-slate-400">
+              {progress}% completed
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
