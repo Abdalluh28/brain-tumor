@@ -5,11 +5,17 @@ import { clearFiles, uploadFile } from "@/features/scan/scanSlice";
 import { MODALITY_KEYS } from "../constants";
 import { getCanvasBlob } from "../utils/canvas";
 
-export function useScanActions({ volumes, sliceIndex, canvasRefs, getValues }) {
+export function useScanActions({
+  getVolumes,
+  sliceIndex,
+  canvasRefs,
+  getValues,
+}) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleScanSlice = async () => {
+    const volumes = getVolumes();
     if (volumes.some((v) => v === null)) {
       toast.error("Please load all 4 modalities to scan this slice");
       return;
@@ -58,6 +64,7 @@ export function useScanActions({ volumes, sliceIndex, canvasRefs, getValues }) {
   };
 
   const handleScanVolume = () => {
+    const volumes = getVolumes();
     if (volumes.some((v) => v === null)) {
       toast.error("Please load all 4 modalities to scan the case");
       return;
