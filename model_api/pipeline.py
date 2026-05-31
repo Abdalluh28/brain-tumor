@@ -380,7 +380,7 @@ def aggregate_slice_predictions(
     prediction = detail_votes.most_common(1)[0][0]
 
     average_confidence = round(
-        float(np.mean([r.confidence for r in slice_results])),
+        float(np.mean([r.confidence for r in matching])),
         2,
     )
 

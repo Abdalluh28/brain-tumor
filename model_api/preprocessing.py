@@ -171,9 +171,9 @@ def validate_matching_volume_shapes(
 
     reference_shape = volume_map[reference_modality].shape
     mismatched = {
-        modality: shape
-        for modality, shape in volume_map.items()
-        if shape != reference_shape
+        modality: volume.shape
+        for modality, volume in volume_map.items()
+        if volume.shape != reference_shape
     }
     if mismatched:
         details = ", ".join(

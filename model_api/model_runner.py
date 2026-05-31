@@ -12,7 +12,7 @@ from .config import (
     ANALYZE_XAI_FALLBACK_METHODS,
 )
 from .pipeline import get_model_version, run_pipeline
-from .scan_inputs import prepare_scan_inputs
+from .scan_inputs import prepare_mri_scan_inputs
 from .full_case_pipeline import run_full_case_pipeline
 from .schemas import (
     FullCaseResult,
@@ -159,37 +159,23 @@ def run_full_case_model(
         xai_method = ANALYZE_DEFAULT_XAI_METHOD
     started_at = time.perf_counter()
 
-    prepared = prepare_scan_inputs(files)
     artifacts = run_full_case_pipeline(
-        prepared,
         files,
         backend_public_url,
         job_id=uuid.uuid4().hex,
     )
-    classification = artifacts.classification
 
     full_case = FullCaseResult(
-        casePrediction=classification.case_prediction,
-        averageConfidence=round(classification.average_confidence / 100.0, 4),
-        averageConfidencePercent=classification.average_confidence,
-        numValidSlices=classification.num_valid_slices,
+        casePrediction=artifacts.case_prediction,
+        averageConfidence=round(artifacts.average_confidence / 100.0, 4),
+        averageConfidencePercent=artifacts.average_confidence,
+        numValidSlices=artifacts.num_valid_slices,
         numTumorSlices=artifacts.num_tumor_slices,
-        tumorSlices=[
-            TumorSliceOut(
-                z=item.z,
-                sliceNumber=item.slice_number,
-                confidence=item.confidence,
-                originalSlice=item.original_slice,
-                segmentation=item.segmentation,
-                xai=item.xai,
-                xaiOriginal=item.xai_original,
-                xaiHeatmap=item.xai_heatmap,
-            )
-            for item in artifacts.tumor_slices
-        ],
+        tumorSlices=[TumorSliceOut(**item) for item in artifacts.tumor_slices],
         maskMetadata={
             "maskVolumePath": artifacts.mask_volume_path,
-            "goodSlices": prepared.good_slices,
+            "goodSlices": artifacts.slice_filter.get("good_slices", []),
+            "cacheDir": artifacts.slice_filter.get("cacheDir"),
         },
     )
 
@@ -203,16 +189,16 @@ def run_full_case_model(
         segmentation_result = _to_segmentation_result(artifacts.segmentation)
 
     return ModelResult(
-        prediction=classification.prediction,
-        confidenceScores=classification.confidence_scores,
-        confidence=classification.average_confidence,
+        prediction=artifacts.prediction,
+        confidenceScores=artifacts.confidence_scores,
+        confidence=artifacts.average_confidence,
         gradCamPath=grad_cam_path,
         processedTime=round((time.perf_counter() - started_at) * 1000, 2),
         modelVersion=os.getenv("MODEL_VERSION", get_model_version()) + "-fullcase-3d",
         segmentation=segmentation_result,
         xai=None,
         xaiError=artifacts.xai_error,
-        sliceFiltering=prepared.slice_filter,
+        sliceFiltering=artifacts.slice_filter,
         fullCase=full_case,
     )
 
@@ -242,7 +228,7 @@ def run_model(
             xai_method=xai_method,
         )
 
-    prepared = prepare_scan_inputs(files)
+    prepared = prepare_mri_scan_inputs(files)
     pipeline_result = run_pipeline(files, prepared=prepared)
     logger.info(
         "Slice filter selected %s good slices and %s bad slices using %s.",

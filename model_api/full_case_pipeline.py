@@ -2,30 +2,20 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import tensorflow as tf
 
-from .config import (
-    ANALYZE_DEFAULT_XAI_METHOD,
-    FULL_CASE_MAX_XAI_SLICES,
-    MODALITY_ORDER,
-    STAGE2_GRADCAM_TARGET_LAYER,
-)
-from .inference import keras_predict_batch_proba
+from .config import ANALYZE_DEFAULT_XAI_METHOD
 from .pipeline import (
-    FINAL_LABELS,
-    STAGE1_LABELS,
-    STAGE2_LABELS,
-    STAGE3_LABELS,
-    _finalize_scores,
-    _load_models,
+    SliceCascadeResult,
+    aggregate_slice_predictions,
+    prediction_to_case_label,
+    run_pipeline,
 )
-from .scan_inputs import PreparedScanInputs, build_slice_tensor
-from .schemas import Prediction
+from .scan_inputs import prepare_mri_scan_inputs
+from .schemas import Prediction, ScanFileIn
 from .segmentation import (
     SegmentationArtifacts,
     build_public_upload_url,
@@ -33,541 +23,255 @@ from .segmentation import (
     predict_mask,
     prediction_supports_segmentation,
     resolve_segmentation_output_dir,
-    segmentation_model_type,
+    run_segmentation,
 )
-from .tf_device import configure_tensorflow
-from .xai.base import generate_explanation
-from .xai.utils import blend_overlay, extract_display_channel, heatmap_to_rgb, save_png
+from .volume_cache import (
+    build_slice_scan_files,
+    cache_nifti_volumes,
+    export_valid_slices_to_png,
+)
+from .xai_service import cascade_stage_preview_overlay, run_cascade_xai
+from .xai.utils import save_png
 
 logger = logging.getLogger(__name__)
 
-CaseCategory = str  # Healthy | GLI | METS | OTHER
-
-CASE_CATEGORIES: tuple[CaseCategory, ...] = ("Healthy", "GLI", "METS", "OTHER")
-
-CASE_TO_PREDICTION: dict[CaseCategory, Prediction] = {
-    "Healthy": "Healthy",
-    "GLI": "HGG",
-    "METS": "Metastasis",
-    "OTHER": "Others",
-}
-
-FINAL_TO_CASE: dict[str, CaseCategory] = {
-    "Healthy": "Healthy",
-    "HGG": "GLI",
-    "LGG": "GLI",
-    "Metastasis": "METS",
-    "Others": "OTHER",
-}
-
-STAGE2_TO_CASE: dict[str, CaseCategory] = {
-    "GLI": "GLI",
-    "METS": "METS",
-    "OTHER": "OTHER",
-}
-
 
 @dataclass(frozen=True)
-class SliceClassification:
+class Slice2DRunResult:
     z: int
-    final_label: Prediction
-    case_category: CaseCategory
-    confidence: float
-    stage1_label: str
-    stage2_label: str | None
-    stage3_label: str | None
-
-
-@dataclass(frozen=True)
-class FullCaseClassification:
-    case_prediction: CaseCategory
-    average_confidence: float
-    prediction: Prediction
-    confidence: float
-    confidence_scores: dict[Prediction, float]
-    slice_results: list[SliceClassification]
-    num_valid_slices: int
-
-
-@dataclass(frozen=True)
-class TumorSliceArtifact:
-    z: int
-    slice_number: int
-    confidence: float
-    original_slice: str
-    segmentation: str
-    xai: str
-    xai_original: str
-    xai_heatmap: str
+    cascade: SliceCascadeResult
+    segmentation_mask: np.ndarray | None
+    xai_overlay_path: str | None
+    xai_error: str | None
+    original_png_path: str
+    t1n_gray: np.ndarray
 
 
 @dataclass(frozen=True)
 class FullCaseArtifacts:
-    classification: FullCaseClassification
-    tumor_slices: list[TumorSliceArtifact]
+    case_prediction: str
+    prediction: Prediction
+    average_confidence: float
+    confidence_scores: dict
+    num_valid_slices: int
     num_tumor_slices: int
-    segmentation: SegmentationArtifacts | None
+    tumor_slices: list[dict]
     mask_volume_path: str | None
+    slice_filter: dict
+    pipeline_result: object
+    segmentation: SegmentationArtifacts | None
     xai_error: str | None
 
 
-def _slice_final_label(
-    stage1_idx: int,
-    stage1_probs: np.ndarray,
-    stage2_idx: int | None,
-    stage2_probs: np.ndarray | None,
-    stage3_idx: int | None,
-    stage3_probs: np.ndarray | None,
-) -> tuple[Prediction, CaseCategory, float]:
-    if stage1_idx == 0:
-        conf = float(stage1_probs[0])
-        return "Healthy", "Healthy", conf
-
-    assert stage2_idx is not None and stage2_probs is not None
-    if stage2_idx == 1:
-        return "Metastasis", "METS", float(stage2_probs[1])
-    if stage2_idx == 2:
-        return "Others", "OTHER", float(stage2_probs[2])
-
-    assert stage3_idx is not None and stage3_probs is not None
-    if stage3_idx == 0:
-        return "HGG", "GLI", float(stage3_probs[0])
-    return "LGG", "GLI", float(stage3_probs[1])
+def _slice_confidence_from_pipeline(pipeline_result) -> float:
+    if "stage3" in pipeline_result.stage_details:
+        value = float(pipeline_result.stage_details["stage3"].confidence)
+    elif "stage2" in pipeline_result.stage_details:
+        value = float(pipeline_result.stage_details["stage2"].confidence)
+    else:
+        value = float(pipeline_result.stage_details["stage1"].confidence)
+    return round(value * 100, 2) if value <= 1.0 else round(value, 2)
 
 
-def classify_valid_slices(prepared: PreparedScanInputs) -> FullCaseClassification:
-    configure_tensorflow()
-    stage1_model, stage2_model, stage3_model = _load_models()
-
-    n = prepared.stage1_tensor.shape[0]
-    z_indices = list(prepared.good_slices)
-
-    stage1_probs = keras_predict_batch_proba(stage1_model, prepared.stage1_tensor)
-    stage1_preds = np.argmax(stage1_probs, axis=1)
-
-    stage2_probs = np.zeros((n, len(STAGE2_LABELS)), dtype=np.float32)
-    stage2_preds = np.full(n, -1, dtype=int)
-    tumor_rows = np.where(stage1_preds == 1)[0]
-    if tumor_rows.size:
-        tumor_stage4 = prepared.stage4_tensor[tumor_rows]
-        batch_s2 = keras_predict_batch_proba(stage2_model, tumor_stage4)
-        stage2_probs[tumor_rows] = batch_s2
-        stage2_preds[tumor_rows] = np.argmax(batch_s2, axis=1)
-
-    stage3_probs = np.zeros((n, len(STAGE3_LABELS)), dtype=np.float32)
-    stage3_preds = np.full(n, -1, dtype=int)
-    gli_rows = tumor_rows[stage2_preds[tumor_rows] == 0] if tumor_rows.size else np.array([], dtype=int)
-    if gli_rows.size:
-        gli_stage4 = prepared.stage4_tensor[gli_rows]
-        batch_s3 = keras_predict_batch_proba(stage3_model, gli_stage4)
-        stage3_probs[gli_rows] = batch_s3
-        stage3_preds[gli_rows] = np.argmax(batch_s3, axis=1)
-
-    slice_results: list[SliceClassification] = []
-    for i in range(n):
-        s2_idx = int(stage2_preds[i]) if stage1_preds[i] == 1 else None
-        s3_idx = int(stage3_preds[i]) if s2_idx == 0 else None
-        final_label, case_cat, conf = _slice_final_label(
-            int(stage1_preds[i]),
-            stage1_probs[i],
-            s2_idx,
-            stage2_probs[i] if s2_idx is not None else None,
-            s3_idx,
-            stage3_probs[i] if s3_idx is not None else None,
-        )
-        slice_results.append(
-            SliceClassification(
-                z=z_indices[i],
-                final_label=final_label,
-                case_category=case_cat,
-                confidence=round(conf * 100, 2),
-                stage1_label=STAGE1_LABELS[int(stage1_preds[i])],
-                stage2_label=STAGE2_LABELS[s2_idx] if s2_idx is not None else None,
-                stage3_label=STAGE3_LABELS[s3_idx] if s3_idx is not None else None,
-            )
-        )
-
-    vote_counts = Counter(r.case_category for r in slice_results)
-    case_prediction = vote_counts.most_common(1)[0][0]
-
-    average_confidence = round(
-        float(np.mean([r.confidence for r in slice_results])),
-        2,
-    )
-
-    prediction, confidence_scores = _derive_case_prediction(
-        case_prediction, slice_results
-    )
-    confidence = confidence_scores[prediction]
-
-    return FullCaseClassification(
-        case_prediction=case_prediction,
-        average_confidence=average_confidence,
-        prediction=prediction,
-        confidence=confidence,
-        confidence_scores=confidence_scores,
-        slice_results=slice_results,
-        num_valid_slices=n,
-    )
-
-
-def _derive_case_prediction(
-    case_prediction: CaseCategory,
-    slice_results: list[SliceClassification],
-) -> tuple[Prediction, dict[Prediction, float]]:
-    """Map majority case category to stored prediction + score distribution."""
-    category_counts = Counter(r.case_category for r in slice_results)
-    total = len(slice_results) or 1
-
-    if case_prediction == "Healthy":
-        joint = {label: 0.0 for label in FINAL_LABELS}
-        joint["Healthy"] = category_counts["Healthy"] / total
-        scores = _finalize_scores(joint)
-        return "Healthy", scores
-
-    if case_prediction == "METS":
-        joint = {label: 0.0 for label in FINAL_LABELS}
-        joint["Metastasis"] = category_counts["METS"] / total
-        joint["Healthy"] = category_counts["Healthy"] / total
-        joint["Others"] = category_counts["OTHER"] / total
-        joint["HGG"] = category_counts["GLI"] / total * 0.5
-        joint["LGG"] = category_counts["GLI"] / total * 0.5
-        scores = _finalize_scores(joint)
-        return "Metastasis", scores
-
-    if case_prediction == "OTHER":
-        joint = {label: 0.0 for label in FINAL_LABELS}
-        joint["Others"] = category_counts["OTHER"] / total
-        joint["Healthy"] = category_counts["Healthy"] / total
-        joint["Metastasis"] = category_counts["METS"] / total
-        joint["HGG"] = category_counts["GLI"] / total * 0.5
-        joint["LGG"] = category_counts["GLI"] / total * 0.5
-        scores = _finalize_scores(joint)
-        return "Others", scores
-
-    gli_slices = [r for r in slice_results if r.case_category == "GLI"]
-    hgg_votes = sum(1 for r in gli_slices if r.final_label == "HGG")
-    lgg_votes = len(gli_slices) - hgg_votes
-    prediction: Prediction = "HGG" if hgg_votes >= lgg_votes else "LGG"
-
-    joint = {label: 0.0 for label in FINAL_LABELS}
-    joint["Healthy"] = category_counts["Healthy"] / total
-    joint["Metastasis"] = category_counts["METS"] / total
-    joint["Others"] = category_counts["OTHER"] / total
-    joint["HGG"] = hgg_votes / total
-    joint["LGG"] = lgg_votes / total
-    scores = _finalize_scores(joint)
-    return prediction, scores
-
-
-def _case_xai_target_class(case_prediction: CaseCategory) -> int:
-    return {"GLI": 0, "METS": 1, "OTHER": 2, "Healthy": 0}[case_prediction]
-
-
-def _save_grayscale_slice(image: np.ndarray, path: Path) -> None:
-    gray = (np.clip(image, 0.0, 1.0) * 255.0).astype(np.uint8)
-    save_png(gray, path)
-
-
-def _generate_slice_xai(
-    stage4_tensor: np.ndarray,
-    *,
-    target_class: int,
-    output_dir: Path,
+def _run_slice_2d_pipeline(
     z: int,
-    xai_method: str,
-) -> tuple[Path, Path, Path]:
-    from .xai.registry import load_stage_model
-
-    model, config = load_stage_model(2)
-    batch = tf.constant(np.expand_dims(stage4_tensor, axis=0), dtype=tf.float32)
-    explanation = generate_explanation(
-        model,
-        batch,
-        xai_method,
-        target_class,
-        target_layer=STAGE2_GRADCAM_TARGET_LAYER,
-    )
-    display_index = config.default_display_channel_index
-    grayscale = extract_display_channel(batch.numpy(), display_index)
-    overlay_rgb = blend_overlay(grayscale, explanation.heatmap)
-    heatmap_rgb = heatmap_to_rgb(explanation.heatmap)
-
-    slug = z
-    original_file = output_dir / f"slice_{slug}_original.png"
-    xai_file = output_dir / f"slice_{slug}_xai.png"
-    heatmap_file = output_dir / f"slice_{slug}_heatmap.png"
-
-    _save_grayscale_slice(grayscale, original_file)
-    save_png(overlay_rgb, xai_file)
-    save_png(heatmap_rgb, heatmap_file)
-
-    return original_file, xai_file, heatmap_file
-
-
-def run_volume_segmentation(
-    prepared: PreparedScanInputs,
-    prediction: Prediction,
-    output_dir: Path,
-) -> tuple[np.ndarray, dict[int, np.ndarray], list[int]]:
-    """
-    Run 2D segmentation on each valid slice and return a stacked mask volume.
-
-    Returns (mask_volume, per_z_masks, tumor_z_indices).
-    """
-    model_type = segmentation_model_type(prediction)
-    if model_type is None:
-        return np.zeros((0, 0, 0), dtype=np.uint8), {}, []
-
-    masks_by_z: dict[int, np.ndarray] = {}
-    for z in prepared.good_slices:
-        tensor = build_slice_tensor(
-            prepared.volume_map,
-            list(MODALITY_ORDER),
-            z,
-            prepared.reference_depth,
-            normalize_segmentation=True,
-        )
-        masks_by_z[z] = predict_mask(tensor, model_type)
-
-    tumor_z = sorted(z for z, mask in masks_by_z.items() if int(np.sum(mask > 0)) > 0)
-    if not masks_by_z:
-        return np.zeros((0, 0, 0), dtype=np.uint8), {}, []
-
-    first = next(iter(masks_by_z.values()))
-    height, width = first.shape
-    depth = prepared.reference_depth
-    volume_mask = np.zeros((depth, height, width), dtype=np.uint8)
-    for z, mask in masks_by_z.items():
-        volume_mask[z] = mask
-
-    return volume_mask, masks_by_z, tumor_z
-
-
-def _tumor_slices_without_segmentation(
-    classification: FullCaseClassification,
-) -> list[int]:
-    """Fallback tumor-relevant slices when no segmentation model is available."""
-    return sorted(
-        r.z
-        for r in classification.slice_results
-        if r.case_category != "Healthy"
-    )
-
-
-def build_tumor_slice_artifacts(
-    prepared: PreparedScanInputs,
-    classification: FullCaseClassification,
-    masks_by_z: dict[int, np.ndarray],
-    tumor_z_indices: list[int],
-    output_dir: Path,
-    backend_public_url: str | None,
+    slice_files: list[ScanFileIn],
     *,
-    xai_method: str = ANALYZE_DEFAULT_XAI_METHOD,
-) -> tuple[list[TumorSliceArtifact], str | None]:
-    if classification.case_prediction == "Healthy":
-        return [], None
+    backend_public_url: str | None,
+    xai_method: str,
+    output_dir: Path,
+) -> Slice2DRunResult:
+    """Run the full 2D pipeline (classify, XAI, segmentation) on one cached slice."""
+    prepared = prepare_mri_scan_inputs(slice_files)
+    pipeline_result = run_pipeline(slice_files, prepared=prepared)
 
-    if not tumor_z_indices:
-        tumor_z_indices = _tumor_slices_without_segmentation(classification)
+    cascade = SliceCascadeResult(
+        z=z,
+        prediction=pipeline_result.prediction,
+        confidence=_slice_confidence_from_pipeline(pipeline_result),
+        case_label=prediction_to_case_label(pipeline_result.prediction),
+        stages_run=pipeline_result.stages_run,
+        stage_details=pipeline_result.stage_details,
+    )
 
-    if FULL_CASE_MAX_XAI_SLICES > 0 and len(tumor_z_indices) > FULL_CASE_MAX_XAI_SLICES:
-        logger.warning(
-            "Limiting tumor-slice XAI to %s of %s slices.",
-            FULL_CASE_MAX_XAI_SLICES,
-            len(tumor_z_indices),
-        )
-        tumor_z_indices = tumor_z_indices[:FULL_CASE_MAX_XAI_SLICES]
-
-    slice_conf_by_z = {r.z: r.confidence for r in classification.slice_results}
-    target_class = _case_xai_target_class(classification.case_prediction)
-    xai_dir = output_dir / "xai"
-    xai_dir.mkdir(parents=True, exist_ok=True)
-    seg_dir = output_dir / "slices"
-    seg_dir.mkdir(parents=True, exist_ok=True)
-
-    artifacts: list[TumorSliceArtifact] = []
+    xai_overlay_path: str | None = None
     xai_error: str | None = None
-
-    for z in tumor_z_indices:
-        stage4_tensor = build_slice_tensor(
-            prepared.volume_map,
-            list(MODALITY_ORDER),
-            z,
-            prepared.reference_depth,
-        )
-        t1n = stage4_tensor[:, :, 0]
-
-        original_path = seg_dir / f"slice_{z}_original.png"
-        _save_grayscale_slice(t1n, original_path)
-
-        if z in masks_by_z:
-            mask = masks_by_z[z]
-            seg_path = seg_dir / f"slice_{z}_segmentation.png"
-            save_png(overlay_mask_on_t1n(t1n, mask), seg_path)
-            seg_url = build_public_upload_url(backend_public_url, seg_path)
-        else:
-            seg_url = build_public_upload_url(backend_public_url, original_path)
-
-        xai_original_url = build_public_upload_url(backend_public_url, original_path)
-        xai_heatmap_url = xai_original_url
-        xai_url = xai_original_url
+    if "stage2" in pipeline_result.stages_run:
         try:
-            xai_orig_file, xai_overlay_file, xai_heat_file = _generate_slice_xai(
-                stage4_tensor,
-                target_class=target_class,
-                output_dir=xai_dir,
-                z=z,
+            xai_result = run_cascade_xai(
+                slice_files,
+                pipeline_result,
+                cascade_prediction=pipeline_result.prediction,
                 xai_method=xai_method,
+                backend_public_url=backend_public_url,
+                job_id=f"{output_dir.name}_z{z}",
+                prepared=prepared,
+                analyze_upload=True,
             )
-            xai_original_url = build_public_upload_url(backend_public_url, xai_orig_file)
-            xai_url = build_public_upload_url(backend_public_url, xai_overlay_file)
-            xai_heatmap_url = build_public_upload_url(backend_public_url, xai_heat_file)
+            if xai_result.stages:
+                xai_overlay_path = cascade_stage_preview_overlay(xai_result.stages[-1])
         except Exception as exc:
-            logger.warning("Slice XAI failed for z=%s: %s", z, exc, exc_info=True)
+            logger.warning("Slice z=%s XAI failed: %s", z, exc, exc_info=True)
             xai_error = str(exc)
 
-        artifacts.append(
-            TumorSliceArtifact(
-                z=z,
-                slice_number=z,
-                confidence=slice_conf_by_z.get(z, classification.average_confidence),
-                original_slice=build_public_upload_url(backend_public_url, original_path),
-                segmentation=seg_url,
-                xai=xai_url,
-                xai_original=xai_original_url,
-                xai_heatmap=xai_heatmap_url,
+    mask: np.ndarray | None = None
+    if prediction_supports_segmentation(pipeline_result.prediction):
+        try:
+            seg_dir = output_dir / "slice_seg" / f"z{z}"
+            seg_dir.mkdir(parents=True, exist_ok=True)
+            run_segmentation(
+                slice_files,
+                pipeline_result.prediction,
+                seg_dir,
+                backend_public_url,
+                prepared=prepared,
             )
-        )
+            model_type = "GLI" if pipeline_result.prediction in ("HGG", "LGG") else "METS"
+            mask = predict_mask(prepared.segmentation_tensor, model_type)
+        except Exception as exc:
+            logger.warning("Slice z=%s segmentation failed: %s", z, exc, exc_info=True)
 
-    return artifacts, xai_error
+    return Slice2DRunResult(
+        z=z,
+        cascade=cascade,
+        segmentation_mask=mask,
+        xai_overlay_path=xai_overlay_path,
+        xai_error=xai_error,
+        original_png_path=str(slice_files[0].rawPath),
+        t1n_gray=prepared.t1n_gray,
+    )
 
 
 def run_full_case_pipeline(
-    prepared: PreparedScanInputs,
-    files: list,
+    files: list[ScanFileIn],
     backend_public_url: str | None,
     job_id: str | None = None,
+    *,
+    xai_method: str = ANALYZE_DEFAULT_XAI_METHOD,
 ) -> FullCaseArtifacts:
-    classification = classify_valid_slices(prepared)
-    folder = resolve_segmentation_output_dir(files, job_id or uuid.uuid4().hex)
-    full_case_dir = folder.parent / "full_case" / (job_id or folder.name)
+    """
+    3D full-case flow:
+    1. Cache NIfTI volumes
+    2. Filter valid slices (T1c brain-size)
+    3. Export PNGs per modality per slice
+    4. Run the 2D pipeline on each slice individually
+    5. Majority vote for case prediction
+    6. Stack per-slice masks into one 3D volume
+    """
+    job_id = job_id or uuid.uuid4().hex
+    cache_dir, volume_map, _modality_map, slice_filter = cache_nifti_volumes(files, job_id)
+    good_slices = list(slice_filter["good_slices"])
+    reference_depth = int(slice_filter["reference_depth"])
+
+    png_paths = export_valid_slices_to_png(
+        volume_map, good_slices, reference_depth, cache_dir
+    )
+
+    output_dir = resolve_segmentation_output_dir(files, job_id)
+    full_case_dir = output_dir.parent / "full_case" / job_id
     full_case_dir.mkdir(parents=True, exist_ok=True)
+    display_dir = full_case_dir / "slices"
+    display_dir.mkdir(parents=True, exist_ok=True)
+
+    slice_runs: list[Slice2DRunResult] = []
+    xai_errors: list[str] = []
+
+    for z in good_slices:
+        slice_files = build_slice_scan_files(z, png_paths[z])
+        run = _run_slice_2d_pipeline(
+            z,
+            slice_files,
+            backend_public_url=backend_public_url,
+            xai_method=xai_method,
+            output_dir=full_case_dir,
+        )
+        slice_runs.append(run)
+        if run.xai_error:
+            xai_errors.append(f"z{z}: {run.xai_error}")
+
+    slice_cascades = [run.cascade for run in slice_runs]
+    (
+        case_prediction,
+        prediction,
+        average_confidence,
+        confidence_scores,
+        pipeline_result,
+    ) = aggregate_slice_predictions(slice_cascades)
+
+    masks_by_z: dict[int, np.ndarray] = {
+        run.z: run.segmentation_mask
+        for run in slice_runs
+        if run.segmentation_mask is not None
+    }
+
+    mask_volume_path: str | None = None
+    if masks_by_z:
+        first = next(iter(masks_by_z.values()))
+        height, width = first.shape
+        volume_mask = np.zeros((reference_depth, height, width), dtype=np.uint8)
+        for z, mask in masks_by_z.items():
+            volume_mask[z] = mask
+        npz_path = full_case_dir / "mask_volume.npz"
+        np.savez_compressed(npz_path, mask=volume_mask)
+        mask_volume_path = build_public_upload_url(backend_public_url, npz_path)
+
+    tumor_z = sorted(z for z, mask in masks_by_z.items() if int(np.sum(mask > 0)) > 0)
+    if not tumor_z and case_prediction != "Healthy":
+        tumor_z = sorted(run.z for run in slice_runs if run.cascade.case_label != "Healthy")
+
+    tumor_slices: list[dict] = []
+    for run in slice_runs:
+        if run.z not in tumor_z:
+            continue
+
+        original_path = display_dir / f"slice_{run.z}_original.png"
+        gray = (np.clip(run.t1n_gray, 0.0, 1.0) * 255.0).astype(np.uint8)
+        save_png(gray, original_path)
+
+        seg_url = ""
+        if run.segmentation_mask is not None:
+            seg_path = display_dir / f"slice_{run.z}_segmentation.png"
+            save_png(overlay_mask_on_t1n(run.t1n_gray, run.segmentation_mask), seg_path)
+            seg_url = build_public_upload_url(backend_public_url, seg_path)
+
+        tumor_slices.append(
+            {
+                "z": run.z,
+                "sliceNumber": run.z,
+                "confidence": run.cascade.confidence,
+                "originalSlice": build_public_upload_url(backend_public_url, original_path),
+                "segmentation": seg_url
+                or build_public_upload_url(backend_public_url, original_path),
+                "xai": run.xai_overlay_path or "",
+                "xaiOriginal": build_public_upload_url(backend_public_url, original_path),
+                "xaiHeatmap": run.xai_overlay_path or "",
+            }
+        )
 
     segmentation_result: SegmentationArtifacts | None = None
-    masks_by_z: dict[int, np.ndarray] = {}
-    tumor_z: list[int] = []
-    mask_volume_path: str | None = None
-
-    if prediction_supports_segmentation(classification.prediction):
-        volume_mask, masks_by_z, tumor_z = run_volume_segmentation(
-            prepared,
-            classification.prediction,
-            full_case_dir,
-        )
-        if volume_mask.size:
-            npz_path = full_case_dir / "mask_volume.npz"
-            np.savez_compressed(npz_path, mask=volume_mask)
-            mask_volume_path = build_public_upload_url(backend_public_url, npz_path)
-
-        from .segmentation import run_segmentation
-
+    if prediction_supports_segmentation(prediction) and tumor_z:
+        rep_z = tumor_z[len(tumor_z) // 2]
+        rep_files = build_slice_scan_files(rep_z, png_paths[rep_z])
+        rep_prepared = prepare_mri_scan_inputs(rep_files)
         segmentation_result = run_segmentation(
-            files,
-            classification.prediction,
-            folder,
+            rep_files,
+            prediction,
+            output_dir,
             backend_public_url,
-            prepared=prepared,
+            prepared=rep_prepared,
         )
-    elif classification.case_prediction != "Healthy":
-        tumor_z = _tumor_slices_without_segmentation(classification)
-
-    tumor_slices, xai_error = build_tumor_slice_artifacts(
-        prepared,
-        classification,
-        masks_by_z,
-        tumor_z,
-        full_case_dir,
-        backend_public_url,
-    )
 
     return FullCaseArtifacts(
-        classification=classification,
-        tumor_slices=tumor_slices,
+        case_prediction=case_prediction,
+        prediction=prediction,
+        average_confidence=average_confidence,
+        confidence_scores=confidence_scores,
+        num_valid_slices=len(good_slices),
         num_tumor_slices=len(tumor_slices),
-        segmentation=segmentation_result,
+        tumor_slices=tumor_slices,
         mask_volume_path=mask_volume_path,
-        xai_error=xai_error,
+        slice_filter=slice_filter,
+        pipeline_result=pipeline_result,
+        segmentation=segmentation_result,
+        xai_error="; ".join(xai_errors) if xai_errors else None,
     )
-
-
-def run_full_case_analysis(
-    prepared: PreparedScanInputs,
-    files: list,
-    *,
-    backend_public_url: str | None = None,
-    xai_method: str = ANALYZE_DEFAULT_XAI_METHOD,
-    job_id: str | None = None,
-) -> dict:
-    """
-    Entry point for the 3D full-case pipeline used by model_runner.
-
-    Returns a dict with pipelineResult, case-level stats, and tumor slice payloads.
-    """
-    from .pipeline import PipelineResult
-
-    artifacts = run_full_case_pipeline(
-        prepared,
-        files,
-        backend_public_url,
-        job_id=job_id or uuid.uuid4().hex,
-    )
-    classification = artifacts.classification
-
-    pipeline_result = PipelineResult(
-        prediction=classification.prediction,
-        confidence=classification.confidence,
-        confidence_scores=classification.confidence_scores,
-        stages_run=["stage1", "stage2", "stage3"],
-        stage_details={},
-        slice_filter=prepared.slice_filter,
-    )
-
-    tumor_slices = [
-        {
-            "z": item.z,
-            "sliceNumber": item.slice_number,
-            "confidence": item.confidence,
-            "originalSlice": item.original_slice,
-            "segmentation": item.segmentation,
-            "xai": item.xai,
-            "xaiOriginal": item.xai_original,
-            "xaiHeatmap": item.xai_heatmap,
-        }
-        for item in artifacts.tumor_slices
-    ]
-
-    mask_metadata: dict | None = None
-    if artifacts.mask_volume_path or artifacts.segmentation is not None:
-        mask_metadata = {
-            "maskVolumePath": artifacts.mask_volume_path,
-            "segmentationModel": (
-                artifacts.segmentation.model_type if artifacts.segmentation else None
-            ),
-            "numTumorSlices": artifacts.num_tumor_slices,
-        }
-        if artifacts.segmentation is not None:
-            mask_metadata.update(artifacts.segmentation.metadata)
-
-    return {
-        "pipelineResult": pipeline_result,
-        "casePrediction": classification.case_prediction,
-        "averageConfidence": round(classification.average_confidence / 100.0, 4),
-        "averageConfidencePercent": classification.average_confidence,
-        "numValidSlices": classification.num_valid_slices,
-        "numTumorSlices": artifacts.num_tumor_slices,
-        "tumorSlices": tumor_slices,
-        "maskMetadata": mask_metadata,
-        "segmentationArtifacts": artifacts.segmentation,
-        "xaiError": artifacts.xai_error,
-    }

@@ -6,6 +6,7 @@ import numpy as np
 
 from .config import MODALITY_ORDER, STAGE1_MODALITIES
 from .preprocessing import (
+    build_multichannel_tensor,
     load_modality_volume,
     map_files_to_modalities,
     select_slices_for_classification,
@@ -76,6 +77,57 @@ def _build_tensor_from_volumes(
         tensors.append(np.stack(channels, axis=-1).astype(np.float32))
 
     return np.stack(tensors, axis=0)
+
+
+def prepare_mri_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
+    """
+  Prepare tensors for a single-slice 2D MRI upload (four PNG/JPEG images).
+    """
+    modality_map = map_files_to_modalities(files)
+
+    stage1_2d = build_multichannel_tensor(modality_map, list(STAGE1_MODALITIES))
+    stage4_2d = build_multichannel_tensor(modality_map, list(MODALITY_ORDER))
+
+    stage1_tensor = np.expand_dims(stage1_2d, axis=0).astype(np.float32)
+    stage4_tensor = np.expand_dims(stage4_2d, axis=0).astype(np.float32)
+
+    seg_channels = [
+        _normalize_percentile(stage4_2d[:, :, idx])
+        for idx in range(len(MODALITY_ORDER))
+    ]
+    segmentation_tensor = np.stack(seg_channels, axis=-1).astype(np.float32)
+
+    volume_map = {
+        modality: channel[:, :, np.newaxis]
+        for modality, channel in zip(
+            MODALITY_ORDER,
+            [stage4_2d[:, :, i] for i in range(len(MODALITY_ORDER))],
+            strict=True,
+        )
+    }
+
+    slice_filter = {
+        "slice_info": [{"z": 0, "is_good": True, "slice_status": "good"}],
+        "good_slices": [0],
+        "bad_slices": [],
+        "reference_modality": "t1c",
+        "reference_depth": 1,
+        "representative_slice": 0,
+    }
+
+    return PreparedScanInputs(
+        modality_map=modality_map,
+        volume_map=volume_map,
+        stage1_tensor=stage1_tensor,
+        stage4_tensor=stage4_tensor,
+        xai_stage1_tensor=stage1_2d.astype(np.float32),
+        xai_stage4_tensor=stage4_2d.astype(np.float32),
+        segmentation_tensor=segmentation_tensor,
+        t1n_gray=seg_channels[0],
+        slice_filter=slice_filter,
+        good_slices=[0],
+        reference_depth=1,
+    )
 
 
 def prepare_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
