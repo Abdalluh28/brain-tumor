@@ -8,9 +8,7 @@ export default function History() {
             <HistoryHeader />
             <div className="flex flex-col gap-6 px-4 lg:px-8 py-8">
                 <SearchAndFilter />
-                <div className='grid lg:grid-cols-3 grid-cols-1'>
-                    <HistoryTable />
-                </div>
+                <HistoryTable />
             </div>
         </div>
     )

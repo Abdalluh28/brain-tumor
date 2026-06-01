@@ -6,6 +6,7 @@ import { clearFiles } from "./scanSlice";
 import toast from "react-hot-toast";
 import { useFormContext } from "react-hook-form";
 import { useCallback, useEffect, useRef } from "react";
+import Spinner from "@/components/Spinner";
 
 export default function StartAnalysisCard({ patientData, autoRun }) {
   // trigger to validate form without submitting it
@@ -57,9 +58,6 @@ export default function StartAnalysisCard({ patientData, autoRun }) {
     handleCreateScan();
   }, [autoRun, files, handleCreateScan]);
 
-  if (isLoading) {
-    return <ProgressCard />;
-  }
 
   return (
     <div className="flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-700 shadow-md rounded-lg p-4 ">
@@ -95,10 +93,11 @@ export default function StartAnalysisCard({ patientData, autoRun }) {
         </ul>
       </div>
       <button
-        className="bg-primary rounded-xl p-4 text-white cursor-pointer hover:bg-primary-hover transition duration-300 text-lg"
+        className={`bg-primary rounded-xl p-4 text-white hover:bg-primary-hover transition duration-300 text-lg ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
         onClick={handleCreateScan}
+        disabled={isLoading}
       >
-        Run Multi-Modality Classification Analysis
+        {isLoading ? <Spinner color="white" /> : "Run Multi-Modality Classification Analysis"}
       </button>
     </div>
   );

@@ -1,15 +1,15 @@
-import { Brain, TrendingUp } from 'lucide-react'
-import React from 'react'
-import { useDashboardStats } from './useDashboardStats'
-import Spinner from '@/components/Spinner';
+import SkeletonLoader from '@/components/SkeletonLoader';
+import { Brain, TrendingUp } from 'lucide-react';
+import { useDashboardStats } from './useDashboardStats';
 
 export default function DashboardCards() {
 
     const { stats, isLoading } = useDashboardStats();
     const { totalScans, avgConfidence } = stats || {};
 
+
     if (isLoading) {
-        return <Spinner />;
+        return <SkeletonLoader count={2} />
     }
 
     return (

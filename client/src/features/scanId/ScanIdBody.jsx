@@ -9,6 +9,7 @@ import ScanIdProbabilities from './ScanIdProbabilities'
 import ScanIdFullCase from './ScanIdFullCase'
 import ScanIdResult from './ScanIdResult'
 import { useScan } from './useScan'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 export default function ScanIdBody() {
 
@@ -35,7 +36,7 @@ export default function ScanIdBody() {
     const time = new Date(createdAt).toLocaleTimeString();
 
     if (isLoading) {
-        return <Spinner />
+        return <SkeletonLoader height={400} />
     }
 
     return (
