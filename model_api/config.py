@@ -74,6 +74,17 @@ ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
 # Full-case 3D: max tumor slices to explain on upload (0 = no limit).
 FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "40"))
 
+
+# 3D full-case: max slices per model forward pass (avoids CPU/GPU OOM on large volumes).
+FULL_CASE_INFERENCE_BATCH_SIZE = int(
+    os.environ.get("FULL_CASE_INFERENCE_BATCH_SIZE", "8")
+)
+FULL_CASE_SEG_BATCH_SIZE = int(os.environ.get("FULL_CASE_SEG_BATCH_SIZE", "4"))
+# Batch segmentation masks by model type (GLI / METS), in chunks of FULL_CASE_SEG_BATCH_SIZE.
+FULL_CASE_BATCH_SEGMENTATION = os.environ.get(
+    "FULL_CASE_BATCH_SEGMENTATION", "1"
+).strip().lower() in ("1", "true", "yes")
+
 # T1c brain-size slice filter (valid slices must meet BOTH thresholds).
 MIN_BRAIN_PIXELS_FOR_SLICE_FILTER = int(
     os.environ.get("MIN_BRAIN_PIXELS_FOR_SLICE_FILTER", "8000")
