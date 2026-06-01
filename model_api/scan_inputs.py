@@ -199,6 +199,97 @@ def prepare_scan_inputs(files: list[ScanFileIn]) -> PreparedScanInputs:
     )
 
 
+def prepare_prepared_scan_inputs_from_volumes(
+    volume_map: dict[str, np.ndarray],
+    modality_map: dict[str, ScanFileIn],
+    slice_filter: dict,
+) -> PreparedScanInputs:
+    """
+  Build batched MRI tensors from cached NIfTI volumes (3D full-case pipeline).
+    """
+    good_slices = list(slice_filter["good_slices"])
+    reference_depth = int(slice_filter["reference_depth"])
+    representative_z = int(
+        slice_filter.get("representative_slice", good_slices[len(good_slices) // 2])
+    )
+
+    stage1_tensor = _build_tensor_from_volumes(
+        volume_map,
+        list(STAGE1_MODALITIES),
+        good_slices,
+        reference_depth,
+    )
+    stage4_tensor = _build_tensor_from_volumes(
+        volume_map,
+        list(MODALITY_ORDER),
+        good_slices,
+        reference_depth,
+    )
+    xai_stage4_tensor = _build_tensor_from_volumes(
+        volume_map,
+        list(MODALITY_ORDER),
+        [representative_z],
+        reference_depth,
+    )[0]
+    seg_channels = [
+        _normalize_percentile(xai_stage4_tensor[:, :, idx])
+        for idx in range(len(MODALITY_ORDER))
+    ]
+
+    return PreparedScanInputs(
+        modality_map=modality_map,
+        volume_map=volume_map,
+        stage1_tensor=stage1_tensor,
+        stage4_tensor=stage4_tensor,
+        xai_stage1_tensor=_build_tensor_from_volumes(
+            volume_map,
+            list(STAGE1_MODALITIES),
+            [representative_z],
+            reference_depth,
+        )[0],
+        xai_stage4_tensor=xai_stage4_tensor,
+        segmentation_tensor=np.stack(seg_channels, axis=-1).astype(np.float32),
+        t1n_gray=seg_channels[0],
+        slice_filter=slice_filter,
+        good_slices=good_slices,
+        reference_depth=reference_depth,
+    )
+
+
+def prepare_single_slice_prepared_from_volume(
+    volume_map: dict[str, np.ndarray],
+    modality_map: dict[str, ScanFileIn],
+    z: int,
+    reference_depth: int,
+    slice_filter: dict,
+) -> PreparedScanInputs:
+    """Per-slice tensors for 3D XAI / segmentation (no PNG reload)."""
+    stage4_2d = build_slice_tensor(
+        volume_map, list(MODALITY_ORDER), z, reference_depth
+    )
+    stage1_2d = build_slice_tensor(
+        volume_map, list(STAGE1_MODALITIES), z, reference_depth
+    )
+    seg_channels = [
+        _normalize_percentile(stage4_2d[:, :, idx])
+        for idx in range(len(MODALITY_ORDER))
+    ]
+
+    return PreparedScanInputs(
+        modality_map=modality_map,
+        volume_map=volume_map,
+        stage1_tensor=np.expand_dims(stage1_2d, axis=0).astype(np.float32),
+        stage4_tensor=np.expand_dims(stage4_2d, axis=0).astype(np.float32),
+        xai_stage1_tensor=stage1_2d.astype(np.float32),
+        xai_stage4_tensor=stage4_2d.astype(np.float32),
+        segmentation_tensor=np.stack(seg_channels, axis=-1).astype(np.float32),
+        t1n_gray=seg_channels[0],
+        slice_filter={**slice_filter, "representative_slice": int(z), "scan_mode": "3D"},
+        good_slices=[int(z)],
+        reference_depth=reference_depth,
+    )
+
+
 def build_slice_tensor(
     volume_map: dict[str, np.ndarray],
     modalities: list[str],

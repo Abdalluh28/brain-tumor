@@ -1,0 +1,9 @@
+{
+  "watch": ["server", "src"],
+  "ignore": [
+    "uploads/",
+    "uploads/cache/",
+    "/*.nii",
+    "/*.nii.gz"
+  ]
+}

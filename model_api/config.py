@@ -74,6 +74,26 @@ ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
 # Full-case 3D: max tumor slices to explain on upload (0 = no limit).
 FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "40"))
 
+
+def _default_full_case_parallel_workers() -> int:
+    cpu = os.cpu_count() or 4
+    return max(1, min(8, cpu))
+
+
+# Thread pool size for per-slice XAI after batched classification (3D only).
+# FULL_CASE_PARALLEL_WORKERS = int(
+#     os.environ.get(
+#         "FULL_CASE_PARALLEL_WORKERS",
+#         str(_default_full_case_parallel_workers()),
+#     )
+# )
+
+FULL_CASE_PARALLEL_WORKERS=4
+# Batch segmentation masks for all slices of the same model type (3D only).
+FULL_CASE_BATCH_SEGMENTATION = os.environ.get(
+    "FULL_CASE_BATCH_SEGMENTATION", "1"
+).strip().lower() in ("1", "true", "yes")
+
 # T1c brain-size slice filter (valid slices must meet BOTH thresholds).
 MIN_BRAIN_PIXELS_FOR_SLICE_FILTER = int(
     os.environ.get("MIN_BRAIN_PIXELS_FOR_SLICE_FILTER", "8000")
