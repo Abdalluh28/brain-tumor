@@ -1,15 +1,48 @@
 import { PREDICTION_CONFIG } from '@/config/predictionConfig';
 
 
+const CASE_PREDICTION_CONFIG = {
+    gli: {
+        text: 'Glioma (GLI) — full case',
+        key: 'hgg',
+    },
+    mets: {
+        text: 'Metastasis (METS) — full case',
+        key: 'metastasis',
+    },
+    other: {
+        text: 'Other tumor (OTHER) — full case',
+        key: 'others',
+    },
+    healthy: {
+        text: 'No Tumor Detected (Healthy)',
+        key: 'healthy',
+    },
+};
+
 export default function ScanIdResult({
     prediction,
     confidence,
     processedTimeMs,
+    fullCase,
+    scanType,
 }) {
     const safeProcessedTime = processedTimeMs ?? 0;
-    const key = prediction?.toLowerCase() || 'healthy';
-    const config = PREDICTION_CONFIG[key];
-    const predictionText = key === 'healthy' ? 'No Tumor Detected (Healthy)' : `${prediction} Tumor Detected`;
+    const useFullCase = scanType === '3D' && fullCase?.casePrediction;
+    const caseKey = useFullCase
+        ? fullCase.casePrediction.toLowerCase()
+        : prediction?.toLowerCase() || 'healthy';
+    const caseMeta = useFullCase ? CASE_PREDICTION_CONFIG[caseKey] : null;
+    const configKey = caseMeta?.key ?? caseKey;
+    const config = PREDICTION_CONFIG[configKey];
+    const displayConfidence = useFullCase
+        ? (fullCase.averageConfidencePercent ?? confidence)
+        : confidence;
+    const predictionText = caseMeta
+        ? caseMeta.text
+        : caseKey === 'healthy'
+            ? 'No Tumor Detected (Healthy)'
+            : `${prediction} Tumor Detected`;
 
     if (!config) return null; // safety guard
 
@@ -28,7 +61,12 @@ export default function ScanIdResult({
                 </div>
 
                 <div className="flex gap-4">
-                    <InfoBlock label="Confidence" value={`${confidence} %`} color={textColor} size='font-semibold text-lg' />
+                    <InfoBlock
+                        label={useFullCase ? 'Average confidence' : 'Confidence'}
+                        value={`${displayConfidence} %`}
+                        color={textColor}
+                        size='font-semibold text-lg'
+                    />
                     <InfoBlock label="Processing time" value={`${(safeProcessedTime / 1000).toFixed(2)} s`} />
                 </div>
             </div>

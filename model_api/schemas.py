@@ -204,6 +204,47 @@ class ScanXaiMethodRequest(BaseModel):
     attributionReduction: AttributionReduction = "mean"
 
 
+CasePredictionLabel = Literal["GLI", "METS", "OTHER", "Healthy"]
+
+
+class TumorSliceOut(BaseModel):
+    z: int
+    sliceNumber: int
+    confidence: float | None = None
+    originalSlice: str
+    segmentation: str = ""
+    xai: str = Field(
+        default="",
+        description="XAI overlay image URL for this slice.",
+    )
+    xaiOriginal: str = ""
+    xaiHeatmap: str = ""
+
+
+class ValidSlicePreviewOut(BaseModel):
+    z: int
+    sliceNumber: int
+    modalities: dict[str, str]
+
+
+class FullCaseResult(BaseModel):
+    casePrediction: CasePredictionLabel
+    averageConfidence: float = Field(
+        description="Mean slice confidence on a 0–1 scale.",
+    )
+    averageConfidencePercent: float = Field(
+        description="Mean slice confidence on a 0–100 scale.",
+    )
+    numValidSlices: int
+    numTumorSlices: int
+    validSlicePreviews: list[ValidSlicePreviewOut] = Field(
+        default_factory=list,
+        description="All brain-valid slices exported before per-slice inference.",
+    )
+    tumorSlices: list[TumorSliceOut]
+    maskMetadata: dict | None = None
+
+
 class ModelResult(BaseModel):
     prediction: Prediction
     confidenceScores: dict[Prediction, float] = Field(
@@ -218,4 +259,12 @@ class ModelResult(BaseModel):
     xaiError: str | None = Field(
         default=None,
         description="Set when cascade XAI could not be generated during analyze.",
+    )
+    sliceFiltering: dict | None = Field(
+        default=None,
+        description="T1c brain-size slice filter metadata used before classification.",
+    )
+    fullCase: FullCaseResult | None = Field(
+        default=None,
+        description="3D full-case pipeline: majority vote, tumor slices, volume seg.",
     )

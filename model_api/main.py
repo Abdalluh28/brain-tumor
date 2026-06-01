@@ -408,6 +408,12 @@ async def analyze_scan(payload: AnalyzeScanRequest):
             if result.segmentation is not None
             else None
         ),
+        "sliceFiltering": result.sliceFiltering,
+        "fullCase": (
+            result.fullCase.model_dump()
+            if result.fullCase is not None
+            else None
+        ),
 
         # Metadata
         "status": "completed",

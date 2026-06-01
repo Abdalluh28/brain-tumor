@@ -125,9 +125,30 @@ def _load_segmentation_model(model_type: SegmentationModelType):
 
 
 def predict_mask(tensor: np.ndarray, model_type: SegmentationModelType) -> np.ndarray:
+    masks = predict_masks_batch(tensor, model_type)
+    return masks[0] if masks.ndim == 3 else masks
+
+
+def predict_masks_batch(
+    tensor: np.ndarray, model_type: SegmentationModelType
+) -> np.ndarray:
+    """Predict segmentation masks for a batch of slices, shape (N, H, W)."""
+    import tensorflow as tf
+
+    from .tf_device import configure_tensorflow
+
+    configure_tensorflow()
     model, _ = _load_segmentation_model(model_type)
-    probabilities = keras_predict_proba(model, tensor)
-    return np.argmax(probabilities, axis=-1).astype(np.uint8)
+    batch = tensor.astype(np.float32)
+    if batch.ndim == 3:
+        batch = np.expand_dims(batch, axis=0)
+
+    outputs = model(tf.constant(batch, dtype=tf.float32), training=False).numpy()
+    if outputs.ndim == 4 and outputs.shape[-1] > 1:
+        return np.argmax(outputs, axis=-1).astype(np.uint8)
+    if outputs.ndim == 3:
+        return outputs.astype(np.uint8)
+    raise ValueError(f"Unexpected segmentation output shape: {outputs.shape}")
 
 
 def colorize_mask(mask: np.ndarray) -> np.ndarray:

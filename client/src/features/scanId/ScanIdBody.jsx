@@ -6,6 +6,7 @@ import ScanIdXai from './ScanIdXai'
 import ScanIdHeader from './ScanIdHeader'
 import ScanIdMRI from './ScanIdMRI'
 import ScanIdProbabilities from './ScanIdProbabilities'
+import ScanIdFullCase from './ScanIdFullCase'
 import ScanIdResult from './ScanIdResult'
 import { useScan } from './useScan'
 
@@ -14,7 +15,6 @@ export default function ScanIdBody() {
     const params = useParams();
     const scanId = params.scanId;
     const { scan, isLoading } = useScan({ id: scanId });
-    // still need to get the images properly
     const {
         prediction,
         confidenceScores,
@@ -23,6 +23,8 @@ export default function ScanIdBody() {
         xai,
         xaiError,
         segmentation,
+        fullCase,
+        scanType,
         radiologist,
         status,
         createdAt,
@@ -38,14 +40,18 @@ export default function ScanIdBody() {
 
     return (
         <>
-            <ScanIdHeader scanId={scanId} date={date} time={time} />
+            {/* scan prop enables report download / print in the header */}
+            <ScanIdHeader scanId={scanId} date={date} time={time} scan={scan} />
             <div className='scan flex flex-col lg:grid lg:grid-cols-3 gap-8 m-8'>
                 <ScanIdResult
                     prediction={prediction}
                     confidence={confidence}
                     processedTimeMs={processedTime}
+                    fullCase={fullCase}
+                    scanType={scanType}
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
+                    {fullCase ? <ScanIdFullCase fullCase={fullCase} /> : null}
                     <ScanIdMRI
                         originalMRI={
                             xai?.stages?.[0]?.originalPath
@@ -54,7 +60,9 @@ export default function ScanIdBody() {
                         }
                         files={files}
                     />
-                    <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                    {scanType !== '3D' ? (
+                        <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                    ) : null}
                     {segmentation ? (
                         <ScanIdSegmentation segmentation={segmentation} />
                     ) : null}

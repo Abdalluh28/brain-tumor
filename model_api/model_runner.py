@@ -12,8 +12,17 @@ from .config import (
     ANALYZE_XAI_FALLBACK_METHODS,
 )
 from .pipeline import get_model_version, run_pipeline
-from .scan_inputs import prepare_scan_inputs
-from .schemas import ModelResult, ScanFileIn, SegmentationClassStatOut, SegmentationResult
+from .scan_inputs import prepare_mri_scan_inputs
+from .full_case_pipeline import run_full_case_pipeline
+from .schemas import (
+    FullCaseResult,
+    ModelResult,
+    ScanFileIn,
+    SegmentationClassStatOut,
+    SegmentationResult,
+    TumorSliceOut,
+    ValidSlicePreviewOut,
+)
 from .segmentation import (
     prediction_supports_segmentation,
     resolve_segmentation_output_dir,
@@ -140,6 +149,60 @@ def _run_cascade_xai_for_analyze(
     return None, last_error
 
 
+def run_full_case_model(
+    files: list[ScanFileIn],
+    backend_public_url: str | None = None,
+    *,
+    xai_method: str | None = None,
+) -> ModelResult:
+    """3D full-case: per-slice cascade, majority vote, volume segmentation, slice XAI."""
+    if xai_method is None:
+        xai_method = ANALYZE_DEFAULT_XAI_METHOD
+    started_at = time.perf_counter()
+
+    artifacts = run_full_case_pipeline(
+        files,
+        backend_public_url,
+        job_id=uuid.uuid4().hex,
+    )
+
+    full_case = FullCaseResult(
+        casePrediction=artifacts.case_prediction,
+        averageConfidence=round(artifacts.average_confidence / 100.0, 4),
+        averageConfidencePercent=artifacts.average_confidence,
+        numValidSlices=artifacts.num_valid_slices,
+        numTumorSlices=artifacts.num_tumor_slices,
+        validSlicePreviews=[
+            ValidSlicePreviewOut(**item) for item in artifacts.valid_slice_previews
+        ],
+        tumorSlices=[TumorSliceOut(**item) for item in artifacts.tumor_slices],
+        maskMetadata=artifacts.mask_metadata,
+    )
+
+    grad_cam_path = _grad_cam_path(files, backend_public_url)
+    if full_case.tumorSlices:
+        first = full_case.tumorSlices[0]
+        grad_cam_path = first.xai or first.segmentation or first.originalSlice
+
+    segmentation_result: SegmentationResult | None = None
+    if artifacts.segmentation is not None:
+        segmentation_result = _to_segmentation_result(artifacts.segmentation)
+
+    return ModelResult(
+        prediction=artifacts.prediction,
+        confidenceScores=artifacts.confidence_scores,
+        confidence=artifacts.average_confidence,
+        gradCamPath=grad_cam_path,
+        processedTime=round((time.perf_counter() - started_at) * 1000, 2),
+        modelVersion=os.getenv("MODEL_VERSION", get_model_version()) + "-fullcase-3d",
+        segmentation=segmentation_result,
+        xai=None,
+        xaiError=artifacts.xai_error,
+        sliceFiltering=artifacts.slice_filter,
+        fullCase=full_case,
+    )
+
+
 def run_model(
     files: list[ScanFileIn],
     backend_public_url: str | None = None,
@@ -158,8 +221,21 @@ def run_model(
 
     _validate_scan_type_files(files, scan_type)
 
-    prepared = prepare_scan_inputs(files)
+    if scan_type == "3D":
+        return run_full_case_model(
+            files,
+            backend_public_url,
+            xai_method=xai_method,
+        )
+
+    prepared = prepare_mri_scan_inputs(files)
     pipeline_result = run_pipeline(files, prepared=prepared)
+    logger.info(
+        "Slice filter selected %s good slices and %s bad slices using %s.",
+        len(prepared.slice_filter.get("good_slices", [])),
+        len(prepared.slice_filter.get("bad_slices", [])),
+        prepared.slice_filter.get("reference_modality", "t1c"),
+    )
 
     segmentation_result: SegmentationResult | None = None
     xai_result = None
@@ -167,9 +243,10 @@ def run_model(
     grad_cam_path = _grad_cam_path(files, backend_public_url)
 
     needs_segmentation = prediction_supports_segmentation(pipeline_result.prediction)
+    should_run_xai = run_xai and "stage2" in pipeline_result.stages_run
     xai_job_id = uuid.uuid4().hex
 
-    if run_xai and needs_segmentation and ANALYZE_PARALLEL_SEGMENTATION_AND_XAI:
+    if should_run_xai and needs_segmentation and ANALYZE_PARALLEL_SEGMENTATION_AND_XAI:
         seg_job_id = uuid.uuid4().hex
         seg_output_dir = resolve_segmentation_output_dir(files, seg_job_id)
 
@@ -196,7 +273,7 @@ def run_model(
             segmentation_result = _to_segmentation_result(seg_future.result())
 
     else:
-        if run_xai:
+        if should_run_xai:
             xai_result, xai_error = _run_cascade_xai_for_analyze(
                 files,
                 pipeline_result,
@@ -233,4 +310,5 @@ def run_model(
         segmentation=segmentation_result,
         xai=xai_result,
         xaiError=xai_error,
+        sliceFiltering=prepared.slice_filter,
     )
