@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-import threading
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,16 +11,25 @@ from PIL import Image
 from .config import (
     ANALYZE_DEFAULT_XAI_METHOD,
     FULL_CASE_BATCH_SEGMENTATION,
+    FULL_CASE_INFERENCE_BATCH_SIZE,
     FULL_CASE_MAX_XAI_SLICES,
-    FULL_CASE_PARALLEL_WORKERS,
+    FULL_CASE_SEG_BATCH_SIZE,
 )
+from .inference import keras_predict_batch_proba
 from .pipeline import (
+    STAGE1_LABELS,
+    STAGE2_LABELS,
+    STAGE3_LABELS,
     PipelineResult,
     SliceCascadeResult,
+    _finalize_slice_prediction,
+    _load_models,
+    _slice_stage_prediction,
     aggregate_slice_predictions,
     prediction_to_case_label,
-    run_per_slice_cascade,
 )
+from .scan_inputs import PreparedScanInputs
+from .tf_device import configure_tensorflow
 from .scan_inputs import (
     prepare_prepared_scan_inputs_from_volumes,
     prepare_single_slice_prepared_from_volume,
@@ -49,8 +56,128 @@ from .xai.utils import save_png
 
 logger = logging.getLogger(__name__)
 
-# Serialize TensorFlow GPU calls across parallel 3D slice workers.
-_FULL_CASE_INFERENCE_LOCK = threading.Lock()
+
+def _predict_batch_in_chunks(model, tensor: np.ndarray, chunk_size: int) -> np.ndarray:
+    """Run model on tensor (N, H, W, C) in small batches to limit peak memory."""
+    n = int(tensor.shape[0])
+    if chunk_size <= 0 or n <= chunk_size:
+        return keras_predict_batch_proba(model, tensor)
+
+    parts: list[np.ndarray] = []
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        parts.append(keras_predict_batch_proba(model, tensor[start:end]))
+    return np.concatenate(parts, axis=0)
+
+
+def run_per_slice_cascade_chunked(
+    prepared: PreparedScanInputs,
+    *,
+    batch_size: int = FULL_CASE_INFERENCE_BATCH_SIZE,
+) -> list[SliceCascadeResult]:
+    """
+    Hierarchical cascade on all valid slices with chunked GPU/CPU inference.
+
+    Same logic as pipeline.run_per_slice_cascade but caps batch size so large
+  3D volumes do not allocate tensors like (69, 240, 240, 64) at once.
+    """
+    configure_tensorflow()
+    stage1_model, stage2_model, stage3_model = _load_models()
+
+    good_slices = list(prepared.slice_filter["good_slices"])
+    stage1_probs = _predict_batch_in_chunks(
+        stage1_model, prepared.stage1_tensor, batch_size
+    )
+    stage4_tensor = prepared.stage4_tensor
+
+    slice_results: list[SliceCascadeResult] = []
+
+    tumor_indices = [
+        i for i, probs in enumerate(stage1_probs) if int(np.argmax(probs)) == 1
+    ]
+    stage2_probs_map: dict[int, np.ndarray] = {}
+    stage3_probs_map: dict[int, np.ndarray] = {}
+
+    if tumor_indices:
+        tumor_batch = stage4_tensor[tumor_indices]
+        tumor_stage2_probs = _predict_batch_in_chunks(
+            stage2_model, tumor_batch, batch_size
+        )
+        for local_i, global_i in enumerate(tumor_indices):
+            stage2_probs_map[global_i] = tumor_stage2_probs[local_i]
+
+        gli_indices = [
+            global_i
+            for global_i in tumor_indices
+            if int(np.argmax(stage2_probs_map[global_i])) == 0
+        ]
+        if gli_indices:
+            gli_batch = stage4_tensor[gli_indices]
+            gli_stage3_probs = _predict_batch_in_chunks(
+                stage3_model, gli_batch, batch_size
+            )
+            for local_i, global_i in enumerate(gli_indices):
+                stage3_probs_map[global_i] = gli_stage3_probs[local_i]
+
+    for i, z in enumerate(good_slices):
+        stage_details: dict = {}
+        stages_run: list[str] = ["stage1"]
+        stage_details["stage1"] = _slice_stage_prediction(STAGE1_LABELS, stage1_probs[i])
+
+        if stage_details["stage1"].label == "Healthy":
+            prediction, confidence = _finalize_slice_prediction(
+                stage_details, stages_run
+            )
+            slice_results.append(
+                SliceCascadeResult(
+                    z=int(z),
+                    prediction=prediction,
+                    confidence=confidence,
+                    case_label=prediction_to_case_label(prediction),
+                    stages_run=stages_run,
+                    stage_details=stage_details,
+                )
+            )
+            continue
+
+        stages_run.append("stage2")
+        stage_details["stage2"] = _slice_stage_prediction(
+            STAGE2_LABELS, stage2_probs_map[i]
+        )
+
+        if stage_details["stage2"].label in ("METS", "OTHER"):
+            prediction, confidence = _finalize_slice_prediction(
+                stage_details, stages_run
+            )
+            slice_results.append(
+                SliceCascadeResult(
+                    z=int(z),
+                    prediction=prediction,
+                    confidence=confidence,
+                    case_label=prediction_to_case_label(prediction),
+                    stages_run=stages_run,
+                    stage_details=stage_details,
+                )
+            )
+            continue
+
+        stages_run.append("stage3")
+        stage_details["stage3"] = _slice_stage_prediction(
+            STAGE3_LABELS, stage3_probs_map[i]
+        )
+        prediction, confidence = _finalize_slice_prediction(stage_details, stages_run)
+        slice_results.append(
+            SliceCascadeResult(
+                z=int(z),
+                prediction=prediction,
+                confidence=confidence,
+                case_label=prediction_to_case_label(prediction),
+                stages_run=stages_run,
+                stage_details=stage_details,
+            )
+        )
+
+    return slice_results
 
 
 @dataclass(frozen=True)
@@ -120,17 +247,16 @@ def _run_slice_xai(
 ) -> tuple[str | None, str | None]:
     pipeline_result = _pipeline_result_from_slice(cascade, slice_filter)
     try:
-        with _FULL_CASE_INFERENCE_LOCK:
-            xai_result = run_cascade_xai(
-                slice_files,
-                pipeline_result,
-                cascade_prediction=cascade.prediction,
-                xai_method=xai_method,
-                backend_public_url=backend_public_url,
-                job_id=f"{output_dir.name}_z{z}",
-                prepared=prepared,
-                analyze_upload=True,
-            )
+        xai_result = run_cascade_xai(
+            slice_files,
+            pipeline_result,
+            cascade_prediction=cascade.prediction,
+            xai_method=xai_method,
+            backend_public_url=backend_public_url,
+            job_id=f"{output_dir.name}_z{z}",
+            prepared=prepared,
+            analyze_upload=True,
+        )
         if xai_result.stages:
             return cascade_stage_preview_overlay(xai_result.stages[-1]), None
         return None, None
@@ -214,15 +340,18 @@ def _batch_segmentation_masks(
 
     masks_by_z: dict[int, np.ndarray] = {}
 
+    chunk = max(1, FULL_CASE_SEG_BATCH_SIZE)
+
     def _run_batch(items: list[tuple[int, np.ndarray]], model_type: str) -> None:
         if not items:
             return
-        zs, tensors = zip(*items, strict=True)
-        batch = np.stack(tensors, axis=0).astype(np.float32)
-        with _FULL_CASE_INFERENCE_LOCK:
+        for start in range(0, len(items), chunk):
+            chunk_items = items[start : start + chunk]
+            zs, tensors = zip(*chunk_items, strict=True)
+            batch = np.stack(tensors, axis=0).astype(np.float32)
             predicted = predict_masks_batch(batch, model_type)
-        for z, mask in zip(zs, predicted, strict=True):
-            masks_by_z[int(z)] = mask
+            for z, mask in zip(zs, predicted, strict=True):
+                masks_by_z[int(z)] = mask
 
     _run_batch(gli_items, "GLI")
     _run_batch(mets_items, "METS")
@@ -244,11 +373,10 @@ def _segmentation_mask_per_slice(
         {"good_slices": [cascade.z], "reference_depth": reference_depth},
     )
     model_type = "GLI" if cascade.prediction in ("HGG", "LGG") else "METS"
-    with _FULL_CASE_INFERENCE_LOCK:
-        return predict_mask(prepared.segmentation_tensor, model_type)
+    return predict_mask(prepared.segmentation_tensor, model_type)
 
 
-def _process_slices_parallel(
+def _process_slice_extras(
     slice_cascades: list[SliceCascadeResult],
     *,
     png_paths: dict[int, dict[str, Path]],
@@ -309,33 +437,11 @@ def _process_slices_parallel(
             png_paths=z_png,
         )
 
-    workers = max(1, FULL_CASE_PARALLEL_WORKERS)
-    if workers == 1 or len(slice_cascades) <= 1:
-        for cascade in slice_cascades:
-            run = _work(cascade.z)
-            slice_runs.append(run)
-            if run.xai_error:
-                xai_errors.append(f"z{run.z}: {run.xai_error}")
-    else:
-        logger.info(
-            "3D full-case: running %s slices with %s parallel workers (batched classify + parallel XAI).",
-            len(slice_cascades),
-            workers,
-        )
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {
-                executor.submit(_work, cascade.z): cascade.z
-                for cascade in slice_cascades
-            }
-            results_by_z: dict[int, Slice2DRunResult] = {}
-            for future in as_completed(futures):
-                z = futures[future]
-                run = future.result()
-                results_by_z[z] = run
-                if run.xai_error:
-                    xai_errors.append(f"z{run.z}: {run.xai_error}")
-
-        slice_runs = [results_by_z[cascade.z] for cascade in slice_cascades]
+    for cascade in slice_cascades:
+        run = _work(cascade.z)
+        slice_runs.append(run)
+        if run.xai_error:
+            xai_errors.append(f"z{run.z}: {run.xai_error}")
 
     return slice_runs, xai_errors
 
@@ -352,7 +458,7 @@ def run_full_case_pipeline(
     1. Cache NIfTI volumes (viewer-aligned slice indices)
     2. Filter valid slices (T1c brain-size)
     3. Export all valid slices to PNG (all modalities) — visible before inference
-    4. Batched per-slice classification, then parallel XAI + batched segmentation
+    4. Chunked batched classification, then serial XAI + chunked segmentation
     5. Majority vote
     6. Stack masks → 3D NIfTI + NPZ
     """
@@ -384,13 +490,14 @@ def run_full_case_pipeline(
         modality_map,
         slice_filter,
     )
-    slice_cascades = run_per_slice_cascade(prepared)
+    slice_cascades = run_per_slice_cascade_chunked(prepared)
     logger.info(
-        "3D full-case: batched cascade classification on %s slices.",
+        "3D full-case: chunked cascade classification on %s slices (batch size %s).",
         len(slice_cascades),
+        FULL_CASE_INFERENCE_BATCH_SIZE,
     )
 
-    slice_runs, xai_errors = _process_slices_parallel(
+    slice_runs, xai_errors = _process_slice_extras(
         slice_cascades,
         png_paths=png_paths,
         volume_map=volume_map,

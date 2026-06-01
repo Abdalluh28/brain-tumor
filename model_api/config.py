@@ -75,21 +75,12 @@ ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
 FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "40"))
 
 
-def _default_full_case_parallel_workers() -> int:
-    cpu = os.cpu_count() or 4
-    return max(1, min(8, cpu))
-
-
-# Thread pool size for per-slice XAI after batched classification (3D only).
-# FULL_CASE_PARALLEL_WORKERS = int(
-#     os.environ.get(
-#         "FULL_CASE_PARALLEL_WORKERS",
-#         str(_default_full_case_parallel_workers()),
-#     )
-# )
-
-FULL_CASE_PARALLEL_WORKERS=4
-# Batch segmentation masks for all slices of the same model type (3D only).
+# 3D full-case: max slices per model forward pass (avoids CPU/GPU OOM on large volumes).
+FULL_CASE_INFERENCE_BATCH_SIZE = int(
+    os.environ.get("FULL_CASE_INFERENCE_BATCH_SIZE", "8")
+)
+FULL_CASE_SEG_BATCH_SIZE = int(os.environ.get("FULL_CASE_SEG_BATCH_SIZE", "4"))
+# Batch segmentation masks by model type (GLI / METS), in chunks of FULL_CASE_SEG_BATCH_SIZE.
 FULL_CASE_BATCH_SEGMENTATION = os.environ.get(
     "FULL_CASE_BATCH_SEGMENTATION", "1"
 ).strip().lower() in ("1", "true", "yes")
