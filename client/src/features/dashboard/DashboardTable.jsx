@@ -2,13 +2,14 @@ import Spinner from '@/components/Spinner';
 import { useNavigate } from 'react-router-dom';
 import DashboardTableCell from './DashboardTableCell';
 import { useRecentScans } from './useRecentScans';
+import SkeletonLoader from '@/components/SkeletonLoader';
 export default function DashboardTable() {
 
     const { data: recentData, isLoading } = useRecentScans();
     const navigate = useNavigate();
 
     if (isLoading) {
-        return <Spinner />
+        return <SkeletonLoader count={1} height={400} />
     }
 
     return (
