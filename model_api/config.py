@@ -71,8 +71,8 @@ ANALYZE_PRELOAD_MODELS_AT_STARTUP = True
 ANALYZE_PARALLEL_SEGMENTATION_AND_XAI = True
 
 # Upload/analyze: Grad-CAM++ on stage 2 only (fast). PCI runs from UI tab via POST /scans/{id}/xai.
-# Full-case 3D: max tumor slices to explain on upload (0 = no limit).
-FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "40"))
+# Full-case 3D: max tumor slices to explain on upload (0 = all tumor slices).
+FULL_CASE_MAX_XAI_SLICES = int(os.environ.get("FULL_CASE_MAX_XAI_SLICES", "0"))
 
 
 # 3D full-case: max slices per model forward pass (avoids CPU/GPU OOM on large volumes).

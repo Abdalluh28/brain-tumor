@@ -10,6 +10,7 @@ from PIL import Image
 
 from .config import (
     ANALYZE_DEFAULT_XAI_METHOD,
+    ANALYZE_XAI_FALLBACK_METHODS,
     FULL_CASE_BATCH_SEGMENTATION,
     FULL_CASE_INFERENCE_BATCH_SIZE,
     FULL_CASE_MAX_XAI_SLICES,
@@ -223,15 +224,46 @@ def _pipeline_result_from_slice(
     )
 
 
-def _select_slices_for_xai(
+def _resolve_tumor_z_set(
     slice_cascades: list[SliceCascadeResult],
-) -> list[SliceCascadeResult]:
-    """Slices that ran stage 2 (tumor path), optionally capped for upload time."""
-    candidates = [c for c in slice_cascades if "stage2" in c.stages_run]
-    if FULL_CASE_MAX_XAI_SLICES <= 0 or len(candidates) <= FULL_CASE_MAX_XAI_SLICES:
-        return candidates
-    ranked = sorted(candidates, key=lambda c: c.confidence, reverse=True)
-    return ranked[:FULL_CASE_MAX_XAI_SLICES]
+    masks_by_z: dict[int, np.ndarray],
+) -> set[int]:
+    """Slice indices shown in the tumor-slices panel (matches mask / per-slice tumor)."""
+    tumor_z = [
+        int(z)
+        for z, mask in masks_by_z.items()
+        if int(np.sum(mask > 0)) > 0
+    ]
+    if not tumor_z:
+        tumor_z = [int(c.z) for c in slice_cascades if c.case_label != "Healthy"]
+    return set(tumor_z)
+
+
+def _xai_target_z_set(
+    slice_cascades: list[SliceCascadeResult],
+    masks_by_z: dict[int, np.ndarray],
+) -> set[int]:
+    """Every tumor-slice that can receive stage-2 Grad-CAM (same set as UI list)."""
+    tumor_z = _resolve_tumor_z_set(slice_cascades, masks_by_z)
+    cascade_by_z = {int(c.z): c for c in slice_cascades}
+    targets = {
+        z
+        for z in tumor_z
+        if z in cascade_by_z and "stage2" in cascade_by_z[z].stages_run
+    }
+    if FULL_CASE_MAX_XAI_SLICES > 0 and len(targets) > FULL_CASE_MAX_XAI_SLICES:
+        ranked = sorted(
+            targets,
+            key=lambda z: cascade_by_z[z].confidence,
+            reverse=True,
+        )
+        targets = set(ranked[:FULL_CASE_MAX_XAI_SLICES])
+        logger.warning(
+            "3D full-case: XAI capped at %s slices (FULL_CASE_MAX_XAI_SLICES); "
+            "raise the limit or set 0 for all tumor slices.",
+            FULL_CASE_MAX_XAI_SLICES,
+        )
+    return targets
 
 
 def _run_slice_xai(
@@ -246,71 +278,52 @@ def _run_slice_xai(
     slice_filter: dict,
 ) -> tuple[str | None, str | None]:
     pipeline_result = _pipeline_result_from_slice(cascade, slice_filter)
-    try:
-        xai_result = run_cascade_xai(
-            slice_files,
-            pipeline_result,
-            cascade_prediction=cascade.prediction,
-            xai_method=xai_method,
-            backend_public_url=backend_public_url,
-            job_id=f"{output_dir.name}_z{z}",
-            prepared=prepared,
-            analyze_upload=True,
+    methods_to_try = tuple(
+        dict.fromkeys(
+            (xai_method,)
+            + tuple(m for m in ANALYZE_XAI_FALLBACK_METHODS if m != xai_method)
         )
-        if xai_result.stages:
-            return cascade_stage_preview_overlay(xai_result.stages[-1]), None
-        return None, None
-    except Exception as exc:
-        logger.warning("Slice z=%s XAI failed: %s", z, exc, exc_info=True)
-        return None, str(exc)
-
-
-def _run_slice_extras(
-    z: int,
-    cascade: SliceCascadeResult,
-    slice_files: list[ScanFileIn],
-    png_paths: dict[str, Path],
-    *,
-    volume_map: dict[str, np.ndarray],
-    modality_map: dict[str, ScanFileIn],
-    reference_depth: int,
-    slice_filter: dict,
-    backend_public_url: str | None,
-    xai_method: str,
-    output_dir: Path,
-    segmentation_mask: np.ndarray | None,
-) -> Slice2DRunResult:
-    """XAI for one slice (segmentation mask may already be batched)."""
-    prepared = prepare_single_slice_prepared_from_volume(
-        volume_map,
-        modality_map,
-        z,
-        reference_depth,
-        slice_filter,
     )
+    last_error: str | None = None
 
-    xai_overlay_path: str | None = None
-    xai_error: str | None = None
-    if "stage2" in cascade.stages_run:
-        xai_overlay_path, xai_error = _run_slice_xai(
-            z,
-            cascade,
-            slice_files,
-            prepared,
-            backend_public_url=backend_public_url,
-            xai_method=xai_method,
-            output_dir=output_dir,
-            slice_filter=slice_filter,
-        )
+    for method in methods_to_try:
+        try:
+            xai_result = run_cascade_xai(
+                slice_files,
+                pipeline_result,
+                cascade_prediction=cascade.prediction,
+                xai_method=method,
+                backend_public_url=backend_public_url,
+                job_id=f"{output_dir.name}_z{z}",
+                prepared=prepared,
+                analyze_upload=True,
+            )
+            if not xai_result.stages:
+                last_error = f"No XAI stages returned ({method})"
+                continue
+            overlay = cascade_stage_preview_overlay(xai_result.stages[-1])
+            if not overlay:
+                last_error = f"Empty overlay path ({method})"
+                continue
+            if method != xai_method:
+                logger.info(
+                    "Slice z=%s XAI used fallback method '%s' (requested '%s').",
+                    z,
+                    method,
+                    xai_method,
+                )
+            return overlay, None
+        except Exception as exc:
+            last_error = str(exc)
+            logger.warning(
+                "Slice z=%s XAI failed with '%s': %s",
+                z,
+                method,
+                exc,
+                exc_info=True,
+            )
 
-    return Slice2DRunResult(
-        z=z,
-        cascade=cascade,
-        segmentation_mask=segmentation_mask,
-        xai_overlay_path=xai_overlay_path,
-        xai_error=xai_error,
-        png_paths=png_paths,
-    )
+    return None, last_error
 
 
 def _batch_segmentation_masks(
@@ -388,8 +401,7 @@ def _process_slice_extras(
     xai_method: str,
     output_dir: Path,
 ) -> tuple[list[Slice2DRunResult], list[str]]:
-    xai_targets = {c.z for c in _select_slices_for_xai(slice_cascades)}
-    cascade_by_z = {c.z: c for c in slice_cascades}
+    cascade_by_z = {int(c.z): c for c in slice_cascades}
 
     if FULL_CASE_BATCH_SEGMENTATION:
         masks_by_z = _batch_segmentation_masks(
@@ -398,11 +410,17 @@ def _process_slice_extras(
     else:
         masks_by_z = {}
 
+    xai_targets = _xai_target_z_set(slice_cascades, masks_by_z)
+    logger.info(
+        "3D full-case: generating XAI for %s tumor slice(s).",
+        len(xai_targets),
+    )
+
     slice_runs: list[Slice2DRunResult] = []
     xai_errors: list[str] = []
 
-    def _work(z: int) -> Slice2DRunResult:
-        cascade = cascade_by_z[z]
+    for cascade in slice_cascades:
+        z = int(cascade.z)
         z_png = png_paths[z]
         slice_files = build_slice_scan_files(z, z_png)
 
@@ -412,36 +430,38 @@ def _process_slice_extras(
                 cascade, volume_map, reference_depth
             )
 
+        xai_overlay_path: str | None = None
+        xai_error: str | None = None
         if z in xai_targets:
-            return _run_slice_extras(
+            prepared = prepare_single_slice_prepared_from_volume(
+                volume_map,
+                modality_map,
+                z,
+                reference_depth,
+                slice_filter,
+            )
+            xai_overlay_path, xai_error = _run_slice_xai(
                 z,
                 cascade,
                 slice_files,
-                z_png,
-                volume_map=volume_map,
-                modality_map=modality_map,
-                reference_depth=reference_depth,
-                slice_filter=slice_filter,
+                prepared,
                 backend_public_url=backend_public_url,
                 xai_method=xai_method,
                 output_dir=output_dir,
-                segmentation_mask=mask,
+                slice_filter=slice_filter,
             )
 
-        return Slice2DRunResult(
+        run = Slice2DRunResult(
             z=z,
             cascade=cascade,
             segmentation_mask=mask,
-            xai_overlay_path=None,
-            xai_error=None,
+            xai_overlay_path=xai_overlay_path,
+            xai_error=xai_error,
             png_paths=z_png,
         )
-
-    for cascade in slice_cascades:
-        run = _work(cascade.z)
         slice_runs.append(run)
-        if run.xai_error:
-            xai_errors.append(f"z{run.z}: {run.xai_error}")
+        if xai_error:
+            xai_errors.append(f"z{z}: {xai_error}")
 
     return slice_runs, xai_errors
 
@@ -543,9 +563,7 @@ def run_full_case_pipeline(
             backend_public_url,
         )
 
-    tumor_z = sorted(z for z, mask in masks_by_z.items() if int(np.sum(mask > 0)) > 0)
-    if not tumor_z and case_prediction != "Healthy":
-        tumor_z = sorted(run.z for run in slice_runs if run.cascade.case_label != "Healthy")
+    tumor_z = sorted(_resolve_tumor_z_set(slice_cascades, masks_by_z))
 
     tumor_slices: list[dict] = []
     for run in slice_runs:
