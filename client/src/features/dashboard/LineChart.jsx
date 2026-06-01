@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Line } from 'react-chartjs-2'
 import { useMonthDistribution } from './useMonthDistribution';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
 export default function LineChart() {
     const [darkMode, setDarkMode] = useState(
@@ -111,9 +112,7 @@ export default function LineChart() {
     // ✅ Loading state
     if (isLoading) {
         return (
-            <div className="w-full h-80 flex items-center justify-center">
-                Loading...
-            </div>
+            <SkeletonLoader height={320} />
         );
     }
 

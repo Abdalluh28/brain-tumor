@@ -2,13 +2,14 @@ import React from 'react'
 import { Pie } from 'react-chartjs-2'
 import { useClassDistribution } from './useClassDistribution'
 import Spinner from '@/components/Spinner';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
 export default function PieChart() {
 
     const { data, isLoading } = useClassDistribution();
 
     if (isLoading) {
-        return <Spinner />
+        return <SkeletonLoader height={300} />
     }
 
     // ✅ Normalize API data into object
