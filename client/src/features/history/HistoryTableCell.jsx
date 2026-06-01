@@ -9,9 +9,10 @@ import { Eye, Trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDeleteScan } from "./useDeleteScan";
 import Swal from "sweetalert2";
+import Spinner from "@/components/Spinner";
 
 export default function HistoryTableCell({ scan }) {
-
+console.log(scan)
     const navigate = useNavigate();
     const key = scan.prediction?.toLowerCase() || 'healthy';
     const config = PREDICTION_CONFIG[key];
@@ -41,7 +42,7 @@ export default function HistoryTableCell({ scan }) {
 
     return (
         <>
-            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{scan._id}</td>
+            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{scan?.patient?.name || 'N/A'}</td>
             <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>
                 <p>{date}</p>
                 <p className="text-xs text-slate-400">{time}</p>
@@ -76,7 +77,7 @@ export default function HistoryTableCell({ scan }) {
                         <button className='cursor-pointer hover:text-red-500 transition duration-300'
                             onClick={handleDeleteScan}
                             disabled={isLoading}>
-                            <Trash />
+                            {isLoading ? <Spinner /> : <Trash />}
                         </button>
                     </TooltipTrigger>
                     <TooltipContent>

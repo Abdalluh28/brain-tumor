@@ -64,7 +64,7 @@ export default function HistoryTable() {
                 <table className="w-full table-auto border-collapse">
                     <thead className='border-b border-slate-200 dark:border-slate-700'>
                         <tr className='text-left text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800'>
-                            <th className='p-4 font-medium'>Scan ID</th>
+                            <th className='p-4 font-medium'>Patient Name</th>
                             <th className='p-4 font-medium'>Date & Time</th>
                             <th className='p-4 font-medium'>Prediction</th>
                             <th className='p-4 font-medium'>Confidence</th>
