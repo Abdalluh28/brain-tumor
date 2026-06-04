@@ -1,5 +1,4 @@
 import { CircleCheckBig } from "lucide-react";
-import ProgressCard from "./ProgressCard";
 import { useCreateScan } from "./useCreateScan";
 import { useDispatch, useSelector } from "react-redux";
 import { clearFiles } from "./scanSlice";

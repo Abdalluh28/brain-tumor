@@ -1,16 +1,27 @@
 const User = require("../models/User.js");
+const RadiologyCenter = require("../models/RadiologyCenter.js");
 const asyncHandler = require("../middleware/asyncHandler.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const createTokens = require("../utils/createTokens.js");
+const buildUserInfo = require("../utils/buildUserInfo.js");
 
 const register = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, radiologyCenterId } = req.body;
 
     // check if all fields are filled
     if (!name || !email || !password) {
         return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (radiologyCenterId) {
+        const center = await RadiologyCenter.findById(radiologyCenterId);
+        if (!center) {
+            return res
+                .status(400)
+                .json({ message: "Radiology center not found" });
+        }
     }
 
     // check if user already exists
@@ -28,6 +39,7 @@ const register = asyncHandler(async (req, res) => {
         email,
         password: hashedPassword,
         lastLogin: new Date(),
+        ...(radiologyCenterId ? { radiologyCenterId } : {}),
     });
 
     const { accessToken } = await createTokens(newUser, res);
@@ -35,10 +47,8 @@ const register = asyncHandler(async (req, res) => {
     try {
         return res.json({
             accessToken,
-            name: newUser.name,
-            email: newUser.email,
+            ...buildUserInfo(newUser),
             lastLogin: newUser.lastLogin,
-            id: newUser.id,
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -71,14 +81,11 @@ const login = asyncHandler(async (req, res) => {
 
     const { accessToken } = await createTokens(existingUser, res);
     try {
-        const userInfo = {
+        return res.json({
             accessToken,
-            name: existingUser.name,
-            email: existingUser.email,
+            ...buildUserInfo(existingUser),
             lastLogin: existingUser.lastLogin,
-            id: existingUser.id,
-        };
-        return res.json(userInfo);
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -105,20 +112,21 @@ const refresh = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "User not found" });
     }
 
+    const userInfo = buildUserInfo(existingUser);
+
     const accessToken = jwt.sign(
-        { userInfo: { id: existingUser.id } },
+        { userInfo },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" },
     );
 
-    const userInfo = {
-        id: existingUser.id,
-        name: existingUser.name,
-        email: existingUser.email,
-        lastLogin: existingUser.lastLogin,
-    };
-
-    return res.json({ accessToken, userInfo });
+    return res.json({
+        accessToken,
+        userInfo: {
+            ...userInfo,
+            lastLogin: existingUser.lastLogin,
+        },
+    });
 });
 
 const logout = asyncHandler(async (req, res) => {
@@ -135,9 +143,33 @@ const logout = asyncHandler(async (req, res) => {
     return res.json({ message: "Logout successful" });
 });
 
+const createRadiologyCenter = asyncHandler(async (req, res) => {
+    const { name, address, city, state, zip, phone } = req.body;
+
+    if (!name || !address || !city || !state || !zip || !phone) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Create new radiology center
+    const newRadiologyCenter = await RadiologyCenter.create({
+        name,
+        address,
+        city,
+        state,
+        zip,
+        phone,
+    });
+
+    return res.json({
+        message: "Radiology center created",
+        radiologyCenter: newRadiologyCenter,
+    });
+});
+
 module.exports = {
     register,
     login,
     refresh,
     logout,
+    createRadiologyCenter,
 };

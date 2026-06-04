@@ -6,6 +6,12 @@ const { verifyJWT } = require("../middleware/authMiddleware");
 
 router.route("/").get(verifyJWT, userController.getUser);
 
+router.route('/doctors').get(verifyJWT, userController.getDoctors);
+
+router
+    .route("/radiology-center")
+    .post(verifyJWT, userController.joinRadiologyCenter);
+
 router.route("/profile").post(verifyJWT, userController.updateUserProfile);
 
 router.route("/:id").delete(verifyJWT, userController.deleteUser);

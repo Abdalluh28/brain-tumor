@@ -215,6 +215,11 @@ const scanSchema = new mongoose.Schema(
         modelVersion: {
             type: String,
         },
+
+        RadiologyCenterId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "RadiologyCenter",
+        },
     },
     {
         timestamps: true,

@@ -5,6 +5,11 @@ export async function getUserApi() {
     return res.data;
 }
 
+export async function getDoctorsApi() {
+    const res = await api.get("/user/doctors");
+    return res.data;
+}
+
 export async function updateUserApi(data) {
     const res = await api.post("/user/profile", data);
     return res.data;
