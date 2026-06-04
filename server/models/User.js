@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema(
         lastLogin: {
             type: Date,
         },
+        radiologyCenterId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "RadiologyCenter",
+        },
     },
     {
         timestamps: true, // creates createdAt & updatedAt automatically

@@ -1,21 +1,30 @@
 import { useSearchParams } from "react-router-dom";
 
-export default function SelectFilter({ label, options, paramKey }) {
-
+export default function SelectFilter({
+    label,
+    options,
+    paramKey,
+    defaultValue = "all",
+    resetPageOnChange = false,
+}) {
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const value = searchParams.get(paramKey) || "all";
+    const value = searchParams.get(paramKey) || defaultValue;
 
     const handleSelect = (e) => {
-        const value = e.target.value;
+        const nextValue = e.target.value;
 
-        setSearchParams(prev => {
+        setSearchParams((prev) => {
             const params = new URLSearchParams(prev);
 
-            if (value !== "all") {
-                params.set(paramKey, value);
+            if (nextValue !== defaultValue) {
+                params.set(paramKey, nextValue);
             } else {
                 params.delete(paramKey);
+            }
+
+            if (resetPageOnChange) {
+                params.set("page", "1");
             }
 
             return params;

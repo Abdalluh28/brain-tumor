@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-const verifyJWT = (req, res, next) => {
+const verifyJWT = async (req, res, next) => {
     const authHeader = req.headers.authorization || req.headers.Authorization;
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -9,21 +10,36 @@ const verifyJWT = (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        const userId = decoded.userInfo?.id;
+
+        if (!userId) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        // Attach only ID (not full user document)
+        const user = await User.findById(userId).select(
+            "name email radiologyCenterId role",
+        );
+
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
         req.user = {
-            id: decoded.userInfo.id,
-            name: decoded.userInfo.name,
-            email: decoded.userInfo.email,
-            role: decoded.userInfo.role,
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            radiologyCenterId: user.radiologyCenterId
+                ? user.radiologyCenterId.toString()
+                : null,
         };
 
         next();
-    });
+    } catch {
+        return res.status(403).json({ message: "Forbidden" });
+    }
 };
 
 module.exports = { verifyJWT };

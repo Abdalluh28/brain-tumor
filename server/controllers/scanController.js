@@ -2,6 +2,7 @@ const multer = require("multer");
 const asyncHandler = require("../middleware/asyncHandler");
 const Scan = require("../models/Scan");
 const Patient = require("../models/Patient");
+const User = require("../models/User");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -363,12 +364,29 @@ const getScans = asyncHandler(async (req, res) => {
         startDate,
         endDate,
         search,
+        doctor,
     } = req.query;
 
     // build filter
-    const filter = {
-        userId: req.user.id,
-    };
+    const filter = {};
+
+    // One doctor at a time: default = logged-in user; otherwise a center colleague
+    if (!doctor || doctor === "me") {
+        filter.userId = req.user.id;
+    } else {
+        const selectedDoctor = await User.findOne({
+            _id: doctor,
+            radiologyCenterId: req.user.radiologyCenterId,
+        }).select("_id");
+
+        if (!selectedDoctor) {
+            return res.status(403).json({
+                message: "You are not allowed to view this doctor's scans",
+            });
+        }
+
+        filter.userId = selectedDoctor._id;
+    }
 
     if (type && type !== "All") {
         filter.prediction = type;
@@ -488,8 +506,7 @@ const runScanXai = asyncHandler(async (req, res) => {
         const cachedXai = applyActiveXaiView(existingXai, methodId);
         scan.xai = cachedXai;
         scan.xaiError = null;
-        scan.gradCamPath =
-            pickXaiPreviewPath(cachedXai) ?? scan.gradCamPath;
+        scan.gradCamPath = pickXaiPreviewPath(cachedXai) ?? scan.gradCamPath;
         await scan.save();
 
         return res.json({
@@ -519,8 +536,7 @@ const runScanXai = asyncHandler(async (req, res) => {
         const mergedXai = mergeXaiResult(existingXai, xaiResult);
         scan.xai = mergedXai;
         scan.xaiError = null;
-        scan.gradCamPath =
-            pickXaiPreviewPath(mergedXai) ?? scan.gradCamPath;
+        scan.gradCamPath = pickXaiPreviewPath(mergedXai) ?? scan.gradCamPath;
         await scan.save();
 
         res.json({

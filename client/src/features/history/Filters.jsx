@@ -3,9 +3,13 @@ import { useSearchParams } from "react-router-dom";
 
 import CustomDatePicker from "./CustomDatePicker";
 import SelectFilter from "./FilterItem";
+import { useGetDoctors } from "./useGetDoctors";
+import { useUser } from "@/features/settings/useUser";
 
 export default function Filters() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useUser();
+    const { doctors } = useGetDoctors();
 
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
@@ -28,6 +32,18 @@ export default function Filters() {
         setSearchParams(params);
     }, [startDate, endDate]);
 
+
+    const doctorOptions = [
+        {
+            label: user?.name ? `${user.name} (Me)` : "My Scans",
+            value: "me",
+        },
+        ...(doctors ?? []).map((doctor) => ({
+            label: doctor.name,
+            value: String(doctor._id),
+        })),
+    ];
+
     return (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Filter by prediction */}
@@ -48,13 +64,15 @@ export default function Filters() {
                 { label: '90-100%', value: "90-100" },
             ]} />
 
-            {/* Filter by status */}
-            <SelectFilter paramKey="status" label="Status" options={[
-                { label: "All", value: "all" },
-                { label: "Review", value: "Review" },
-                { label: "Completed", value: "Completed" },
-            ]} />
 
+            {/* Filter by doctor */}
+            <SelectFilter
+                paramKey="doctor"
+                label="Doctor"
+                options={doctorOptions}
+                defaultValue="me"
+                resetPageOnChange
+            />
 
             {/* Filter by date */}
             <CustomDatePicker

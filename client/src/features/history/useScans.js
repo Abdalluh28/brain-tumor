@@ -16,6 +16,7 @@ export const useScans = () => {
     const startDate = searchParams.get("start") || "";
     const endDate = searchParams.get("end") || "";
     const search = searchParams.get("search") || "";
+    const doctor = searchParams.get("doctor") || "me";
 
     const { data, isPending: isLoading } = useQuery({
         queryFn: () =>
@@ -28,6 +29,7 @@ export const useScans = () => {
                 startDate,
                 endDate,
                 search,
+                doctor,
             }),
         queryKey: [
             "scans",
@@ -39,6 +41,7 @@ export const useScans = () => {
             startDate,
             endDate,
             search,
+            doctor,
         ],
         retry: false,
         // placeholder data to display previous data while loading new data
@@ -69,6 +72,7 @@ export const useScans = () => {
                     startDate,
                     endDate,
                     search,
+                    doctor,
                 ],
                 queryFn: () =>
                     getScansApi({
@@ -80,6 +84,7 @@ export const useScans = () => {
                         startDate,
                         endDate,
                         search,
+                        doctor,
                     }),
             });
         }
@@ -94,6 +99,7 @@ export const useScans = () => {
         startDate,
         endDate,
         search,
+        doctor,
     ]);
 
     return {
