@@ -1,18 +1,20 @@
+import Spinner from "@/components/Spinner";
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
-import ExplanationBadges from "./ExplanationBadges";
 import { Eye, Trash } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useDeleteScan } from "./useDeleteScan";
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Swal from "sweetalert2";
-import Spinner from "@/components/Spinner";
+import ExplanationBadges from "./ExplanationBadges";
+import { useDeleteScan } from "./useDeleteScan";
 
 export default function HistoryTableCell({ scan }) {
-console.log(scan)
+    const [searchParams] = useSearchParams();
+    const doctorId = searchParams.get('doctor') ?? null;
+
     const navigate = useNavigate();
     const key = scan.prediction?.toLowerCase() || 'healthy';
     const config = PREDICTION_CONFIG[key];
@@ -72,18 +74,20 @@ console.log(scan)
                         <p>View</p>
                     </TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button className='cursor-pointer hover:text-red-500 transition duration-300'
-                            onClick={handleDeleteScan}
-                            disabled={isLoading}>
-                            {isLoading ? <Spinner /> : <Trash />}
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Delete</p>
-                    </TooltipContent>
-                </Tooltip>
+                {!doctorId && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button className='cursor-pointer hover:text-red-500 transition duration-300'
+                                onClick={handleDeleteScan}
+                                disabled={isLoading}>
+                                {isLoading ? <Spinner /> : <Trash />}
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Delete</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
             </td>
         </>
     )
