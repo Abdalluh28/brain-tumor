@@ -90,12 +90,12 @@ export function collectMriImages(scan) {
         files?.filter(
             (f) =>
                 ["png", "jpg", "jpeg"].includes(f.format?.toLowerCase())
-                && f.rawPath,
+                && (f.url || f.rawPath),
         ) || [];
 
     if (imageFiles.length > 0) {
         return imageFiles.map((f) => ({
-            src: f.rawPath,
+            src: f.url || f.rawPath,
             label: f.originalName || "MRI",
         }));
     }

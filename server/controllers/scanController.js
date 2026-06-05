@@ -347,6 +347,41 @@ const createScan = asyncHandler(async (req, res) => {
     });
 });
 
+// Helper to convert internal file paths to public URLs for frontend access
+const toPublicUrl = (rawPath) => {
+    if (!rawPath) return null;
+
+    const base =
+        process.env.BACKEND_PUBLIC_URL ||
+        `http://localhost:${process.env.PORT || 3000}`;
+    const baseUrl = base.replace(/\/$/, "");
+    const normalized = String(rawPath).replace(/\\/g, "/");
+
+    // Re-resolve stored http(s) URLs (e.g. another dev's localhost) to this server
+    if (/^https?:\/\//i.test(normalized)) {
+        const uploadsMarker = "/uploads/";
+        if (normalized.includes(uploadsMarker)) {
+            const uploadPath = normalized.split(uploadsMarker, 1)[1];
+            return `${baseUrl}/uploads/${uploadPath}`;
+        }
+        return normalized;
+    }
+
+    const localMarker = path.join(__dirname, "..", "uploads");
+    let relative = normalized;
+    if (normalized.includes(localMarker.replace(/\\/g, "/"))) {
+        relative = normalized
+            .split(localMarker.replace(/\\/g, "/"), 1)[1]
+            .replace(/^\//, "");
+    } else if (normalized.includes("/uploads/")) {
+        relative = normalized.split("/uploads/", 1)[1];
+    } else {
+        return null;
+    }
+
+    return `${baseUrl}/uploads/${relative}`;
+};
+
 // ------------------
 // Get All Scans
 // ------------------
@@ -459,6 +494,16 @@ const getScans = asyncHandler(async (req, res) => {
         .skip(skip)
         .limit(limit);
 
+    for (const scan of scans) {
+        scan.files = scan.files?.map((f) => ({
+            ...f,
+            url: toPublicUrl(f.rawPath), // add url, keep rawPath intact
+        }));
+        if (scan.xai) {
+            scan.xai = normalizeXaiDocument(scan.xai);
+        }
+    }
+
     res.json({
         scans,
         currentPage: page,
@@ -480,6 +525,14 @@ const getScanById = asyncHandler(async (req, res) => {
     }
 
     const scanObject = scan.toObject({ virtuals: true });
+    scanObject.files = scanObject.files?.map((f) => ({
+        ...f,
+        url: toPublicUrl(f.rawPath), // add url, keep rawPath intact
+    }));
+    if (scanObject.gradCamPath) {
+        scanObject.gradCamPath =
+            toPublicUrl(scanObject.gradCamPath) ?? scanObject.gradCamPath;
+    }
     if (scanObject.xai) {
         scanObject.xai = normalizeXaiDocument(scanObject.xai);
     }

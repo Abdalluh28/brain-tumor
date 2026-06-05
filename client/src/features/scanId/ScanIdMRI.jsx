@@ -1,6 +1,6 @@
 
 export default function ScanIdMRI({ originalMRI, files }) {
-    const imageFiles = files?.filter(f => ['png', 'jpg', 'jpeg'].includes(f.format?.toLowerCase()) && f.rawPath) || [];
+    const imageFiles = files?.filter(f => ['png', 'jpg', 'jpeg'].includes(f.format?.toLowerCase()) && (f.url || f.rawPath)) || [];
 
     return (
         <div className="flex flex-col gap-4 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 rounded-xl shadow-md mb-8">
@@ -11,7 +11,7 @@ export default function ScanIdMRI({ originalMRI, files }) {
                         {imageFiles.map((file, idx) => (
                             <div key={idx} className='rounded-lg p-2 border dark:border-slate-700 flex flex-col items-center'>
                                 <img
-                                    src={file.rawPath}
+                                    src={file.url || file.rawPath}
                                     alt={`Original MRI scan ${idx + 1}`}
                                     className="max-h-64 w-auto object-contain rounded-md shadow-sm"
                                 />
