@@ -17,7 +17,7 @@ const MODALITY_LABELS = {
 
 export default function ScanIdFullCase({ fullCase }) {
     const [validExpanded, setValidExpanded] = useState(false);
-    const [tumorExpanded, setTumorExpanded] = useState(false);
+    const [tumorExpanded, setTumorExpanded] = useState(true);
 
     if (!fullCase) {
         return null;
@@ -43,6 +43,7 @@ export default function ScanIdFullCase({ fullCase }) {
     const caseLabel = CASE_LABELS[casePrediction] ?? casePrediction;
 
     return (
+        <>
         <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-start gap-3">
@@ -106,31 +107,24 @@ export default function ScanIdFullCase({ fullCase }) {
                 </>
             ) : null}
 
-            {tumorSlices.length > 0 ? (
-                <>
-                    <button
-                        type="button"
-                        onClick={() => setTumorExpanded((v) => !v)}
-                        className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                        <span>Tumor-containing slices ({tumorSlices.length})</span>
-                        {tumorExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-
-                    {tumorExpanded ? (
-                        <div className="px-6 pb-6 flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
-                            {tumorSlices.map((slice) => (
-                                <TumorSliceCard key={slice.z ?? slice.sliceNumber} slice={slice} />
-                            ))}
-                        </div>
-                    ) : null}
-                </>
-            ) : (
+            {tumorSlices.length === 0 ? (
                 <p className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400">
                     No tumor-containing slices to display for this case.
                 </p>
-            )}
+            ) : null}
         </section>
+
+            {tumorSlices.length > 0 ? (
+                <>
+                    <TumorSlicesXaiSection
+                        tumorSlices={tumorSlices}
+                        expanded={tumorExpanded}
+                        onToggle={() => setTumorExpanded((v) => !v)}
+                    />
+                    <TumorSlicesSegmentationSection tumorSlices={tumorSlices} />
+                </>
+            ) : null}
+        </>
     );
 }
 
@@ -171,28 +165,166 @@ function ValidSliceRow({ row }) {
     );
 }
 
-function TumorSliceCard({ slice }) {
+function TumorSliceHeader({ slice }) {
     const z = slice.z ?? slice.sliceNumber;
 
     return (
-        <article className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <header className="flex flex-wrap items-center gap-3 mb-4">
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    Slice z = {z}
+        <header className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Slice z = {z}
+            </span>
+            {slice.confidence != null ? (
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Confidence: {slice.confidence} %
                 </span>
-                {slice.confidence != null ? (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                        Confidence: {slice.confidence} %
-                    </span>
-                ) : null}
-            </header>
+            ) : null}
+        </header>
+    );
+}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <SliceImage label="Original (T1n)" src={slice.originalSlice} />
-                <SliceImage label="Segmentation" src={slice.segmentation} />
-                <SliceImage label="XAI (Grad-CAM++)" src={slice.xai} />
+function TumorSlicesXaiSection({ tumorSlices, expanded, onToggle }) {
+    return (
+        <section className="flex flex-col gap-6 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 shadow-md rounded-xl">
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                    <p className="font-semibold text-xl">Original MRI &amp; Visual explanation</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                        T1n reference slices with Grad-CAM++ overlays on tumor-containing
+                        slices ({tumorSlices.length}).
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                    <span>{expanded ? 'Hide slices' : 'Show slices'}</span>
+                    {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
             </div>
-        </article>
+
+            {expanded ? (
+                <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
+                    {tumorSlices.map((slice) => {
+                        const z = slice.z ?? slice.sliceNumber;
+                        const heatmapSrc =
+                            slice.xaiHeatmap && slice.xaiHeatmap !== slice.xai
+                                ? slice.xaiHeatmap
+                                : null;
+
+                        return (
+                            <article
+                                key={z}
+                                className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-4"
+                            >
+                                <TumorSliceHeader slice={slice} />
+                                <div
+                                    className={`grid grid-cols-1 gap-4 ${
+                                        heatmapSrc ? 'md:grid-cols-3' : 'md:grid-cols-2'
+                                    }`}
+                                >
+                                    <ImagePanel title="MRI reference" src={slice.originalSlice || slice.xaiOriginal} />
+                                    {heatmapSrc ? (
+                                        <ImagePanel title="Heatmap" src={heatmapSrc} />
+                                    ) : null}
+                                    <ImagePanel title="Overlay" src={slice.xai} />
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            ) : null}
+        </section>
+    );
+}
+
+function TumorSlicesSegmentationSection({ tumorSlices }) {
+    return (
+        <section className="flex flex-col gap-6 bg-white dark:bg-background dark:border dark:border-slate-600 p-6 shadow-md rounded-xl">
+            <div className="flex flex-col gap-1">
+                <p className="font-semibold text-xl">Tumor Segmentation</p>
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                    Segmentation overlays on T1n for each tumor-containing slice
+                </p>
+            </div>
+
+            <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
+                {tumorSlices.map((slice) => {
+                    const z = slice.z ?? slice.sliceNumber;
+
+                    return (
+                        <article
+                            key={z}
+                            className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-4"
+                        >
+                            <TumorSliceHeader slice={slice} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <SegmentationPanel
+                                    title="Overlay on T1"
+                                    src={slice.segmentation}
+                                    alt={`Segmentation overlay for slice ${z}`}
+                                />
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function ImagePanel({ title, src }) {
+    if (!src) {
+        return (
+            <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-600 p-3">
+                <p className="text-sm font-medium">{title}</p>
+                <div className="flex justify-center items-center min-h-[180px] bg-slate-50 dark:bg-slate-900/40 rounded-md">
+                    <span className="text-xs text-slate-400">N/A</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-600 p-3">
+            <p className="text-sm font-medium">{title}</p>
+            <div className="flex justify-center items-center bg-slate-50 dark:bg-slate-900/40 rounded-md min-h-[180px]">
+                <img
+                    src={src}
+                    alt={title}
+                    className="w-full object-contain rounded-md max-h-56"
+                    loading="lazy"
+                />
+            </div>
+        </div>
+    );
+}
+
+function SegmentationPanel({ title, src, alt }) {
+    if (!src) {
+        return (
+            <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-600 p-3 bg-slate-50/50 dark:bg-slate-900/30">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</p>
+                <div className="flex justify-center items-center min-h-[200px] bg-black/5 dark:bg-black/20 rounded-md">
+                    <span className="text-xs text-slate-400">N/A</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-600 p-3 bg-slate-50/50 dark:bg-slate-900/30">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</p>
+            <div className="flex justify-center items-center min-h-[200px] bg-black/5 dark:bg-black/20 rounded-md">
+                <img
+                    src={src}
+                    alt={alt}
+                    className="max-h-64 w-full object-contain rounded-md"
+                    loading="lazy"
+                />
+            </div>
+        </div>
     );
 }
 

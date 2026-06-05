@@ -53,18 +53,20 @@ export default function ScanIdBody() {
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
                     {fullCase ? <ScanIdFullCase fullCase={fullCase} /> : null}
-                    <ScanIdMRI
-                        originalMRI={
-                            xai?.stages?.[0]?.originalPath
-                            || xai?.originalPath
-                            || gradCamPath
-                        }
-                        files={files}
-                    />
                     {scanType !== '3D' ? (
-                        <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                        <>
+                            <ScanIdMRI
+                                originalMRI={
+                                    xai?.stages?.[0]?.originalPath
+                                    || xai?.originalPath
+                                    || gradCamPath
+                                }
+                                files={files}
+                            />
+                            <ScanIdXai scanId={scanId} xai={xai} xaiError={xaiError} />
+                        </>
                     ) : null}
-                    {segmentation ? (
+                    {segmentation && !(scanType === '3D' && fullCase?.tumorSlices?.length) ? (
                         <ScanIdSegmentation segmentation={segmentation} />
                     ) : null}
                 </div>
