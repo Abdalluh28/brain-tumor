@@ -35,6 +35,7 @@ export default function ScanForm() {
     formState: { errors },
     watch,
     setValue,
+    getValues,
   } = methods;
   const scanType = watch("scanType");
 
@@ -63,8 +64,11 @@ export default function ScanForm() {
   }, [location.state, setValue, dispatch]);
 
   const handleScanTypeChange = (value) => {
+    const current = getValues("scanType");
+    if (current && value !== current) {
+      dispatch(clearFiles());
+    }
     setValue("scanType", value);
-    dispatch(clearFiles());
   };
 
   return (

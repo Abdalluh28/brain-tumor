@@ -1,6 +1,4 @@
 import { useEffect, useRef } from "react";
-import { useDispatch } from "react-redux";
-import { clearViewerCase } from "@/features/scan/scanSlice";
 import ViewerWorkstation from "./components/ViewerWorkstation";
 import { useVolumeStore } from "./hooks/useVolumeStore";
 import { useMriVolumes } from "./hooks/useMriVolumes";
@@ -8,13 +6,8 @@ import { useSlicePlayback } from "./hooks/useSlicePlayback";
 import { useScanActions } from "./hooks/useScanActions";
 
 export default function MriViewerWorkspace({ getValues }) {
-  const dispatch = useDispatch();
   const cancelDrawRef = useRef(() => {});
   const store = useVolumeStore();
-
-  useEffect(() => {
-    dispatch(clearViewerCase());
-  }, [dispatch]);
 
   const {
     sliceIndex,

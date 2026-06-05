@@ -1,5 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  clearViewerCase,
+  setViewerSliceIndex,
+  setViewerVolumes,
+} from "@/features/scan/scanSlice";
 import { MODALITY_NAMES } from "../constants";
 import {
   detectModalitySlotIndex,
@@ -9,6 +15,19 @@ import {
   yieldToUi,
 } from "../utils/nifti";
 import { toSlotMeta } from "./useVolumeStore";
+
+function volumesToViewerEntries(volumes) {
+  return volumes.map((volumeData) => {
+    if (!volumeData) return null;
+    return {
+      file: volumeData.file,
+      fileName: volumeData.file.name,
+      slices: volumeData.slices,
+      cols: volumeData.cols,
+      rows: volumeData.rows,
+    };
+  });
+}
 
 function mergeIntoStore(store, parsed) {
   const data = [...store.dataRef.current];
@@ -35,10 +54,30 @@ function mergeIntoStore(store, parsed) {
 }
 
 export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
-  const [sliceIndex, setSliceIndex] = useState(0);
+  const dispatch = useDispatch();
+  const persistedVolumes = useSelector((state) => state.scan.viewerVolumes);
+  const persistedSliceIndex = useSelector((state) => state.scan.viewerSliceIndex);
+  const restoreAttemptedRef = useRef(false);
+
+  const [sliceIndex, setSliceIndexState] = useState(persistedSliceIndex ?? 0);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
+
+  const syncViewerState = useCallback(() => {
+    dispatch(setViewerVolumes(volumesToViewerEntries(store.getVolumes())));
+  }, [dispatch, store]);
+
+  const setSliceIndex = useCallback(
+    (value) => {
+      setSliceIndexState((prev) => {
+        const next = typeof value === "function" ? value(prev) : value;
+        dispatch(setViewerSliceIndex(next));
+        return next;
+      });
+    },
+    [dispatch],
+  );
 
   const startLoading = useCallback((message) => {
     setLoadingMessage(message);
@@ -52,12 +91,52 @@ export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
     setLoadingMessage("");
   }, []);
 
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
+    const hasPersisted = persistedVolumes.some((entry) => entry !== null);
+    if (!hasPersisted) return;
+
+    (async () => {
+      startLoading("Restoring previous case...");
+      await yieldToUi();
+
+      try {
+        onBeforeVolumeUpdate?.();
+        const data = [null, null, null, null];
+        const meta = [null, null, null, null];
+
+        for (let i = 0; i < persistedVolumes.length; i++) {
+          const entry = persistedVolumes[i];
+          if (!entry?.file) continue;
+
+          const volumeData = await parseNiftiFile(entry.file);
+          data[i] = volumeData;
+          meta[i] = toSlotMeta(volumeData);
+        }
+
+        store.replaceAll(data, meta);
+        setSliceIndexState(persistedSliceIndex ?? 0);
+        store.scheduleRedraw();
+      } catch (err) {
+        console.error(err);
+        toast.error("Could not restore previous volumes: " + err.message);
+        dispatch(clearViewerCase());
+      } finally {
+        endLoading();
+      }
+    })();
+    // Restore once on mount from the persisted Redux snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const focusMiddleSlice = useCallback((meta) => {
     const first = meta.find((m) => m !== null);
     if (first) {
       setSliceIndex(Math.round(first.slices / 2));
     }
-  }, []);
+  }, [setSliceIndex]);
 
   const handleFilesInput = useCallback(
     async (selectedFiles) => {
@@ -99,6 +178,7 @@ export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
         const { data, meta } = mergeIntoStore(store, parsed);
         store.replaceAll(data, meta);
         focusMiddleSlice(meta);
+        syncViewerState();
         endLoading();
         store.scheduleRedraw();
         toast.success("NIfTI case files processed successfully!");
@@ -108,7 +188,7 @@ export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
         endLoading();
       }
     },
-    [store, startLoading, endLoading, focusMiddleSlice, onBeforeVolumeUpdate],
+    [store, startLoading, endLoading, focusMiddleSlice, onBeforeVolumeUpdate, syncViewerState],
   );
 
   const handleSlotUpload = useCallback(
@@ -131,6 +211,7 @@ export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
         setSliceIndex((prev) =>
           prev === 0 ? Math.round(volumeData.slices / 2) : prev,
         );
+        syncViewerState();
         endLoading();
         store.scheduleRedraw();
         toast.success(`${MODALITY_NAMES[slotIdx]} volume loaded!`);
@@ -140,23 +221,25 @@ export function useMriVolumes(store, { onBeforeVolumeUpdate } = {}) {
         endLoading();
       }
     },
-    [store, startLoading, endLoading, onBeforeVolumeUpdate],
+    [store, startLoading, endLoading, onBeforeVolumeUpdate, syncViewerState, setSliceIndex],
   );
 
   const handleRemoveVolume = useCallback(
     (idx) => {
       onBeforeVolumeUpdate?.();
       store.clearSlot(idx);
+      syncViewerState();
       store.scheduleRedraw();
     },
-    [store, onBeforeVolumeUpdate],
+    [store, onBeforeVolumeUpdate, syncViewerState],
   );
 
   const clearCase = useCallback(() => {
     onBeforeVolumeUpdate?.();
     store.clearAll();
     setSliceIndex(0);
-  }, [store, onBeforeVolumeUpdate]);
+    dispatch(clearViewerCase());
+  }, [store, onBeforeVolumeUpdate, setSliceIndex, dispatch]);
 
   return {
     sliceIndex,
