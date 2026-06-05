@@ -8,7 +8,7 @@ import {
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
 import {
     CLASSIFICATION_REFERENCE,
-    getPredictionText,
+    getReportPrediction,
 } from "./reportUtils";
 import { pdfStyles as styles } from "./reportPdfStyles";
 
@@ -40,8 +40,6 @@ export function ScanReportDocument({
     images = {},
 }) {
     const {
-        prediction,
-        confidence,
         confidenceScores,
         radiologist,
         status,
@@ -51,10 +49,11 @@ export function ScanReportDocument({
         segmentation,
     } = scan;
 
-    const key = prediction?.toLowerCase() || "healthy";
-    const config = PREDICTION_CONFIG[key];
+    const reportPrediction = getReportPrediction(scan);
+    const config = PREDICTION_CONFIG[reportPrediction.configKey];
     const predictionColor = config?.color ?? "#1e293b";
     const safeProcessedTime = processedTime ?? 0;
+    const use3DTumorLayout = images.use3DTumorLayout;
 
     return (
         <Document title={`Scan Report ${scanId}`}>
@@ -71,12 +70,28 @@ export function ScanReportDocument({
                     <Text style={styles.sectionTitle}>Prediction</Text>
                     <View style={styles.resultBox}>
                         <Text style={[styles.prediction, { color: predictionColor }]}>
-                            {getPredictionText(prediction)}
+                            {reportPrediction.text}
                         </Text>
                         <View style={styles.row}>
-                            <Text style={styles.label}>Confidence</Text>
-                            <Text>{confidence}%</Text>
+                            <Text style={styles.label}>{reportPrediction.confidenceLabel}</Text>
+                            <Text>{reportPrediction.confidence}%</Text>
                         </View>
+                        {reportPrediction.isFullCase ? (
+                            <>
+                                <View style={styles.row}>
+                                    <Text style={styles.label}>Valid slices</Text>
+                                    <Text>{reportPrediction.fullCase.numValidSlices ?? "—"}</Text>
+                                </View>
+                                <View style={styles.row}>
+                                    <Text style={styles.label}>Tumor slices</Text>
+                                    <Text>
+                                        {reportPrediction.fullCase.numTumorSlices
+                                            ?? reportPrediction.fullCase.tumorSlices?.length
+                                            ?? "—"}
+                                    </Text>
+                                </View>
+                            </>
+                        ) : null}
                         <View style={styles.row}>
                             <Text style={styles.label}>Processing time</Text>
                             <Text>{(safeProcessedTime / 1000).toFixed(2)} s</Text>
@@ -117,7 +132,37 @@ export function ScanReportDocument({
                     </View>
                 </View>
 
-                {images.mri?.length > 0 && (
+                {images.fullCaseXai?.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            Original MRI & Visual Explanation
+                        </Text>
+                        <Text style={styles.sectionSubtitle}>
+                            T1n reference slices with Grad-CAM++ overlays on tumor-containing slices.
+                        </Text>
+                        <View style={styles.imageGrid}>
+                            {images.fullCaseXai.map((item, idx) => (
+                                <ReportImage key={idx} src={item.src} label={item.label} />
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {images.fullCaseSegmentation?.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Tumor Segmentation</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            Segmentation overlays on T1n for each tumor-containing slice.
+                        </Text>
+                        <View style={styles.imageGrid}>
+                            {images.fullCaseSegmentation.map((item, idx) => (
+                                <ReportImage key={idx} src={item.src} label={item.label} />
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {!use3DTumorLayout && images.mri?.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Original MRI</Text>
                         <View style={styles.imageGrid}>
@@ -128,7 +173,7 @@ export function ScanReportDocument({
                     </View>
                 )}
 
-                {images.xai?.length > 0 && (
+                {!use3DTumorLayout && images.xai?.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Visual Explanation</Text>
                         <View style={styles.imageGrid}>
@@ -139,7 +184,7 @@ export function ScanReportDocument({
                     </View>
                 )}
 
-                {(images.segMask || images.segOverlay) && (
+                {!use3DTumorLayout && (images.segMask || images.segOverlay) && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Segmentation</Text>
                         <View style={styles.imageGrid}>
@@ -149,7 +194,7 @@ export function ScanReportDocument({
                     </View>
                 )}
 
-                {segmentation?.classStats?.length > 0 && (
+                {!use3DTumorLayout && segmentation?.classStats?.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Segmentation Breakdown</Text>
                         {segmentation.classStats.map((row) => (

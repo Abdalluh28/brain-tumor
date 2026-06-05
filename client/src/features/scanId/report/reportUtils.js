@@ -19,6 +19,104 @@ export function getPredictionText(prediction) {
         : `${prediction} Tumor Detected`;
 }
 
+export const FULL_CASE_LABELS = {
+    GLI: "Glioma (GLI)",
+    METS: "Metastasis (METS)",
+    OTHER: "Other tumor (OTHER)",
+    Healthy: "Healthy (no tumor)",
+};
+
+const FULL_CASE_PREDICTION_KEYS = {
+    gli: "hgg",
+    mets: "metastasis",
+    other: "others",
+    healthy: "healthy",
+};
+
+/** 3D scan with full-case metadata (may have zero tumor slices). */
+export function is3DFullCaseReport(scan) {
+    return scan?.scanType === "3D" && !!scan?.fullCase?.casePrediction;
+}
+
+/** 3D scan whose report should use per-slice XAI + segmentation sections. */
+export function is3DTumorSliceReport(scan) {
+    return (
+        is3DFullCaseReport(scan)
+        && (scan.fullCase.tumorSlices?.length ?? 0) > 0
+    );
+}
+
+export function getReportPrediction(scan) {
+    if (is3DFullCaseReport(scan)) {
+        const { fullCase } = scan;
+        const caseLabel =
+            FULL_CASE_LABELS[fullCase.casePrediction] ?? fullCase.casePrediction;
+
+        return {
+            text: `${caseLabel} — full case`,
+            confidence: fullCase.averageConfidencePercent ?? scan.confidence,
+            confidenceLabel: "Average confidence",
+            isFullCase: true,
+            fullCase,
+            configKey:
+                FULL_CASE_PREDICTION_KEYS[fullCase.casePrediction.toLowerCase()]
+                ?? fullCase.casePrediction.toLowerCase(),
+        };
+    }
+
+    return {
+        text: getPredictionText(scan.prediction),
+        confidence: scan.confidence,
+        confidenceLabel: "Confidence",
+        isFullCase: false,
+        fullCase: null,
+        configKey: scan.prediction?.toLowerCase() || "healthy",
+    };
+}
+
+/** Per-slice MRI + XAI images for 3D full-case reports. */
+export function collectFullCaseXaiImages(fullCase) {
+    const tumorSlices = fullCase?.tumorSlices ?? [];
+    const images = [];
+
+    for (const slice of tumorSlices) {
+        const z = slice.z ?? slice.sliceNumber;
+        const prefix = `Slice z=${z}`;
+        const original = slice.originalSlice || slice.xaiOriginal;
+
+        if (original) {
+            images.push({ src: original, label: `${prefix} — MRI reference` });
+        }
+
+        const heatmap =
+            slice.xaiHeatmap && slice.xaiHeatmap !== slice.xai
+                ? slice.xaiHeatmap
+                : null;
+
+        if (heatmap) {
+            images.push({ src: heatmap, label: `${prefix} — Heatmap` });
+        }
+
+        if (slice.xai) {
+            images.push({ src: slice.xai, label: `${prefix} — Overlay` });
+        }
+    }
+
+    return images;
+}
+
+/** Per-slice segmentation overlays for 3D full-case reports. */
+export function collectFullCaseSegmentationImages(fullCase) {
+    const tumorSlices = fullCase?.tumorSlices ?? [];
+
+    return tumorSlices
+        .filter((slice) => slice.segmentation)
+        .map((slice) => ({
+            src: slice.segmentation,
+            label: `Slice z=${slice.z ?? slice.sliceNumber} — Overlay on T1`,
+        }));
+}
+
 const XAI_MODALITY_LABELS = {
     t1n: "T1n",
     t1c: "T1c",
@@ -128,14 +226,33 @@ export async function urlToDataUrl(url) {
 
 /** Fetches and inlines all report images for PDF generation. Skips failed loads. */
 export async function preloadReportImages(scan) {
-    const mri = collectMriImages(scan);
-    const xai = collectXaiImages(scan.xai);
-    const segMask = scan.segmentation?.maskPath;
-    const segOverlay = scan.segmentation?.overlayPath;
+    const use3DTumorLayout = is3DTumorSliceReport(scan);
+
+    const mri = use3DTumorLayout ? [] : collectMriImages(scan);
+    const xai = use3DTumorLayout ? [] : collectXaiImages(scan.xai);
+    const fullCaseXai = use3DTumorLayout
+        ? collectFullCaseXaiImages(scan.fullCase)
+        : [];
+    const fullCaseSegmentation = use3DTumorLayout
+        ? collectFullCaseSegmentationImages(scan.fullCase)
+        : [];
+
+    const segMask = use3DTumorLayout ? null : scan.segmentation?.maskPath;
+    const segOverlay = use3DTumorLayout ? null : scan.segmentation?.overlayPath;
 
     const entries = [
         ...mri.map((m, i) => ({ key: `mri-${i}`, url: m.src, label: m.label })),
         ...xai.map((x, i) => ({ key: `xai-${i}`, url: x.src, label: x.label })),
+        ...fullCaseXai.map((x, i) => ({
+            key: `fc-xai-${i}`,
+            url: x.src,
+            label: x.label,
+        })),
+        ...fullCaseSegmentation.map((s, i) => ({
+            key: `fc-seg-${i}`,
+            url: s.src,
+            label: s.label,
+        })),
         segMask && { key: "segMask", url: segMask, label: "Segmentation Mask" },
         segOverlay && { key: "segOverlay", url: segOverlay, label: "Segmentation Overlay" },
     ].filter(Boolean);
@@ -154,8 +271,15 @@ export async function preloadReportImages(scan) {
         xai: results
             .filter((r) => r.key.startsWith("xai-") && r.dataUrl)
             .map((r) => ({ src: r.dataUrl, label: r.label })),
+        fullCaseXai: results
+            .filter((r) => r.key.startsWith("fc-xai-") && r.dataUrl)
+            .map((r) => ({ src: r.dataUrl, label: r.label })),
+        fullCaseSegmentation: results
+            .filter((r) => r.key.startsWith("fc-seg-") && r.dataUrl)
+            .map((r) => ({ src: r.dataUrl, label: r.label })),
         segMask: results.find((r) => r.key === "segMask")?.dataUrl ?? null,
         segOverlay: results.find((r) => r.key === "segOverlay")?.dataUrl ?? null,
+        use3DTumorLayout,
     };
 }
 

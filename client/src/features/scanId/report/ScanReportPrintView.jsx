@@ -6,9 +6,12 @@ import { forwardRef } from "react";
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
 import {
     CLASSIFICATION_REFERENCE,
+    collectFullCaseSegmentationImages,
+    collectFullCaseXaiImages,
     collectMriImages,
     collectXaiImages,
-    getPredictionText,
+    getReportPrediction,
+    is3DTumorSliceReport,
 } from "./reportUtils";
 
 function DetailRow({ label, value }) {
@@ -39,8 +42,6 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
     ref,
 ) {
     const {
-        prediction,
-        confidence,
         confidenceScores,
         radiologist,
         status,
@@ -49,12 +50,20 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
         scanType,
         segmentation,
         xai,
+        fullCase,
     } = scan;
 
-    const key = prediction?.toLowerCase() || "healthy";
-    const config = PREDICTION_CONFIG[key];
-    const mriImages = collectMriImages(scan);
-    const xaiImages = collectXaiImages(xai);
+    const reportPrediction = getReportPrediction(scan);
+    const config = PREDICTION_CONFIG[reportPrediction.configKey];
+    const use3DTumorLayout = is3DTumorSliceReport(scan);
+    const mriImages = use3DTumorLayout ? [] : collectMriImages(scan);
+    const xaiImages = use3DTumorLayout ? [] : collectXaiImages(xai);
+    const fullCaseXaiImages = use3DTumorLayout
+        ? collectFullCaseXaiImages(fullCase)
+        : [];
+    const fullCaseSegmentationImages = use3DTumorLayout
+        ? collectFullCaseSegmentationImages(fullCase)
+        : [];
     const safeProcessedTime = processedTime ?? 0;
 
     return (
@@ -74,13 +83,33 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
                         className="text-xl font-semibold mb-2"
                         style={{ color: config?.color }}
                     >
-                        {getPredictionText(prediction)}
+                        {reportPrediction.text}
                     </p>
-                    <div className="flex gap-8 text-sm">
+                    <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
                         <div>
-                            <span className="text-slate-500">Confidence: </span>
-                            <span className="font-medium">{confidence}%</span>
+                            <span className="text-slate-500">
+                                {reportPrediction.confidenceLabel}:{" "}
+                            </span>
+                            <span className="font-medium">{reportPrediction.confidence}%</span>
                         </div>
+                        {reportPrediction.isFullCase ? (
+                            <>
+                                <div>
+                                    <span className="text-slate-500">Valid slices: </span>
+                                    <span className="font-medium">
+                                        {reportPrediction.fullCase.numValidSlices ?? "—"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500">Tumor slices: </span>
+                                    <span className="font-medium">
+                                        {reportPrediction.fullCase.numTumorSlices
+                                            ?? reportPrediction.fullCase.tumorSlices?.length
+                                            ?? "—"}
+                                    </span>
+                                </div>
+                            </>
+                        ) : null}
                         <div>
                             <span className="text-slate-500">Processing time: </span>
                             <span className="font-medium">
@@ -126,7 +155,37 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
                 </div>
             </section>
 
-            {mriImages.length > 0 && (
+            {fullCaseXaiImages.length > 0 && (
+                <section className="mb-6 break-inside-avoid">
+                    <h2 className="text-lg font-semibold mb-1">
+                        Original MRI &amp; Visual Explanation
+                    </h2>
+                    <p className="text-sm text-slate-500 mb-3">
+                        T1n reference slices with Grad-CAM++ overlays on tumor-containing slices.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        {fullCaseXaiImages.map((item, idx) => (
+                            <PrintImage key={idx} src={item.src} label={item.label} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {fullCaseSegmentationImages.length > 0 && (
+                <section className="mb-6 break-inside-avoid">
+                    <h2 className="text-lg font-semibold mb-1">Tumor Segmentation</h2>
+                    <p className="text-sm text-slate-500 mb-3">
+                        Segmentation overlays on T1n for each tumor-containing slice.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        {fullCaseSegmentationImages.map((item, idx) => (
+                            <PrintImage key={idx} src={item.src} label={item.label} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {!use3DTumorLayout && mriImages.length > 0 && (
                 <section className="mb-6 break-inside-avoid">
                     <h2 className="text-lg font-semibold mb-3">Original MRI</h2>
                     <div className="grid grid-cols-2 gap-4">
@@ -137,7 +196,7 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
                 </section>
             )}
 
-            {xaiImages.length > 0 && (
+            {!use3DTumorLayout && xaiImages.length > 0 && (
                 <section className="mb-6 break-inside-avoid">
                     <h2 className="text-lg font-semibold mb-3">Visual Explanation</h2>
                     <div className="grid grid-cols-2 gap-4">
@@ -148,7 +207,7 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
                 </section>
             )}
 
-            {(segmentation?.maskPath || segmentation?.overlayPath) && (
+            {!use3DTumorLayout && (segmentation?.maskPath || segmentation?.overlayPath) && (
                 <section className="mb-6 break-inside-avoid">
                     <h2 className="text-lg font-semibold mb-3">Segmentation</h2>
                     <div className="grid grid-cols-2 gap-4">
@@ -158,7 +217,7 @@ export const ScanReportPrintView = forwardRef(function ScanReportPrintView(
                 </section>
             )}
 
-            {segmentation?.classStats?.length > 0 && (
+            {!use3DTumorLayout && segmentation?.classStats?.length > 0 && (
                 <section className="mb-6">
                     <h2 className="text-lg font-semibold mb-3">Segmentation Breakdown</h2>
                     <table className="w-full text-sm border border-slate-200">

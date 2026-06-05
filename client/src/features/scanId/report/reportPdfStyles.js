@@ -34,6 +34,11 @@ export const pdfStyles = StyleSheet.create({
         fontWeight: "bold",
         marginBottom: 8,
     },
+    sectionSubtitle: {
+        fontSize: 9,
+        color: "#64748b",
+        marginBottom: 8,
+    },
     resultBox: {
         padding: 12,
         borderRadius: 6,
