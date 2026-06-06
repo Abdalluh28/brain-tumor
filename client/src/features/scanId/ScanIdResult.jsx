@@ -35,9 +35,7 @@ export default function ScanIdResult({
     const caseMeta = useFullCase ? CASE_PREDICTION_CONFIG[caseKey] : null;
     const configKey = caseMeta?.key ?? caseKey;
     const config = PREDICTION_CONFIG[configKey];
-    const displayConfidence = useFullCase
-        ? (fullCase.averageConfidencePercent ?? confidence)
-        : confidence;
+    const displayConfidence = confidence;
     const predictionText = caseMeta
         ? caseMeta.text
         : caseKey === 'healthy'
@@ -62,7 +60,7 @@ export default function ScanIdResult({
 
                 <div className="flex gap-4">
                     <InfoBlock
-                        label={useFullCase ? 'Average confidence' : 'Confidence'}
+                        label="Confidence"
                         value={`${displayConfidence} %`}
                         color={textColor}
                         size='font-semibold text-lg'

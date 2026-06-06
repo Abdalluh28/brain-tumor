@@ -221,6 +221,25 @@ class TumorSliceOut(BaseModel):
     xaiHeatmap: str = ""
 
 
+class FullCaseSliceResultOut(BaseModel):
+    """Unified per-slice row for 3D UI: modalities, prediction, T1c overlays."""
+
+    z: int
+    sliceNumber: int
+    prediction: Prediction
+    confidence: float | None = None
+    modalities: dict[str, str] = Field(default_factory=dict)
+    t1cReference: str = ""
+    xaiOverlay: str = Field(
+        default="",
+        description="Grad-CAM++ overlay on T1c for this slice.",
+    )
+    segmentationOverlay: str = Field(
+        default="",
+        description="Segmentation mask overlay on T1c for this slice.",
+    )
+
+
 class ValidSlicePreviewOut(BaseModel):
     z: int
     sliceNumber: int
@@ -240,6 +259,10 @@ class FullCaseResult(BaseModel):
     validSlicePreviews: list[ValidSlicePreviewOut] = Field(
         default_factory=list,
         description="All brain-valid slices exported before per-slice inference.",
+    )
+    sliceResults: list[FullCaseSliceResultOut] = Field(
+        default_factory=list,
+        description="Unified per-slice view: modalities, prediction, T1c XAI/seg overlays.",
     )
     tumorSlices: list[TumorSliceOut]
     maskMetadata: dict | None = None

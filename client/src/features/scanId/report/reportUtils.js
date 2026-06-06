@@ -3,6 +3,8 @@
  * Data collectors mirror ScanIdMRI / ScanIdXai image resolution logic.
  */
 
+import { resolveScanFileUrl, resolveUploadUrl } from "@/utils/mediaUrl";
+
 /** Legend text reused in PDF and print layouts (matches ScanIdFooter). */
 export const CLASSIFICATION_REFERENCE = [
     { title: "Healthy", text: "No tumor detected in the brain tissue" },
@@ -54,8 +56,9 @@ export function getReportPrediction(scan) {
 
         return {
             text: `${caseLabel} — full case`,
-            confidence: fullCase.averageConfidencePercent ?? scan.confidence,
-            confidenceLabel: "Average confidence",
+            confidence:
+                scan.confidenceScores?.[scan.prediction] ?? scan.confidence,
+            confidenceLabel: "Confidence",
             isFullCase: true,
             fullCase,
             configKey:
@@ -76,29 +79,18 @@ export function getReportPrediction(scan) {
 
 /** Per-slice MRI + XAI images for 3D full-case reports. */
 export function collectFullCaseXaiImages(fullCase) {
-    const tumorSlices = fullCase?.tumorSlices ?? [];
+    const rows = fullCase?.sliceResults?.length
+        ? fullCase.sliceResults
+        : fullCase?.tumorSlices ?? [];
     const images = [];
 
-    for (const slice of tumorSlices) {
+    for (const slice of rows) {
         const z = slice.z ?? slice.sliceNumber;
         const prefix = `Slice z=${z}`;
-        const original = slice.originalSlice || slice.xaiOriginal;
+        const xai = slice.xaiOverlay ?? slice.xai;
 
-        if (original) {
-            images.push({ src: original, label: `${prefix} — MRI reference` });
-        }
-
-        const heatmap =
-            slice.xaiHeatmap && slice.xaiHeatmap !== slice.xai
-                ? slice.xaiHeatmap
-                : null;
-
-        if (heatmap) {
-            images.push({ src: heatmap, label: `${prefix} — Heatmap` });
-        }
-
-        if (slice.xai) {
-            images.push({ src: slice.xai, label: `${prefix} — Overlay` });
+        if (xai) {
+            images.push({ src: xai, label: `${prefix} — Grad-CAM++ on T1c` });
         }
     }
 
@@ -107,13 +99,19 @@ export function collectFullCaseXaiImages(fullCase) {
 
 /** Per-slice segmentation overlays for 3D full-case reports. */
 export function collectFullCaseSegmentationImages(fullCase) {
-    const tumorSlices = fullCase?.tumorSlices ?? [];
+    const rows = fullCase?.sliceResults?.length
+        ? fullCase.sliceResults
+        : fullCase?.tumorSlices ?? [];
 
-    return tumorSlices
-        .filter((slice) => slice.segmentation)
+    return rows
         .map((slice) => ({
-            src: slice.segmentation,
-            label: `Slice z=${slice.z ?? slice.sliceNumber} — Overlay on T1`,
+            src: slice.segmentationOverlay ?? slice.segmentation,
+            z: slice.z ?? slice.sliceNumber,
+        }))
+        .filter((item) => item.src)
+        .map((item) => ({
+            src: item.src,
+            label: `Slice z=${item.z} — Segmentation on T1c`,
         }));
 }
 
@@ -185,17 +183,17 @@ export function collectXaiImages(xai) {
 export function collectMriImages(scan) {
     const { files, xai, gradCamPath } = scan;
     const imageFiles =
-        files?.filter(
-            (f) =>
-                ["png", "jpg", "jpeg"].includes(f.format?.toLowerCase())
-                && (f.url || f.rawPath),
+        files?.filter((f) =>
+            ["png", "jpg", "jpeg"].includes(f.format?.toLowerCase()),
         ) || [];
 
     if (imageFiles.length > 0) {
-        return imageFiles.map((f) => ({
-            src: f.url || f.rawPath,
-            label: f.originalName || "MRI",
-        }));
+        return imageFiles
+            .map((f) => ({
+                src: resolveScanFileUrl(f),
+                label: f.originalName || "MRI",
+            }))
+            .filter((row) => row.src);
     }
 
     const fallback =
@@ -203,7 +201,8 @@ export function collectMriImages(scan) {
         || xai?.originalPath
         || gradCamPath;
 
-    return fallback ? [{ src: fallback, label: "MRI Preview" }] : [];
+    const resolvedFallback = resolveUploadUrl(fallback);
+    return resolvedFallback ? [{ src: resolvedFallback, label: "MRI Preview" }] : [];
 }
 
 /** @react-pdf cannot embed remote URLs reliably — convert to base64 data URLs first. */

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,7 @@ from .config import (
     FULL_CASE_INFERENCE_BATCH_SIZE,
     FULL_CASE_MAX_XAI_SLICES,
     FULL_CASE_SEG_BATCH_SIZE,
+    MODALITY_ORDER,
 )
 from .inference import keras_predict_batch_proba
 from .pipeline import (
@@ -29,12 +31,11 @@ from .pipeline import (
     aggregate_slice_predictions,
     prediction_to_case_label,
 )
-from .scan_inputs import PreparedScanInputs
-from .tf_device import configure_tensorflow
 from .scan_inputs import (
     prepare_prepared_scan_inputs_from_volumes,
     prepare_single_slice_prepared_from_volume,
 )
+from .tf_device import configure_tensorflow
 from .schemas import Prediction, ScanFileIn
 from .segmentation import (
     SegmentationArtifacts,
@@ -45,6 +46,7 @@ from .segmentation import (
     prediction_supports_segmentation,
     resolve_segmentation_output_dir,
     run_segmentation,
+    summarize_mask,
 )
 from .volume_cache import (
     build_slice_scan_files,
@@ -53,7 +55,7 @@ from .volume_cache import (
     export_valid_slices_to_png,
 )
 from .xai_service import cascade_stage_preview_overlay, run_cascade_xai
-from .xai.utils import save_png
+from .xai.utils import resolve_xai_output_dir, save_png
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +202,7 @@ class FullCaseArtifacts:
     num_valid_slices: int
     num_tumor_slices: int
     valid_slice_previews: list[dict]
+    slice_results: list[dict]
     tumor_slices: list[dict]
     mask_volume_path: str | None
     mask_nifti_path: str | None
@@ -241,15 +244,11 @@ def _resolve_tumor_z_set(
 
 def _xai_target_z_set(
     slice_cascades: list[SliceCascadeResult],
-    masks_by_z: dict[int, np.ndarray],
 ) -> set[int]:
-    """Every tumor-slice that can receive stage-2 Grad-CAM (same set as UI list)."""
-    tumor_z = _resolve_tumor_z_set(slice_cascades, masks_by_z)
+    """Every slice that ran stage 2 (non-healthy tumor path) gets Grad-CAM++."""
     cascade_by_z = {int(c.z): c for c in slice_cascades}
     targets = {
-        z
-        for z in tumor_z
-        if z in cascade_by_z and "stage2" in cascade_by_z[z].stages_run
+        int(c.z) for c in slice_cascades if "stage2" in c.stages_run
     }
     if FULL_CASE_MAX_XAI_SLICES > 0 and len(targets) > FULL_CASE_MAX_XAI_SLICES:
         ranked = sorted(
@@ -260,10 +259,105 @@ def _xai_target_z_set(
         targets = set(ranked[:FULL_CASE_MAX_XAI_SLICES])
         logger.warning(
             "3D full-case: XAI capped at %s slices (FULL_CASE_MAX_XAI_SLICES); "
-            "raise the limit or set 0 for all tumor slices.",
+            "set 0 for all tumor-path slices.",
             FULL_CASE_MAX_XAI_SLICES,
         )
     return targets
+
+
+def _publish_xai_png(
+    source: Path,
+    display_dir: Path,
+    z: int,
+    suffix: str,
+    backend_public_url: str | None,
+) -> str:
+    display_dir.mkdir(parents=True, exist_ok=True)
+    dest = display_dir / f"slice_{z}_xai_{suffix}.png"
+    shutil.copy2(source, dest)
+    return build_public_upload_url(backend_public_url, dest)
+
+
+def _recover_xai_overlay_from_disk(
+    z: int,
+    slice_files: list[ScanFileIn],
+    xai_job_id: str,
+    display_dir: Path,
+    backend_public_url: str | None,
+) -> str | None:
+    """Use saved overlay/heatmap PNGs when the public URL was missing."""
+    try:
+        local_files = [
+            ScanFileIn(
+                rawPath=f.rawPath,
+                format=f.format,
+                originalName=f.originalName,
+                slot=f.slot,
+            )
+            for f in slice_files
+        ]
+        xai_dir = resolve_xai_output_dir(local_files, xai_job_id)
+    except Exception:
+        return None
+
+    if not xai_dir.is_dir():
+        return None
+
+    overlay_files = sorted(
+        xai_dir.glob("overlay_stage2_*.png"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if overlay_files:
+        return _publish_xai_png(
+            overlay_files[0],
+            display_dir,
+            z,
+            "t1c",
+            backend_public_url,
+        )
+
+    heatmap_files = sorted(
+        xai_dir.glob("heatmap_stage2_*.png"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if heatmap_files:
+        return _publish_xai_png(
+            heatmap_files[0],
+            display_dir,
+            z,
+            "heatmap",
+            backend_public_url,
+        )
+
+    return None
+
+
+def _compose_xai_overlay_on_t1c(
+    prepared,
+    heatmap_path: Path,
+    display_dir: Path,
+    z: int,
+    backend_public_url: str | None,
+) -> str | None:
+    """Blend a saved heatmap onto T1c when no overlay PNG exists."""
+    from .xai.utils import blend_overlay, extract_display_channel
+
+    try:
+        t1c_idx = MODALITY_ORDER.index("t1c")
+        t1c = extract_display_channel(prepared.xai_stage4_tensor, t1c_idx)
+        heat_rgb = np.asarray(Image.open(heatmap_path).convert("RGB"), dtype=np.float32)
+        if heat_rgb.ndim != 3:
+            return None
+        heat_norm = heat_rgb.max(axis=-1) / 255.0
+        overlay_rgb = blend_overlay(t1c, heat_norm.astype(np.float32))
+        dest = display_dir / f"slice_{z}_xai_t1c_blend.png"
+        save_png(overlay_rgb, dest)
+        return build_public_upload_url(backend_public_url, dest)
+    except Exception as exc:
+        logger.debug("Slice z=%s T1c XAI composite failed: %s", z, exc)
+        return None
 
 
 def _run_slice_xai(
@@ -275,9 +369,11 @@ def _run_slice_xai(
     backend_public_url: str | None,
     xai_method: str,
     output_dir: Path,
+    display_dir: Path,
     slice_filter: dict,
 ) -> tuple[str | None, str | None]:
     pipeline_result = _pipeline_result_from_slice(cascade, slice_filter)
+    xai_job_id = f"{output_dir.name}_z{z}"
     methods_to_try = tuple(
         dict.fromkeys(
             (xai_method,)
@@ -285,6 +381,7 @@ def _run_slice_xai(
         )
     )
     last_error: str | None = None
+    last_xai_dir: Path | None = None
 
     for method in methods_to_try:
         try:
@@ -294,25 +391,56 @@ def _run_slice_xai(
                 cascade_prediction=cascade.prediction,
                 xai_method=method,
                 backend_public_url=backend_public_url,
-                job_id=f"{output_dir.name}_z{z}",
+                job_id=xai_job_id,
                 prepared=prepared,
                 analyze_upload=True,
             )
             if not xai_result.stages:
                 last_error = f"No XAI stages returned ({method})"
                 continue
-            overlay = cascade_stage_preview_overlay(xai_result.stages[-1])
-            if not overlay:
-                last_error = f"Empty overlay path ({method})"
-                continue
-            if method != xai_method:
-                logger.info(
-                    "Slice z=%s XAI used fallback method '%s' (requested '%s').",
-                    z,
-                    method,
-                    xai_method,
-                )
-            return overlay, None
+
+            stage = xai_result.stages[-1]
+            overlay = cascade_stage_preview_overlay(stage)
+            if overlay:
+                if method != xai_method:
+                    logger.info(
+                        "Slice z=%s XAI used fallback method '%s' (requested '%s').",
+                        z,
+                        method,
+                        xai_method,
+                    )
+                return overlay, None
+
+            try:
+                local_files = slice_files
+                last_xai_dir = resolve_xai_output_dir(local_files, xai_job_id)
+            except Exception:
+                last_xai_dir = None
+
+            recovered = _recover_xai_overlay_from_disk(
+                z,
+                slice_files,
+                xai_job_id,
+                display_dir,
+                backend_public_url,
+            )
+            if recovered:
+                return recovered, None
+
+            if last_xai_dir and last_xai_dir.is_dir():
+                heatmaps = sorted(last_xai_dir.glob("heatmap_stage2_*.png"))
+                if heatmaps:
+                    composed = _compose_xai_overlay_on_t1c(
+                        prepared,
+                        heatmaps[-1],
+                        display_dir,
+                        z,
+                        backend_public_url,
+                    )
+                    if composed:
+                        return composed, None
+
+            last_error = f"Empty overlay path ({method})"
         except Exception as exc:
             last_error = str(exc)
             logger.warning(
@@ -322,6 +450,16 @@ def _run_slice_xai(
                 exc,
                 exc_info=True,
             )
+
+    recovered = _recover_xai_overlay_from_disk(
+        z,
+        slice_files,
+        xai_job_id,
+        display_dir,
+        backend_public_url,
+    )
+    if recovered:
+        return recovered, None
 
     return None, last_error
 
@@ -410,19 +548,42 @@ def _process_slice_extras(
     else:
         masks_by_z = {}
 
-    xai_targets = _xai_target_z_set(slice_cascades, masks_by_z)
+    xai_targets = _xai_target_z_set(slice_cascades)
+    display_dir = output_dir / "slice_xai"
+    display_dir.mkdir(parents=True, exist_ok=True)
     logger.info(
-        "3D full-case: generating XAI for %s tumor slice(s).",
+        "3D full-case: generating XAI for %s tumor-path slice(s).",
         len(xai_targets),
     )
 
     slice_runs: list[Slice2DRunResult] = []
     xai_errors: list[str] = []
 
+    def _run_xai_for_z(z: int, cascade: SliceCascadeResult) -> tuple[str | None, str | None]:
+        z_png = png_paths[z]
+        slice_files = build_slice_scan_files(z, z_png)
+        prepared = prepare_single_slice_prepared_from_volume(
+            volume_map,
+            modality_map,
+            z,
+            reference_depth,
+            slice_filter,
+        )
+        return _run_slice_xai(
+            z,
+            cascade,
+            slice_files,
+            prepared,
+            backend_public_url=backend_public_url,
+            xai_method=xai_method,
+            output_dir=output_dir,
+            display_dir=display_dir,
+            slice_filter=slice_filter,
+        )
+
     for cascade in slice_cascades:
         z = int(cascade.z)
         z_png = png_paths[z]
-        slice_files = build_slice_scan_files(z, z_png)
 
         mask = masks_by_z.get(z)
         if mask is None and prediction_supports_segmentation(cascade.prediction):
@@ -433,23 +594,9 @@ def _process_slice_extras(
         xai_overlay_path: str | None = None
         xai_error: str | None = None
         if z in xai_targets:
-            prepared = prepare_single_slice_prepared_from_volume(
-                volume_map,
-                modality_map,
-                z,
-                reference_depth,
-                slice_filter,
-            )
-            xai_overlay_path, xai_error = _run_slice_xai(
-                z,
-                cascade,
-                slice_files,
-                prepared,
-                backend_public_url=backend_public_url,
-                xai_method=xai_method,
-                output_dir=output_dir,
-                slice_filter=slice_filter,
-            )
+            xai_overlay_path, xai_error = _run_xai_for_z(z, cascade)
+            if xai_error and not xai_overlay_path:
+                xai_overlay_path, xai_error = _run_xai_for_z(z, cascade)
 
         run = Slice2DRunResult(
             z=z,
@@ -545,6 +692,10 @@ def run_full_case_pipeline(
 
     mask_volume_path: str | None = None
     mask_nifti_path: str | None = None
+    volume_class_stats = None
+    volume_total_pixels: int | None = None
+    volume_tumor_pixels: int | None = None
+    volume_tumor_percentage: float | None = None
     if masks_by_z:
         first = next(iter(masks_by_z.values()))
         height, width = first.shape
@@ -555,6 +706,11 @@ def run_full_case_pipeline(
         np.savez_compressed(npz_path, mask=volume_mask)
         mask_volume_path = build_public_upload_url(backend_public_url, npz_path)
 
+        volume_class_stats = summarize_mask(volume_mask)
+        volume_total_pixels = int(volume_mask.size)
+        volume_tumor_pixels = int(np.sum(volume_mask > 0))
+        volume_tumor_percentage = round(float(np.mean(volume_mask > 0)) * 100, 2)
+
         nifti_path = full_case_dir / "segmentation_mask.nii.gz"
         mask_nifti_path = export_mask_nifti(
             masks_by_z,
@@ -564,32 +720,64 @@ def run_full_case_pipeline(
         )
 
     tumor_z = sorted(_resolve_tumor_z_set(slice_cascades, masks_by_z))
+    preview_by_z = {int(row["z"]): row for row in valid_slice_previews}
+    runs_by_z = {int(run.z): run for run in slice_runs}
 
+    slice_results: list[dict] = []
     tumor_slices: list[dict] = []
-    for run in slice_runs:
-        if run.z not in tumor_z:
-            continue
 
-        t1n_png = run.png_paths["t1n"]
-        original_url = build_public_upload_url(backend_public_url, t1n_png)
+    for z in good_slices:
+        z = int(z)
+        run = runs_by_z[z]
+        preview = preview_by_z.get(z, {})
+        cascade = run.cascade
 
-        seg_url = original_url
+        modalities = preview.get("modalities") or {
+            mod: build_public_upload_url(backend_public_url, run.png_paths[mod])
+            for mod in MODALITY_ORDER
+            if mod in run.png_paths
+        }
+
+        t1c_png = run.png_paths["t1c"]
+        t1c_url = build_public_upload_url(backend_public_url, t1c_png)
+
+        seg_url = ""
         if run.segmentation_mask is not None:
-            t1n_arr = np.asarray(Image.open(t1n_png).convert("L"), dtype=np.float32) / 255.0
-            seg_path = display_dir / f"slice_{run.z}_segmentation.png"
-            save_png(overlay_mask_on_t1n(t1n_arr, run.segmentation_mask), seg_path)
+            t1c_arr = (
+                np.asarray(Image.open(t1c_png).convert("L"), dtype=np.float32) / 255.0
+            )
+            seg_path = display_dir / f"slice_{z}_segmentation_t1c.png"
+            save_png(overlay_mask_on_t1n(t1c_arr, run.segmentation_mask), seg_path)
             seg_url = build_public_upload_url(backend_public_url, seg_path)
+
+        xai_overlay = run.xai_overlay_path or ""
+
+        slice_results.append(
+            {
+                "z": z,
+                "sliceNumber": z,
+                "prediction": cascade.prediction,
+                "confidence": cascade.confidence,
+                "modalities": modalities,
+                "t1cReference": t1c_url,
+                "xaiOverlay": xai_overlay,
+                "segmentationOverlay": seg_url,
+            }
+        )
+
+        if z not in tumor_z:
+            continue
 
         tumor_slices.append(
             {
-                "z": run.z,
-                "sliceNumber": run.z,
-                "confidence": run.cascade.confidence,
-                "originalSlice": original_url,
-                "segmentation": seg_url,
-                "xai": run.xai_overlay_path or "",
-                "xaiOriginal": original_url,
-                "xaiHeatmap": run.xai_overlay_path or "",
+                "z": z,
+                "sliceNumber": z,
+                "confidence": cascade.confidence,
+                "originalSlice": t1c_url,
+                "segmentation": seg_url or t1c_url,
+                "xai": xai_overlay,
+                "xaiOriginal": t1c_url,
+                "xaiHeatmap": xai_overlay,
             }
         )
 
@@ -620,6 +808,20 @@ def run_full_case_pipeline(
         "nativeShape": slice_filter.get("native_shape"),
         "referenceNiftiPath": slice_filter.get("referenceNiftiPath"),
     }
+    if volume_class_stats is not None:
+        mask_metadata["classStats"] = [
+            {
+                "classId": stat.class_id,
+                "label": stat.label,
+                "colorHex": stat.color_hex,
+                "pixelCount": stat.pixel_count,
+                "percentage": stat.percentage,
+            }
+            for stat in volume_class_stats
+        ]
+        mask_metadata["totalPixels"] = volume_total_pixels
+        mask_metadata["tumorPixels"] = volume_tumor_pixels
+        mask_metadata["tumorPercentage"] = volume_tumor_percentage
     if segmentation_result is not None:
         mask_metadata["segmentationModel"] = segmentation_result.model_type
         mask_metadata.update(segmentation_result.metadata)
@@ -632,6 +834,7 @@ def run_full_case_pipeline(
         num_valid_slices=len(good_slices),
         num_tumor_slices=len(tumor_slices),
         valid_slice_previews=valid_slice_previews,
+        slice_results=slice_results,
         tumor_slices=tumor_slices,
         mask_volume_path=mask_volume_path,
         mask_nifti_path=mask_nifti_path,

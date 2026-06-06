@@ -181,6 +181,20 @@ const scanSchema = new mongoose.Schema(
                     },
                 },
             ],
+            sliceResults: [
+                {
+                    z: Number,
+                    sliceNumber: Number,
+                    prediction: String,
+                    confidence: Number,
+                    modalities: {
+                        type: mongoose.Schema.Types.Mixed,
+                    },
+                    t1cReference: String,
+                    xaiOverlay: String,
+                    segmentationOverlay: String,
+                },
+            ],
             tumorSlices: [
                 {
                     z: Number,

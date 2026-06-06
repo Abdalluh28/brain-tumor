@@ -367,7 +367,10 @@ def aggregate_slice_predictions(
 ) -> tuple[CasePrediction, Prediction, float, dict[Prediction, float], PipelineResult]:
     """
     Majority vote on case labels, then pick the detailed prediction with the most slices.
-    Average confidence is the mean per-slice confidence (0–100 scale).
+
+    ``average_confidence`` is the mean per-slice softmax confidence (0–100) for slices
+    matching the winning case label. Case-level ``confidence_scores[prediction]`` is the
+    vote share for the winning detailed class and is what the UI should show as confidence.
     """
     if not slice_results:
         raise RuntimeError("No slice predictions to aggregate.")

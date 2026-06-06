@@ -16,6 +16,7 @@ from .scan_inputs import prepare_mri_scan_inputs
 from .full_case_pipeline import run_full_case_pipeline
 from .schemas import (
     FullCaseResult,
+    FullCaseSliceResultOut,
     ModelResult,
     ScanFileIn,
     SegmentationClassStatOut,
@@ -175,6 +176,9 @@ def run_full_case_model(
         validSlicePreviews=[
             ValidSlicePreviewOut(**item) for item in artifacts.valid_slice_previews
         ],
+        sliceResults=[
+            FullCaseSliceResultOut(**item) for item in artifacts.slice_results
+        ],
         tumorSlices=[TumorSliceOut(**item) for item in artifacts.tumor_slices],
         maskMetadata=artifacts.mask_metadata,
     )
@@ -188,10 +192,12 @@ def run_full_case_model(
     if artifacts.segmentation is not None:
         segmentation_result = _to_segmentation_result(artifacts.segmentation)
 
+    case_confidence = artifacts.confidence_scores[artifacts.prediction]
+
     return ModelResult(
         prediction=artifacts.prediction,
         confidenceScores=artifacts.confidence_scores,
-        confidence=artifacts.average_confidence,
+        confidence=case_confidence,
         gradCamPath=grad_cam_path,
         processedTime=round((time.perf_counter() - started_at) * 1000, 2),
         modelVersion=os.getenv("MODEL_VERSION", get_model_version()) + "-fullcase-3d",

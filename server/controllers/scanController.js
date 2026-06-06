@@ -348,39 +348,56 @@ const createScan = asyncHandler(async (req, res) => {
 });
 
 // Helper to convert internal file paths to public URLs for frontend access
-const toPublicUrl = (rawPath) => {
+const UPLOADS_MARKER = "/uploads/";
+
+const getPublicBaseUrl = (req) => {
+    const configured = process.env.BACKEND_PUBLIC_URL?.replace(/\/$/, "");
+    if (configured) {
+        return configured;
+    }
+
+    const proto = req?.headers?.["x-forwarded-proto"] || req?.protocol || "http";
+    const host = req?.headers?.["x-forwarded-host"] || req?.get?.("host");
+    if (host) {
+        return `${proto}://${host}`;
+    }
+
+    return `http://localhost:${process.env.PORT || 3000}`;
+};
+
+const toPublicUrl = (rawPath, baseUrl) => {
     if (!rawPath) return null;
 
-    const base =
-        process.env.BACKEND_PUBLIC_URL ||
-        `http://localhost:${process.env.PORT || 3000}`;
-    const baseUrl = base.replace(/\/$/, "");
+    const base = (baseUrl || getPublicBaseUrl()).replace(/\/$/, "");
     const normalized = String(rawPath).replace(/\\/g, "/");
 
-    // Re-resolve stored http(s) URLs (e.g. another dev's localhost) to this server
-    if (/^https?:\/\//i.test(normalized)) {
-        const uploadsMarker = "/uploads/";
-        if (normalized.includes(uploadsMarker)) {
-            const uploadPath = normalized.split(uploadsMarker, 1)[1];
-            return `${baseUrl}/uploads/${uploadPath}`;
+    let relative = null;
+
+    if (normalized.includes(UPLOADS_MARKER)) {
+        relative = normalized.split(UPLOADS_MARKER)[1]?.replace(/^\//, "");
+    }
+
+    if (!relative) {
+        const localMarker = path.join(__dirname, "..", "uploads").replace(/\\/g, "/");
+        if (normalized.includes(localMarker)) {
+            relative = normalized.split(localMarker)[1]?.replace(/^\//, "");
         }
+    }
+
+    if (relative && !relative.includes("undefined")) {
+        return `${base}${UPLOADS_MARKER}${relative}`;
+    }
+
+    // External URL without a local uploads segment — return as-is.
+    if (/^https?:\/\//i.test(normalized)) {
         return normalized;
     }
 
-    const localMarker = path.join(__dirname, "..", "uploads");
-    let relative = normalized;
-    if (normalized.includes(localMarker.replace(/\\/g, "/"))) {
-        relative = normalized
-            .split(localMarker.replace(/\\/g, "/"), 1)[1]
-            .replace(/^\//, "");
-    } else if (normalized.includes("/uploads/")) {
-        relative = normalized.split("/uploads/", 1)[1];
-    } else {
-        return null;
-    }
-
-    return `${baseUrl}/uploads/${relative}`;
+    return null;
 };
+
+const filePublicUrl = (file, baseUrl) =>
+    toPublicUrl(file?.storagePath, baseUrl) ?? toPublicUrl(file?.rawPath, baseUrl);
 
 // ------------------
 // Get All Scans
@@ -495,9 +512,10 @@ const getScans = asyncHandler(async (req, res) => {
         .limit(limit);
 
     for (const scan of scans) {
+        const publicBaseUrl = getPublicBaseUrl(req);
         scan.files = scan.files?.map((f) => ({
             ...f,
-            url: toPublicUrl(f.rawPath), // add url, keep rawPath intact
+            url: filePublicUrl(f, publicBaseUrl),
         }));
         if (scan.xai) {
             scan.xai = normalizeXaiDocument(scan.xai);
@@ -525,13 +543,15 @@ const getScanById = asyncHandler(async (req, res) => {
     }
 
     const scanObject = scan.toObject({ virtuals: true });
+    const publicBaseUrl = getPublicBaseUrl(req);
     scanObject.files = scanObject.files?.map((f) => ({
         ...f,
-        url: toPublicUrl(f.rawPath), // add url, keep rawPath intact
+        url: filePublicUrl(f, publicBaseUrl),
     }));
     if (scanObject.gradCamPath) {
         scanObject.gradCamPath =
-            toPublicUrl(scanObject.gradCamPath) ?? scanObject.gradCamPath;
+            toPublicUrl(scanObject.gradCamPath, publicBaseUrl)
+            ?? scanObject.gradCamPath;
     }
     if (scanObject.xai) {
         scanObject.xai = normalizeXaiDocument(scanObject.xai);

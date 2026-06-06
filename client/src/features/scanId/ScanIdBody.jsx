@@ -34,6 +34,8 @@ export default function ScanIdBody() {
     } = scan || {};
     const date = new Date(createdAt).toLocaleDateString();
     const time = new Date(createdAt).toLocaleTimeString();
+    const displayConfidence =
+        confidenceScores?.[prediction] ?? confidence;
 
     if (isLoading) {
         return <SkeletonLoader height={400} />
@@ -46,13 +48,18 @@ export default function ScanIdBody() {
             <div className='scan flex flex-col lg:grid lg:grid-cols-3 gap-8 m-8'>
                 <ScanIdResult
                     prediction={prediction}
-                    confidence={confidence}
+                    confidence={displayConfidence}
                     processedTimeMs={processedTime}
                     fullCase={fullCase}
                     scanType={scanType}
                 />
                 <div className='flex flex-col lg:col-span-2 gap-6'>
-                    {fullCase ? <ScanIdFullCase fullCase={fullCase} /> : null}
+                    {fullCase ? (
+                        <ScanIdFullCase
+                            fullCase={fullCase}
+                            caseConfidence={displayConfidence}
+                        />
+                    ) : null}
                     {scanType !== '3D' ? (
                         <>
                             <ScanIdMRI
@@ -72,7 +79,7 @@ export default function ScanIdBody() {
                 </div>
                 <div className='col-span-1'>
                     <ScanIdProbabilities
-                        confidence={confidence}
+                        confidence={displayConfidence}
                         prediction={prediction}
                         confidenceScores={confidenceScores}
                         scanId={scanId}
