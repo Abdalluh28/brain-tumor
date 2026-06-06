@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Scan = require("../models/Scan");
 const RadiologyCenter = require("../models/RadiologyCenter");
 const asyncHandler = require("../middleware/asyncHandler");
 const bcrypt = require("bcryptjs");
@@ -75,6 +76,9 @@ const deleteUser = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: "User not found" });
     }
 
+    // delete all scans associated with the user
+    await Scan.deleteMany({ userId: user._id });
+
     await User.deleteOne({ _id: user._id });
 
     return res.status(200).json({ message: "User deleted" });
@@ -84,7 +88,9 @@ const joinRadiologyCenter = asyncHandler(async (req, res) => {
     const { radiologyCenterId } = req.body;
 
     if (!radiologyCenterId) {
-        return res.status(400).json({ message: "radiologyCenterId is required" });
+        return res
+            .status(400)
+            .json({ message: "radiologyCenterId is required" });
     }
 
     const center = await RadiologyCenter.findById(radiologyCenterId);

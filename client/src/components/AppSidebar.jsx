@@ -26,7 +26,7 @@ export default function AppSidebar() {
     const userName = user?.name.split(' ')[0] + ' ' + (user?.name.split(' ')[1] || '')
 
     const handleLogout = () => {
-        logout();
+        logout({ reason: 'logout' });
     }
 
     return (

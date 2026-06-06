@@ -34,7 +34,8 @@ export default function SecurityHome({ onNavigate }) {
             </div>
 
 
-            <div className=" rounded-lg p-4 flex items-center gap-4 cursor-pointer bg-white dark:bg-slate-800/50 hover:bg-red-50 dark:hover:bg-red-900/10 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30 transition duration-300">
+            <div className=" rounded-lg p-4 flex items-center gap-4 cursor-pointer bg-white dark:bg-slate-800/50 hover:bg-red-50 dark:hover:bg-red-900/10 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30 transition duration-300"
+                onClick={() => onNavigate('delete')}>
                 <span className="bg-red-50 p-2 rounded-lg text-red-600">
                     <Trash2 />
                 </span>
