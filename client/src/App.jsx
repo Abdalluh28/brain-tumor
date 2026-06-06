@@ -4,17 +4,18 @@ import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
 import { DismissableToaster } from "./components/DismissableToaster";
+import ProtectedRoutes from "./components/ProtectedRoutes";
+import AuthRoutes from "./components/authRoutes";
 import Login from "./features/auth/Login";
 import Register from "./features/auth/Register";
 import ResetPassword from "./features/auth/ResetPassword";
 import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
+import MriViewer from "./pages/MriViewer";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
-import MriViewer from "./pages/MriViewer";
-import ProtectedRoutes from "./components/ProtectedRoutes";
-import AuthRoutes from "./components/authRoutes";
+import RadiologyCenter from "./features/auth/RadiologyCenter";
 
 
 const queryClient = new QueryClient({
@@ -82,6 +83,10 @@ export default function App() {
                 {
                     path: 'register',
                     element: <Register />
+                },
+                {
+                    path: 'radiologyCenter',
+                    element: <RadiologyCenter />
                 }
             ]
         },
