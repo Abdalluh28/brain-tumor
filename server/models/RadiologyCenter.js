@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const radiologyCenterSchema = new mongoose.Schema(
     {
+        radiologyCenterId: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+        },
         name: {
             type: String,
             required: true,
@@ -13,11 +19,6 @@ const radiologyCenterSchema = new mongoose.Schema(
             trim: true,
         },
         city: {
-            type: String,
-            required: true,
-            trim: true,
-        },
-        state: {
             type: String,
             required: true,
             trim: true,

@@ -37,6 +37,19 @@ export default function RadiologyCenter() {
                     <div className='flex flex-col gap-4'>
 
                         <FormInput
+                            id="radiologyCenterId"
+                            type="text"
+                            label="Radiology Center ID"
+                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='123456'
+                            validation={{
+                                required: 'Radiology Center ID is required',
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
+
+                        <FormInput
                             id='name'
                             type='text'
                             label='Name'
@@ -71,19 +84,6 @@ export default function RadiologyCenter() {
                             placeholder='New York'
                             validation={{
                                 required: 'City is required',
-                            }}
-                            register={register}
-                            errors={errors}
-                        />
-
-                        <FormInput
-                            id="state"
-                            type="text"
-                            label="State"
-                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
-                            placeholder="CA"
-                            validation={{
-                                required: 'State is required',
                             }}
                             register={register}
                             errors={errors}

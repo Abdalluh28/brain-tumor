@@ -11,17 +11,13 @@ const register = asyncHandler(async (req, res) => {
     const { name, email, password, radiologyCenterId } = req.body;
 
     // check if all fields are filled
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !radiologyCenterId) {
         return res.status(400).json({ message: "All fields are required" });
     }
 
-    if (radiologyCenterId) {
-        const center = await RadiologyCenter.findById(radiologyCenterId);
-        if (!center) {
-            return res
-                .status(400)
-                .json({ message: "Radiology center not found" });
-        }
+    const center = await RadiologyCenter.findOne({ radiologyCenterId });
+    if (!center) {
+        return res.status(400).json({ message: "Radiology center not found" });
     }
 
     // check if user already exists
@@ -39,7 +35,7 @@ const register = asyncHandler(async (req, res) => {
         email,
         password: hashedPassword,
         lastLogin: new Date(),
-        ...(radiologyCenterId ? { radiologyCenterId } : {}),
+        radiologyCenter: center._id,
     });
 
     const { accessToken } = await createTokens(newUser, res);
@@ -144,18 +140,25 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const createRadiologyCenter = asyncHandler(async (req, res) => {
-    const { name, address, city, state, zip, phone } = req.body;
+    const { radiologyCenterId, name, address, city, zip, phone } = req.body;
 
-    if (!name || !address || !city || !state || !zip || !phone) {
+    if (!radiologyCenterId || !name || !address || !city || !zip || !phone) {
         return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingCenter = await RadiologyCenter.findOne({ radiologyCenterId });
+    if (existingCenter) {
+        return res
+            .status(400)
+            .json({ message: "Radiology center with this ID already exists" });
     }
 
     // Create new radiology center
     const newRadiologyCenter = await RadiologyCenter.create({
+        radiologyCenterId,
         name,
         address,
         city,
-        state,
         zip,
         phone,
     });

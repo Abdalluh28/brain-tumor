@@ -12,8 +12,9 @@ export const useRadiologyCenter = () => {
             toast.success("Radiology center created successfully");
             navigate("/login", { replace: true });
         },
-        onError: () => {
-            toast.error("Failed to create radiology center");
+        onError: (error) => {
+            const message = error?.response?.data?.message || "Failed to create radiology center";
+            toast.error(message);
         },
     });
 
