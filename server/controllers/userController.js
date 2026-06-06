@@ -52,20 +52,11 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             return res.status(401).json({
                 message: "Email already in use",
                 id: existingUser._id,
-                firstName: existingUser.firstName,
-                lastName: existingUser.lastName,
+                name: existingUser.name,
                 email: existingUser.email,
-                isAdmin: existingUser.isAdmin,
-                isVerified: existingUser.isVerified,
             });
         }
         user.email = req.body.email;
-    }
-
-    if (req.body.password) {
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-        user.password = hashedPassword;
     }
 
     const updatedUser = await user.save();
@@ -74,7 +65,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
-        role: updatedUser.role,
         lastLogin: updatedUser.lastLogin,
     });
 });

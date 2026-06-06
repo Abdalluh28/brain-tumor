@@ -1,17 +1,48 @@
-import { Button } from "@/components/ui/button"
-import {
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle
-} from "@/components/ui/dialog"
+import { useForm } from "react-hook-form"
+import { useUser } from "./useUser";
+import FormInput from "@/components/FormInput";
+import { Mail, User } from "lucide-react";
+import { useUpdateUser } from "./useUpdateUser";
+import Spinner from "@/components/Spinner";
+import { useEffect } from "react";
 
 export default function Profile() {
+
+    const { user } = useUser();
+    const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm({
+        defaultValues: {
+            name: '',
+            email: '',
+        }
+    })
+    const { updateUser, isLoading } = useUpdateUser();
+
+    useEffect(() => {
+        if (user) {
+            reset({
+                name: user.name,
+                email: user.email,
+            })
+        }
+    }, [user, reset])
+
+    const handleFormSubmit = (data) => {
+        // If form is not changed, do not submit
+        if (!isDirty) return;
+
+        const updates = {};
+
+        if (data.name !== user?.name) updates.name = data.name;
+        if (data.email !== user?.email) updates.email = data.email;
+
+        if (Object.keys(updates).length === 0) return;
+
+        updateUser(updates);
+    }
+
     return (
         <>
-            <div className="flex flex-col gap-4 mb-4">
+            <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col gap-4 mb-4">
                 <div className="flex flex-col gap-2">
                     <p className="text-2xl font-semibold">
                         Profile Settings
@@ -20,17 +51,37 @@ export default function Profile() {
                         Manage your personal information and account details
                     </p>
                 </div>
-                <div className="flex flex-col gap-2">
-                    <label htmlFor="name" className="text-sm">Name</label>
-                    <input type="text" id="name" className="w-full outline-none focus:ring-2 focus:ring-primary bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 px-4 py-3"
-                        defaultValue={'Abdo Khaled'} />
-                </div>
-                <div className="flex flex-col gap-2">
-                    <label htmlFor="email" className="text-sm">Email</label>
-                    <input type="text" id="email" className="w-full outline-none focus:ring-2 focus:ring-primary bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 px-4 py-3"
-                        defaultValue={'abdo@gamil.com'} />
-                </div>
-            </div>
+                <FormInput
+                    id='name'
+                    type='text'
+                    label='Name'
+                    icon={<User className='text-slate-600 dark:text-slate-400' />}
+                    placeholder='Enter your name'
+                    validation={{
+                        required: 'Name is required'
+                    }}
+                    register={register}
+                    errors={errors}
+                />
+
+                <FormInput
+                    id='email'
+                    type='email'
+                    label='Email'
+                    icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                    placeholder='Enter your email'
+                    validation={{
+                        required: 'Email is required'
+                    }}
+                    register={register}
+                    errors={errors}
+                />
+
+                <button type="submit" className={`self-end bg-primary text-white px-6 py-2 rounded-xl hover:bg-primary/90 transition duration-300 ${(isLoading || !isDirty) ? 'hover:cursor-not-allowed' : 'hover:cursor-pointer'}`}
+                    disabled={isLoading || !isDirty}>
+                    {isLoading ? <Spinner color="text-white" /> : "Save Changes"}
+                </button>
+            </form>
         </>
     )
 }
