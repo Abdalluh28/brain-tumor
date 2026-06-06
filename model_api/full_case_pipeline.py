@@ -227,19 +227,13 @@ def _pipeline_result_from_slice(
     )
 
 
-def _resolve_tumor_z_set(
-    slice_cascades: list[SliceCascadeResult],
-    masks_by_z: dict[int, np.ndarray],
-) -> set[int]:
-    """Slice indices shown in the tumor-slices panel (matches mask / per-slice tumor)."""
-    tumor_z = [
+def _resolve_tumor_z_set(masks_by_z: dict[int, np.ndarray]) -> set[int]:
+    """Slice indices with at least one segmented tumor pixel (class > 0)."""
+    return {
         int(z)
         for z, mask in masks_by_z.items()
         if int(np.sum(mask > 0)) > 0
-    ]
-    if not tumor_z:
-        tumor_z = [int(c.z) for c in slice_cascades if c.case_label != "Healthy"]
-    return set(tumor_z)
+    }
 
 
 def _xai_target_z_set(
@@ -719,7 +713,7 @@ def run_full_case_pipeline(
             backend_public_url,
         )
 
-    tumor_z = sorted(_resolve_tumor_z_set(slice_cascades, masks_by_z))
+    tumor_z = sorted(_resolve_tumor_z_set(masks_by_z))
     preview_by_z = {int(row["z"]): row for row in valid_slice_previews}
     runs_by_z = {int(run.z): run for run in slice_runs}
 
@@ -752,21 +746,20 @@ def run_full_case_pipeline(
 
         xai_overlay = run.xai_overlay_path or ""
 
-        slice_results.append(
-            {
-                "z": z,
-                "sliceNumber": z,
-                "prediction": cascade.prediction,
-                "confidence": cascade.confidence,
-                "modalities": modalities,
-                "t1cReference": t1c_url,
-                "xaiOverlay": xai_overlay,
-                "segmentationOverlay": seg_url,
-            }
-        )
-
         if z not in tumor_z:
             continue
+
+        slice_entry = {
+            "z": z,
+            "sliceNumber": z,
+            "prediction": cascade.prediction,
+            "confidence": cascade.confidence,
+            "modalities": modalities,
+            "t1cReference": t1c_url,
+            "xaiOverlay": xai_overlay,
+            "segmentationOverlay": seg_url,
+        }
+        slice_results.append(slice_entry)
 
         tumor_slices.append(
             {

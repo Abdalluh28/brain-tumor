@@ -77,11 +77,64 @@ export function getReportPrediction(scan) {
     };
 }
 
+/** Rows for 3D UI/reports: only slices with segmented tumor pixels. */
+export function getFullCaseTumorSliceRows(fullCase) {
+    if (!fullCase) return [];
+
+    const tumorZSet = new Set(
+        (fullCase.tumorSlices ?? []).map((row) => row.z ?? row.sliceNumber),
+    );
+
+    if (fullCase.sliceResults?.length) {
+        const rows = tumorZSet.size
+            ? fullCase.sliceResults.filter((row) =>
+                  tumorZSet.has(row.z ?? row.sliceNumber),
+              )
+            : fullCase.sliceResults.filter(
+                  (row) =>
+                      Boolean(row.segmentationOverlay)
+                      || (row.prediction && row.prediction !== "Healthy"),
+              );
+
+        return [...rows].sort(
+            (a, b) => (a.z ?? a.sliceNumber) - (b.z ?? b.sliceNumber),
+        );
+    }
+
+    const previewByZ = new Map(
+        (fullCase.validSlicePreviews ?? []).map((row) => [
+            row.z ?? row.sliceNumber,
+            row,
+        ]),
+    );
+    const tumorByZ = new Map(
+        (fullCase.tumorSlices ?? []).map((row) => [row.z ?? row.sliceNumber, row]),
+    );
+
+    return [...tumorByZ.keys()]
+        .sort((a, b) => a - b)
+        .map((z) => {
+            const preview = previewByZ.get(z) ?? {};
+            const tumor = tumorByZ.get(z) ?? {};
+            const modalities = preview.modalities ?? {};
+
+            return {
+                z,
+                sliceNumber: z,
+                prediction: tumor.prediction ?? null,
+                confidence: tumor.confidence ?? null,
+                modalities,
+                t1cReference:
+                    modalities.t1c ?? tumor.xaiOriginal ?? tumor.originalSlice ?? "",
+                xaiOverlay: tumor.xai ?? "",
+                segmentationOverlay: tumor.segmentation ?? "",
+            };
+        });
+}
+
 /** Per-slice MRI + XAI images for 3D full-case reports. */
 export function collectFullCaseXaiImages(fullCase) {
-    const rows = fullCase?.sliceResults?.length
-        ? fullCase.sliceResults
-        : fullCase?.tumorSlices ?? [];
+    const rows = getFullCaseTumorSliceRows(fullCase);
     const images = [];
 
     for (const slice of rows) {
@@ -99,9 +152,7 @@ export function collectFullCaseXaiImages(fullCase) {
 
 /** Per-slice segmentation overlays for 3D full-case reports. */
 export function collectFullCaseSegmentationImages(fullCase) {
-    const rows = fullCase?.sliceResults?.length
-        ? fullCase.sliceResults
-        : fullCase?.tumorSlices ?? [];
+    const rows = getFullCaseTumorSliceRows(fullCase);
 
     return rows
         .map((slice) => ({
