@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 export default function ChangePassword({ onBack }) {
     return (
         <>
-            <button onClick={onBack} className="text-primary flex items-center gap-1 text-sm">
+            <button onClick={onBack} className="text-primary flex items-center gap-1 text-sm mb-4 hover:text-primary-hover transition duration-300 cursor-pointer ">
                 <ArrowLeft size={15} />
                 Back to Security
             </button>

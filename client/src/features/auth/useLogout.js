@@ -10,8 +10,13 @@ export function useLogout() {
     const { mutate: logout, isPending } = useMutation({
         mutationFn: () => logoutApi(),
         retry: false,
-        onSuccess: () => {
-            toast.success("Logout successful");
+        onSuccess: (_, variables) => {
+            const { reason } = variables || {};
+
+            if (reason !== "password-reset") {
+                toast.success("Logout successful");
+            }
+
             queryClient.removeQueries({
                 queryKey: ["user"],
             });
