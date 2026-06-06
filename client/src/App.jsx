@@ -87,13 +87,17 @@ export default function App() {
                 {
                     path: 'radiologyCenter',
                     element: <RadiologyCenter />
-                }
+                },
             ]
         },
         {
             path: 'password/reset/:id/:accessToken',
             element: <ResetPassword />
-        }
+        },
+        {
+            path: 'password/forgot/:id/:accessToken',
+            element: <ResetPassword />
+        },
     ])
 
 

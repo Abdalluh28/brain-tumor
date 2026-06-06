@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useLogin } from './useLogin';
 import FormInput from '@/components/FormInput';
+import toast from 'react-hot-toast';
+import { useForgotPassword } from './useForgotPassword';
 
 
 export default function Login() {
@@ -13,9 +15,10 @@ export default function Login() {
 
     // login hook
     const { login, isLoading } = useLogin()
+    const { forgotPassword, isLoading: isForgotPasswordLoading } = useForgotPassword();
 
     // form hook to handle form submission
-    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+    const { register, handleSubmit, reset, formState: { errors }, getValues } = useForm();
 
     // form submit handler
     const handleFormSubmit = (data) => {
@@ -25,6 +28,27 @@ export default function Login() {
                 navigate('/', { replace: true });
             }
         });
+    }
+
+
+    const handleForgotPassword = () => {
+        // send an email to the user to reset his password
+        if (isLoading) return;
+
+        if (isForgotPasswordLoading) {
+            toast.loading('Sending reset email...', { id: 'forgotPassword' });
+            return;
+        }
+        
+        if (!getValues('email')) {
+            toast.error('Please enter your email to reset your password');
+            return;
+        }
+
+        forgotPassword({
+            email: getValues('email')
+        });
+
     }
 
 
@@ -65,29 +89,30 @@ export default function Login() {
                         />
 
                         <FormInput
-                            id="password" 
-                            type="password" 
-                            label="Password" 
-                            icon={<Lock className='text-slate-600 dark:text-slate-400' />} 
-                            placeholder="••••••••" 
+                            id="password"
+                            type="password"
+                            label="Password"
+                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
+                            placeholder="••••••••"
                             validation={{
                                 required: 'Password is required',
                                 pattern: {
                                     value: /.{8,}/,
                                     message: 'Password must be at least 8 characters'
                                 }
-                            }} 
-                            register={register} 
+                            }}
+                            register={register}
                             errors={errors}
                         />
 
                         {/* handle forgot by enter email to reset password (not have to navigate to custom page) */}
-                        <div className='text-right text-sm text-primary hover:text-primary-hover transition duration-300 cursor-pointer'>
-                            Forgot Password?
+                        <div className='text-right text-sm text-primary hover:text-primary-hover transition duration-300 cursor-pointer'
+                            onClick={handleForgotPassword}>
+                            {isForgotPasswordLoading ? "Sending email..." : "Forgot Password?"}
                         </div>
                         <button className='bg-primary text-white py-3 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300 flex justify-center items-center'
                             type='submit'
-                            disabled={isLoading}>
+                            disabled={isLoading || isForgotPasswordLoading}>
                             {isLoading ? <Spinner color="text-white" /> : 'Login'}
                         </button>
                         <div className='flex items-center gap-2'>
