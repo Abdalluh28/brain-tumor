@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Layers } from 'lucide-react';
 import { PREDICTION_CONFIG } from '@/config/predictionConfig';
 import SegmentationStatsTable from './SegmentationStatsTable';
+import { getFullCaseTumorSliceRows } from './report/reportUtils';
 
 const CASE_LABELS = {
     GLI: 'Glioma (GLI)',
@@ -27,48 +28,9 @@ const PREDICTION_DISPLAY = {
     Others: 'Others',
 };
 
-/** Prefer unified sliceResults; merge legacy fields for older scans. */
-function normalizeSliceRows(fullCase) {
-    if (fullCase.sliceResults?.length) {
-        return fullCase.sliceResults;
-    }
-
-    const previewByZ = new Map(
-        (fullCase.validSlicePreviews ?? []).map((row) => [
-            row.z ?? row.sliceNumber,
-            row,
-        ]),
-    );
-    const tumorByZ = new Map(
-        (fullCase.tumorSlices ?? []).map((row) => [row.z ?? row.sliceNumber, row]),
-    );
-
-    const zKeys = previewByZ.size
-        ? [...previewByZ.keys()]
-        : [...tumorByZ.keys()];
-
-    return zKeys.sort((a, b) => a - b).map((z) => {
-        const preview = previewByZ.get(z) ?? {};
-        const tumor = tumorByZ.get(z) ?? {};
-        const modalities = preview.modalities ?? {};
-
-        return {
-            z,
-            sliceNumber: z,
-            prediction: tumor.prediction ?? null,
-            confidence: tumor.confidence ?? null,
-            modalities,
-            t1cReference:
-                modalities.t1c ?? tumor.xaiOriginal ?? tumor.originalSlice ?? '',
-            xaiOverlay: tumor.xai ?? '',
-            segmentationOverlay: tumor.segmentation ?? '',
-        };
-    });
-}
-
 export default function ScanIdFullCase({ fullCase, caseConfidence }) {
     const sliceRows = useMemo(
-        () => (fullCase ? normalizeSliceRows(fullCase) : []),
+        () => getFullCaseTumorSliceRows(fullCase),
         [fullCase],
     );
 
@@ -100,9 +62,10 @@ export default function ScanIdFullCase({ fullCase, caseConfidence }) {
                             3D slice analysis
                         </h2>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Per-slice classification with all MRI sequences, Grad-CAM++ on
-                            T1c, and segmentation on T1c. Case result from majority vote
-                            across {numValidSlices ?? sliceRows.length} valid slices.
+                            Slices with segmented tumor pixels only. Each row shows all MRI
+                            sequences, Grad-CAM++ on T1c, and segmentation on T1c. Case
+                            result from majority vote across {numValidSlices ?? '—'} valid
+                            slices.
                         </p>
                     </div>
                 </div>
@@ -135,7 +98,7 @@ export default function ScanIdFullCase({ fullCase, caseConfidence }) {
 
             {sliceRows.length === 0 ? (
                 <p className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
-                    No slice results to display for this case.
+                    No tumor-containing slices to display for this case.
                 </p>
             ) : (
                 <div className="px-6 py-4 flex flex-col gap-8 max-h-[80vh] overflow-y-auto">
