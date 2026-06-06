@@ -16,6 +16,9 @@ import MriViewer from "./pages/MriViewer";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
 import RadiologyCenter from "./features/auth/RadiologyCenter";
+import ErrorPage from "./pages/ErrorPage";
+import { ErrorBoundary } from "react-error-boundary";
+import ErrorFallback from "./pages/ErrorFallback";
 
 
 const queryClient = new QueryClient({
@@ -45,28 +48,34 @@ export default function App() {
     const router = createBrowserRouter([
         {
             element: <ProtectedRoutes />,
+            errorElement: <ErrorPage />,
             children: [
                 {
                     element: <AppLayout />,
                     children: [
                         {
                             path: '/',
+                            errorElement: <ErrorPage />,
                             element: <Dashboard />
                         },
                         {
                             path: '/scan',
+                            errorElement: <ErrorPage />,
                             element: <Scan />
                         },
                         {
                             path: '/scan/:scanId',
+                            errorElement: <ErrorPage />,
                             element: <ScanId />
                         },
                         {
                             path: '/viewer',
+                            errorElement: <ErrorPage />,
                             element: <MriViewer />
                         },
                         {
                             path: '/history',
+                            errorElement: <ErrorPage />,
                             element: <History />
                         }
                     ]
@@ -75,6 +84,7 @@ export default function App() {
         },
         {
             element: <AuthRoutes />,
+            errorElement: <ErrorPage />,
             children: [
                 {
                     path: 'login',
@@ -103,10 +113,12 @@ export default function App() {
 
     return (
         <>
-            <QueryClientProvider client={queryClient} >
-                <RouterProvider router={router} />
-                <DismissableToaster />
-            </QueryClientProvider>
+            <ErrorBoundary FallbackComponent={ErrorFallback}>
+                <QueryClientProvider client={queryClient} >
+                    <RouterProvider router={router} />
+                    <DismissableToaster />
+                </QueryClientProvider>
+            </ErrorBoundary>
         </>
     );
 }
