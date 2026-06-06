@@ -1,12 +1,40 @@
-import authImg from '@/assets/auth.png'
-import { Brain, Lock } from 'lucide-react'
+import authImg from '@/assets/auth.png';
+import FormInput from '@/components/FormInput';
+import Spinner from '@/components/Spinner';
+import { Brain, Lock } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useResetPassword } from './useResetPassword';
 
 
 export default function ResetPassword() {
 
+    const navigate = useNavigate();
+
+    // form hook to handle form submission
+    const { register, handleSubmit, reset, formState: { errors }, getValues } = useForm();
+
+    const { resetPassword, isLoading } = useResetPassword();
+    const { id, accessToken } = useParams();
+
+    // form submit handler
+    const handleFormSubmit = (data) => {
+        resetPassword({
+            id,
+            accessToken,
+            password: data.password
+        }, {
+            onSuccess: () => {
+                reset();
+                navigate('/login', { replace: true });
+            }
+        });
+    }
+
 
     return (
-        <div className='w-full flex items-center'>
+        <form className='w-full flex items-center'
+            onSubmit={handleSubmit(handleFormSubmit)}>
             <div className='lg:w-1/2 w-full flex justify-center'>
                 <div className='flex flex-col gap-8 xl:w-2/3 lg:w-3/4 sm:w-2/3 w-[90%]'>
                     <div className="flex gap-2 items-center">
@@ -18,35 +46,49 @@ export default function ResetPassword() {
                             <p className="text-sm text-slate-500">AI-Powered Diagnosis</p>
                         </div>
                     </div>
-
                     <div className='flex flex-col gap-4'>
-                        <div className='flex flex-col gap-1'>
-                            <label htmlFor='password' className='text-sm text-slate-600 dark:text-slate-400'>Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
-                                <label htmlFor='password'>
-                                    <Lock className='text-slate-600 dark:text-slate-400' />
-                                </label>
-                                <input type="password" id='password'
-                                    placeholder='••••••••'
-                                    className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
-                            </div>
-                        </div>
 
-                        <div className='flex flex-col gap-1'>
-                            <label htmlFor='confirmPassword' className='text-sm text-slate-600 dark:text-slate-400'>Confirm Password</label>
-                            <div className='lg:col-span-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-xl border-2 border-slate-200'>
-                                <label htmlFor='confirmPassword'>
-                                    <Lock className='text-slate-600 dark:text-slate-400' />
-                                </label>
-                                <input type="password" id='confirmPassword'
-                                    placeholder='••••••••'
-                                    className='w-full outline-none border-none bg-slate-100 dark:bg-slate-800 p-1' />
-                            </div>
-                        </div>
+                        <FormInput
+                            id="password"
+                            type="password"
+                            label="Password"
+                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
+                            placeholder="••••••••"
+                            validation={{
+                                required: 'Password is required',
+                                pattern: {
+                                    value: /.{8,}/,
+                                    message: 'Password must be at least 8 characters'
+                                }
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
 
-                        <button className='bg-primary text-white py-3 mt-4 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300'>
-                            Submit
+                        <FormInput
+                            id="confirmPassword"
+                            type="password"
+                            label="Confirm Password"
+                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
+                            placeholder="••••••••"
+                            validation={{
+                                required: 'Confirm Password is required',
+                                validate: value => value === getValues('password') || 'Passwords do not match'
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
+
+                        <button className='bg-primary text-white py-3 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300 flex justify-center items-center'
+                            type='submit'
+                            disabled={isLoading}>
+                            {isLoading ? <Spinner color="text-white" /> : 'Reset Password'}
                         </button>
+                        <div className='flex items-center gap-2'>
+                            <span>Don't have an account?</span>
+                            <span className="text-primary hover:text-primary-hover cursor-pointer transition duration-300"
+                                onClick={() => navigate('/register')}>Register Now</span>
+                        </div>
                     </div>
                     <p className='text-center text-sm text-slate-500'>Protected medical system • HIPAA Compliant</p>
                 </div>
@@ -64,7 +106,7 @@ export default function ResetPassword() {
                     </p>
                 </div>
             </div>
-        </div>
+        </form>
     )
 }
 

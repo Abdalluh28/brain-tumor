@@ -1,7 +1,7 @@
 import authImg from '@/assets/auth.png';
 import FormInput from '@/components/FormInput';
 import Spinner from '@/components/Spinner';
-import { Brain, Lock, Mail, User } from 'lucide-react';
+import { Blend, Brain, CreditCard, Lock, Mail, MapPinHouse, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useRadiologyCenter } from './useRadiologyCenter';
@@ -40,7 +40,7 @@ export default function RadiologyCenter() {
                             id="radiologyCenterId"
                             type="text"
                             label="Radiology Center ID"
-                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                            icon={<CreditCard className='text-slate-600 dark:text-slate-400' />}
                             placeholder='123456'
                             validation={{
                                 required: 'Radiology Center ID is required',
@@ -63,11 +63,25 @@ export default function RadiologyCenter() {
                             errors={errors}
                         />
 
+
+                        <FormInput
+                            id='city'
+                            type='text'
+                            label='City'
+                            icon={<Blend className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='New York'
+                            validation={{
+                                required: 'City is required',
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
+
                         <FormInput
                             id='address'
                             type='text'
                             label='Address'
-                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                            icon={<MapPinHouse className='text-slate-600 dark:text-slate-400' />}
                             placeholder='123 Main St'
                             validation={{
                                 required: 'Address is required',
@@ -77,24 +91,10 @@ export default function RadiologyCenter() {
                         />
 
                         <FormInput
-                            id='city'
-                            type='text'
-                            label='City'
-                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
-                            placeholder='New York'
-                            validation={{
-                                required: 'City is required',
-                            }}
-                            register={register}
-                            errors={errors}
-                        />
-
-
-                        <FormInput
                             id="zip"
                             type="text"
                             label="ZIP Code"
-                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
+                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
                             placeholder="10001"
                             validation={{
                                 required: 'ZIP Code is required',
