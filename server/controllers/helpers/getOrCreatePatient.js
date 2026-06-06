@@ -14,6 +14,20 @@ const normalizeOptionalString = (value) => {
     return normalized;
 };
 
+const getPatientIdLookupValues = (patientId) => {
+    const values = [patientId];
+
+    if (/^\d+$/.test(patientId)) {
+        const numericPatientId = Number(patientId);
+
+        if (Number.isSafeInteger(numericPatientId)) {
+            values.push(numericPatientId);
+        }
+    }
+
+    return values;
+};
+
 const getOrCreatePatient = async (reqBody, userId) => {
     const {
         patientId: rawPatientId,
@@ -32,12 +46,22 @@ const getOrCreatePatient = async (reqBody, userId) => {
     // Existing patient selected. Accept either the Mongo _id or the stored
     // patientId value used by the UI.
     if (patientId) {
-        const patientFilter = mongoose.Types.ObjectId.isValid(patientId)
+        const isMongoObjectId = mongoose.Types.ObjectId.isValid(patientId);
+        const patientIdLookupValues = getPatientIdLookupValues(patientId);
+        const patientConditions = patientIdLookupValues.map((value) => ({
+            patientId: value,
+        }));
+
+        if (isMongoObjectId) {
+            patientConditions.unshift({ _id: patientId });
+        }
+
+        const patientFilter = isMongoObjectId
             ? {
                   userId,
-                  $or: [{ _id: patientId }, { patientId }],
+                  $or: patientConditions,
               }
-            : { userId, patientId };
+            : { userId, $or: patientConditions };
 
         const patient = await Patient.findOne(patientFilter);
 
