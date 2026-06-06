@@ -1,31 +1,30 @@
 import authImg from '@/assets/auth.png';
 import FormInput from '@/components/FormInput';
-import { Brain, Lock, Mail, User } from 'lucide-react';
+import Spinner from '@/components/Spinner';
+import { Blend, Brain, CreditCard, Lock, Mail, MapPinHouse, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useRegister } from './useRegister';
-import Spinner from '@/components/Spinner';
+import { useRadiologyCenter } from './useRadiologyCenter';
 
 
-export default function Register() {
+export default function RadiologyCenter() {
 
     const navigate = useNavigate();
-    const { register, handleSubmit, reset, formState: { errors }, getValues } = useForm();
-    const { register: registerApi, isLoading } = useRegister();
+    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+    const { createRadiologyCenter, isLoading } = useRadiologyCenter();
 
-    const handleRegister = (data) => {
-        registerApi(data, {
+    const handleCreate = (data) => {
+        createRadiologyCenter(data, {
             onSuccess: () => {
                 reset();
-                navigate('/', { replace: true });
             }
         })
     }
 
     return (
-        <form className='w-full flex items-center' onSubmit={handleSubmit(handleRegister)} >
+        <form className='w-full flex items-center' onSubmit={handleSubmit(handleCreate)} >
             <div className='lg:w-1/2 w-full flex justify-center'>
-                <div className='flex flex-col gap-8 xl:w-2/3 lg:w-3/4 sm:w-2/3 w-[90%]'>
+                <div className='flex flex-col gap-4 xl:w-2/3 lg:w-3/4 sm:w-2/3 w-[90%]'>
                     <div className="flex gap-2 items-center">
                         <span className="bg-primary rounded-lg px-2 py-2">
                             <Brain color="white" size={32} />
@@ -38,11 +37,24 @@ export default function Register() {
                     <div className='flex flex-col gap-4'>
 
                         <FormInput
+                            id="radiologyCenterId"
+                            type="text"
+                            label="Radiology Center ID"
+                            icon={<CreditCard className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='123456'
+                            validation={{
+                                required: 'Radiology Center ID is required',
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
+
+                        <FormInput
                             id='name'
                             type='text'
                             label='Name'
                             icon={<User className='text-slate-600 dark:text-slate-400' />}
-                            placeholder='John Doe'
+                            placeholder='MRC'
                             validation={{
                                 required: 'Name is required',
                                 minLength: { value: 3, message: 'Name must be at least 3 characters' },
@@ -51,80 +63,74 @@ export default function Register() {
                             errors={errors}
                         />
 
+
                         <FormInput
-                            id='email'
-                            type='email'
-                            label='Email'
-                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
-                            placeholder='abdo@gamil.com'
+                            id='city'
+                            type='text'
+                            label='City'
+                            icon={<Blend className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='New York'
                             validation={{
-                                required: 'Email is required',
-                                pattern: {
-                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                    message: 'Invalid email address',
-                                }
+                                required: 'City is required',
                             }}
                             register={register}
                             errors={errors}
                         />
 
                         <FormInput
-                            id="password"
-                            type="password"
-                            label="Password"
-                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
-                            placeholder="••••••••"
+                            id='address'
+                            type='text'
+                            label='Address'
+                            icon={<MapPinHouse className='text-slate-600 dark:text-slate-400' />}
+                            placeholder='123 Main St'
                             validation={{
-                                required: 'Password is required',
-                                pattern: {
-                                    value: /.{8,}/,
-                                    message: 'Password must be at least 8 characters',
-                                }
+                                required: 'Address is required',
                             }}
                             register={register}
                             errors={errors}
                         />
 
                         <FormInput
-                            id="confirmPassword"
-                            type="password"
-                            label="Confirm Password"
-                            icon={<Lock className='text-slate-600 dark:text-slate-400' />}
-                            placeholder="••••••••"
-                            validation={{
-                                required: 'Confirm Password is required',
-                                validate: value => value === getValues('password') || 'Passwords do not match'
-                            }}
-                            register={register}
-                            errors={errors}
-                        />
-
-                        <FormInput
-                            id="radiologyCenterId"
+                            id="zip"
                             type="text"
-                            label="Radiology Center ID"
+                            label="ZIP Code"
+                            icon={<Mail className='text-slate-600 dark:text-slate-400' />}
+                            placeholder="10001"
+                            validation={{
+                                required: 'ZIP Code is required',
+                                pattern: {
+                                    value: /^\d{5}(-\d{4})?$/,
+                                    message: 'Invalid ZIP Code',
+                                }
+                            }}
+                            register={register}
+                            errors={errors}
+                        />
+
+
+                        <FormInput
+                            id="phone"
+                            type="text"
+                            label="Phone Number"
                             icon={<Brain className='text-slate-600 dark:text-slate-400' />}
                             placeholder="12345"
                             validation={{
-                                required: 'Radiology Center ID is required',
+                                required: 'Phone Number is required',
                                 pattern: {
                                     value: /^\d+$/,
-                                    message: 'Radiology Center ID must be a number',
+                                    message: 'Phone Number must be a number',
                                 }
                             }}
                             register={register}
                             errors={errors}
                         />
 
-                        <span
-                            className="text-sm text-slate-500 self-end hover:text-slate-600 hover:underline hover:underline-offset-4 cursor-pointer transition duration-300"
-                            onClick={() => navigate('/radiologyCenter')}>Create a new Radiology Center?</span>
 
                         <button
                             type='submit'
                             disabled={isLoading}
-                            className='bg-primary text-white py-3 mt-4 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300'>
-                            {isLoading ? <Spinner color="text-white" /> : 'Register'}
+                            className='bg-primary text-white py-3 mt-1 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300'>
+                            {isLoading ? <Spinner color="text-white" /> : 'Create Radiology Center'}
                         </button>
                         <div className='flex items-center gap-2'>
                             <span>Already have an account?</span>

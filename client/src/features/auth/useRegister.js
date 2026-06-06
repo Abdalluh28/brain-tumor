@@ -6,7 +6,7 @@ export const useRegister = () => {
 
     const queryClient = useQueryClient();
 
-    const { mutate, isLoading } = useMutation({
+    const { mutate, isPending } = useMutation({
         mutationFn: (data) => registerApi(data),
         onSuccess: () => {
             toast.success("Registration successful!");
@@ -21,5 +21,5 @@ export const useRegister = () => {
         },
     });
 
-    return { register: mutate, isLoading };
+    return { register: mutate, isLoading: isPending };
 };

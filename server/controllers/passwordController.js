@@ -33,7 +33,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
         from: process.env.EMAIL_USER,
         to: email,
         subject: "Reset Password",
-        text: `${process.env.FRONT_URL}/password/reset/${existingUser._id}/${accessToken}`,
+        text: `${process.env.FRONT_URL}password/reset/${existingUser._id}/${accessToken}`,
     };
 
     await transporter.sendMail(mailOptions);

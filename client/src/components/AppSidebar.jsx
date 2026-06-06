@@ -17,10 +17,13 @@ import { NavLink } from "react-router-dom";
 import { SettingsModal } from "@/features/settings/SettingsModal";
 import { useLogout } from "@/features/auth/useLogout";
 import Spinner from "./Spinner";
+import { useUser } from "@/features/settings/useUser";
 
 export default function AppSidebar() {
 
     const { logout, isLoading } = useLogout();
+    const { user } = useUser();
+    const userName = user?.name.split(' ')[0] + ' ' + user?.name.split(' ')[1]
 
     const handleLogout = () => {
         logout();
@@ -85,7 +88,7 @@ export default function AppSidebar() {
                         <span className="bg-sidebar-theme-toggle dark:bg-sidebar-theme-toggle rounded-full p-2 text-slate">DR</span>
                         <div className="flex flex-col">
                             {/* name */}
-                            <p className="text-md">Dr. John Doe</p>
+                            <p className="text-md">Dr. {userName}</p>
                             {/* role */}
                             <p className="text-xs text-slate-500">Radiologist</p>
                         </div>

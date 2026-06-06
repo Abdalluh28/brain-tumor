@@ -36,3 +36,8 @@ export async function resetPasswordApi(data) {
     const res = await api.post("/password/reset", data);
     return res;
 }
+
+export async function createRadiologyCenterApi(data) {
+    const res = await api.post("/auth/create-radiology-center", data);
+    return res;
+}
