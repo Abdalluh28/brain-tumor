@@ -15,7 +15,7 @@ export default function ForgotPassword({ onBack }) {
             email
         }, {
             onSuccess: () => {
-                logout({ reason: 'password-reset' });
+                logout();
             }
         })
     }

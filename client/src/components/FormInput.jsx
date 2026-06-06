@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
-export default function FormInput({ id, type, label, icon, placeholder, validation, register, errors }) {
+export default function FormInput({ id, type, label, icon, placeholder, validation, register, errors, defaultValue }) {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleShowPassword = (e) => {
@@ -37,6 +37,7 @@ export default function FormInput({ id, type, label, icon, placeholder, validati
                         className='w-full h-11 px-4 rounded-lg border-2 border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed pl-10'
                         {...register(id, validation)}
                         onCopy={handleNoPasswordCopy}
+                        defaultValue={defaultValue}
                     />
                 </div>
                 {type === 'password' && (

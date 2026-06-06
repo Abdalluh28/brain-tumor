@@ -13,7 +13,7 @@ export function useLogout() {
         onSuccess: (_, variables) => {
             const { reason } = variables || {};
 
-            if (reason !== "password-reset") {
+            if (reason === "logout") {
                 toast.success("Logout successful");
             }
 

@@ -23,10 +23,10 @@ export default function AppSidebar() {
 
     const { logout, isLoading } = useLogout();
     const { user } = useUser();
-    const userName = user?.name.split(' ')[0] + ' ' + user?.name.split(' ')[1]
+    const userName = user?.name.split(' ')[0] + ' ' + (user?.name.split(' ')[1] || '')
 
     const handleLogout = () => {
-        logout();
+        logout({ reason: 'logout' });
     }
 
     return (
