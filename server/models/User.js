@@ -23,9 +23,17 @@ const userSchema = new mongoose.Schema(
         lastLogin: {
             type: Date,
         },
+
+        role: {
+            type: String,
+            enum: ["admin", "doctor"],
+            default: "doctor",
+        },
+
         radiologyCenterId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "RadiologyCenter",
+            default: null,
         },
     },
     {

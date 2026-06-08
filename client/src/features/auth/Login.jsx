@@ -1,12 +1,12 @@
 import authImg from '@/assets/auth.png';
+import FormInput from '@/components/FormInput';
 import Spinner from '@/components/Spinner';
 import { Brain, Lock, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
-import { useLogin } from './useLogin';
-import FormInput from '@/components/FormInput';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useForgotPassword } from './useForgotPassword';
+import { useLogin } from './useLogin';
 
 
 export default function Login() {
@@ -110,10 +110,10 @@ export default function Login() {
                             onClick={handleForgotPassword}>
                             {isForgotPasswordLoading ? "Sending email..." : "Forgot Password?"}
                         </div>
-                        <button className='bg-primary text-white py-3 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300 flex justify-center items-center'
+                        <button className='w-full py-3 text-white rounded-xl transition-colors flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-400 disabled:text-white'
                             type='submit'
                             disabled={isLoading || isForgotPasswordLoading}>
-                            {isLoading ? <Spinner color="text-white" /> : 'Login'}
+                            {isLoading ? <Spinner color="text-white" /> : 'Sign In'}
                         </button>
                         <div className='flex items-center gap-2'>
                             <span>Don't have an account?</span>

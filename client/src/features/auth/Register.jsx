@@ -1,17 +1,27 @@
 import authImg from '@/assets/auth.png';
 import FormInput from '@/components/FormInput';
-import { Brain, Lock, Mail, User } from 'lucide-react';
+import Spinner from '@/components/Spinner';
+import { Brain, Lock, Mail, ShieldCheck, Stethoscope, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useRegister } from './useRegister';
-import Spinner from '@/components/Spinner';
 
 
 export default function Register() {
 
     const navigate = useNavigate();
-    const { register, handleSubmit, reset, formState: { errors }, getValues } = useForm();
+    const { register, handleSubmit, reset, formState: { errors }, getValues, watch, setValue } = useForm({
+        defaultValues: {
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            role: 'doctor'
+        }
+    });
     const { register: registerApi, isLoading } = useRegister();
+
+    const role = watch("role");
 
     const handleRegister = (data) => {
         registerApi(data, {
@@ -35,7 +45,31 @@ export default function Register() {
                             <p className="text-sm text-slate-500">AI-Powered Diagnosis</p>
                         </div>
                     </div>
+
+
                     <div className='flex flex-col gap-4'>
+                        <div className='flex flex-col gap-2'>
+                            <p>Register as</p>
+                            <div className='grid grid-cols-2 gap-2'>
+                                <input type="hidden" {...register('role', {
+                                    required: 'Role is required'
+                                })} />
+
+                                <button className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors ${role === 'doctor' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-gray-300 bg-gray-50 dark:bg-gray-800/20 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/20 hover:text-gray-900 dark:hover:text-gray-100'}`}
+                                    type='button'
+                                    onClick={() => setValue('role', 'doctor')}>
+                                    <Stethoscope />
+                                    <span>Doctor</span>
+                                </button>
+
+                                <button className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors ${role === 'admin' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300' : 'border-gray-300 bg-gray-50 dark:bg-gray-800/20 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/20 hover:text-gray-900 dark:hover:text-gray-100'}`}
+                                    type='button'
+                                    onClick={() => setValue('role', 'admin')}>
+                                    <ShieldCheck />
+                                    <span>Admin</span>
+                                </button>
+                            </div>
+                        </div>
 
                         <FormInput
                             id='name'
@@ -99,31 +133,11 @@ export default function Register() {
                             errors={errors}
                         />
 
-                        <FormInput
-                            id="radiologyCenterId"
-                            type="text"
-                            label="Radiology Center ID"
-                            icon={<Brain className='text-slate-600 dark:text-slate-400' />}
-                            placeholder="12345"
-                            validation={{
-                                required: 'Radiology Center ID is required',
-                                pattern: {
-                                    value: /^\d+$/,
-                                    message: 'Radiology Center ID must be a number',
-                                }
-                            }}
-                            register={register}
-                            errors={errors}
-                        />
-
-                        <span
-                            className="text-sm text-slate-500 self-end hover:text-slate-600 hover:underline hover:underline-offset-4 cursor-pointer transition duration-300"
-                            onClick={() => navigate('/radiologyCenter')}>Create a new Radiology Center?</span>
-
                         <button
                             type='submit'
                             disabled={isLoading}
-                            className='bg-primary text-white py-3 mt-4 rounded-xl cursor-pointer hover:bg-primary-hover transition duration-300'>
+                            className={`w-full py-3 text-white rounded-xl transition-colors flex items-center justify-center gap-2 ${role === 'doctor' ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400' : 'bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400'}`}
+                        >
                             {isLoading ? <Spinner color="text-white" /> : 'Register'}
                         </button>
                         <div className='flex items-center gap-2'>
