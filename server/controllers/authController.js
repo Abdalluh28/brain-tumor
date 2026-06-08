@@ -139,40 +139,10 @@ const logout = asyncHandler(async (req, res) => {
     return res.json({ message: "Logout successful" });
 });
 
-const createRadiologyCenter = asyncHandler(async (req, res) => {
-    const { radiologyCenterId, name, address, city, zip, phone } = req.body;
-
-    if (!radiologyCenterId || !name || !address || !city || !zip || !phone) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const existingCenter = await RadiologyCenter.findOne({ radiologyCenterId });
-    if (existingCenter) {
-        return res
-            .status(400)
-            .json({ message: "Radiology center with this ID already exists" });
-    }
-
-    // Create new radiology center
-    const newRadiologyCenter = await RadiologyCenter.create({
-        radiologyCenterId,
-        name,
-        address,
-        city,
-        zip,
-        phone,
-    });
-
-    return res.json({
-        message: "Radiology center created",
-        radiologyCenter: newRadiologyCenter,
-    });
-});
 
 module.exports = {
     register,
     login,
     refresh,
     logout,
-    createRadiologyCenter,
 };

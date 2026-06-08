@@ -19,3 +19,8 @@ export async function deleteUserApi(id) {
     const res = await api.delete(`/user/${id}`);
     return res;
 }
+
+export async function createRadiologyCenterApi(data) {
+    const res = await api.post("/user/create-radiology-center", data);
+    return res;
+}
