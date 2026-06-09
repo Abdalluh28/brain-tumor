@@ -11,7 +11,7 @@ import {
     SidebarTrigger
 } from "@/components/ui/sidebar";
 
-import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X, Eye } from "lucide-react";
+import { Brain, History, LayoutDashboard, LogOut, Settings, Upload, X, Eye, UserRoundCog, Users } from "lucide-react";
 import ThemeToggle from "../features/theme/ThemeToggle";
 import { NavLink } from "react-router-dom";
 import { SettingsModal } from "@/features/settings/SettingsModal";
@@ -61,6 +61,8 @@ export default function AppSidebar() {
                                 { name: 'Dashboard', path: '/', icon: LayoutDashboard },
                                 { name: 'Upload Scan', path: '/scan', icon: Upload },
                                 { name: 'MRI Viewer', path: '/viewer', icon: Eye },
+                                { name: 'patients', path: '/patients', icon: Users },
+                                { name: 'Doctors', path: '/doctors', icon: UserRoundCog },
                                 { name: 'History', path: '/history', icon: History },
                             ].map(item => (
                                 <SidebarMenuItem key={item.name}>
