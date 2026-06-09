@@ -29,6 +29,20 @@ export default function AppSidebar() {
         logout({ reason: 'logout' });
     }
 
+    const routes = user.role === 'admin' ? [
+        { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { name: 'Upload Scan', path: '/scan', icon: Upload },
+        { name: 'MRI Viewer', path: '/viewer', icon: Eye },
+        { name: 'patients', path: '/patients', icon: Users },
+        { name: 'Doctors', path: '/doctors', icon: UserRoundCog },
+        { name: 'History', path: '/history', icon: History },
+    ] : [
+        { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { name: 'Upload Scan', path: '/scan', icon: Upload },
+        { name: 'MRI Viewer', path: '/viewer', icon: Eye },
+        { name: 'History', path: '/history', icon: History },
+    ]
+
     return (
         <Sidebar>
             {/* Header */}
@@ -57,14 +71,7 @@ export default function AppSidebar() {
                         <SidebarMenu>
 
                             {/* array of objects of name, path, and icon */}
-                            {[
-                                { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-                                { name: 'Upload Scan', path: '/scan', icon: Upload },
-                                { name: 'MRI Viewer', path: '/viewer', icon: Eye },
-                                { name: 'patients', path: '/patients', icon: Users },
-                                { name: 'Doctors', path: '/doctors', icon: UserRoundCog },
-                                { name: 'History', path: '/history', icon: History },
-                            ].map(item => (
+                            {routes.map(item => (
                                 <SidebarMenuItem key={item.name}>
                                     <NavLink to={item.path} end>
                                         {({ isActive }) => (

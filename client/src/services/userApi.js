@@ -5,8 +5,10 @@ export async function getUserApi() {
     return res.data;
 }
 
-export async function getDoctorsApi() {
-    const res = await api.get("/user/doctors");
+export async function getDoctorsApi({ search, page, status }) {
+    const res = await api.get(
+        `/user/doctors?search=${search}&page=${page}&status=${status}`,
+    );
     return res.data;
 }
 

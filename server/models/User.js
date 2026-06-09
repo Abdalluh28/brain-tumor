@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema(
             default: "doctor",
         },
 
+        status: {
+            type: String,
+            enum: ["active", "inactive"],
+            default: "active",
+        },
+
         radiologyCenterId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "RadiologyCenter",

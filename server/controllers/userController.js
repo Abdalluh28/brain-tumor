@@ -23,15 +23,75 @@ const getUser = asyncHandler(async (req, res) => {
 
 const getDoctors = asyncHandler(async (req, res) => {
     if (!req.user.radiologyCenterId) {
-        return res.json([]);
+        return res.json({
+            doctors: [],
+            currentPage: 1,
+            totalPages: 0,
+            totalDoctors: 0,
+        });
     }
 
-    const doctors = await User.find({
-        radiologyCenterId: req.user.radiologyCenterId,
-        _id: { $ne: req.user.id },
-    }).select("name");
+    const search = req.query.search?.trim();
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
 
-    return res.json(doctors);
+    const query = {
+        radiologyCenterId: req.user.radiologyCenterId,
+        role: "doctor",
+        _id: { $ne: req.user.id },
+    };
+
+    if (search) {
+        const searchRegex = new RegExp(search, "i");
+
+        query.$or = [{ name: searchRegex }, { email: searchRegex }];
+    }
+
+    const total = await User.countDocuments(query);
+
+    const doctors = await User.find(query)
+        .select("name email createdAt updatedAt status")
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limit);
+
+    const doctorIds = doctors.map((doctor) => doctor._id);
+
+    const scanCounts = await Scan.aggregate([
+        {
+            $match: {
+                userId: { $in: doctorIds },
+            },
+        },
+        {
+            $group: {
+                _id: "$userId",
+                count: { $sum: 1 },
+            },
+        },
+    ]);
+
+    const scanCountByDoctorId = new Map(
+        scanCounts.map((entry) => [entry._id.toString(), entry.count]),
+    );
+
+    return res.json({
+        doctors: doctors.map((doctor) => ({
+            id: doctor._id,
+            name: doctor.name,
+            email: doctor.email,
+            status: doctor.status,
+            createdAt: doctor.createdAt,
+            updatedAt: doctor.updatedAt,
+            scanCount: scanCountByDoctorId.get(doctor._id.toString()) ?? 0,
+        })),
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalDoctors: total,
+        start: total ? skip + 1 : 0,
+        end: skip + doctors.length,
+    });
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -96,20 +156,16 @@ const createRadiologyCenter = asyncHandler(async (req, res) => {
 
     // only admin can create a radiology center
     if (user.role !== "admin") {
-        return res
-            .status(403)
-            .json({
-                message: "You are not authorized to create a radiology center",
-            });
+        return res.status(403).json({
+            message: "You are not authorized to create a radiology center",
+        });
     }
 
     // admin can create a radiology center only if they are not already associated with a radiology center
     if (user.radiologyCenterId) {
-        return res
-            .status(403)
-            .json({
-                message: "You are already associated with a radiology center",
-            });
+        return res.status(403).json({
+            message: "You are already associated with a radiology center",
+        });
     }
 
     const radiologyCenter = await RadiologyCenter.create({
@@ -156,6 +212,12 @@ const joinRadiologyCenter = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.radiologyCenterId) {
+        return res.status(400).json({
+            message: "You are already affiliated with a radiology center",
+        });
     }
 
     user.radiologyCenterId = center._id;

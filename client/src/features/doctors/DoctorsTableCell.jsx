@@ -16,13 +16,6 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
             className:
                 "text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20",
             onClick: () => handleInvite(doctor),
-        },
-        {
-            icon: <Trash />,
-            tooltip: "Remove",
-            className:
-                "text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20",
-            onClick: () => handleDelete(doctor),
         }
     ] : [
         {
@@ -81,15 +74,23 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                     </div>
                 </div>
             </td>
-            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.specialization}</td>
-            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.updatedAt}</td>
-            <td className='py-4 px-4'>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                    {doctor?.status}
-                </span>
-            </td>
-            <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.scanCount}</td>
+            {invitePage ? (
+                <>
+                    <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.experience}</td>
+                    <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.radiologyCenter?.name || "N/A"}</td>
+                </>
+            ) : (
+                <>
+                    <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.updatedAt.split('T')[0]}</td>
+                    <td className='py-4 px-4'>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                            {doctor?.status}
+                        </span>
+                    </td>
+                    <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.scanCount}</td>
+                </>
+            )}
 
             <td className="px-4 py-4">
                 <div className="flex items-center gap-1">

@@ -1,49 +1,15 @@
-import Spinner from '@/components/Spinner'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import HistoryTableCell from './HistoryTableCell'
-import { useScans } from './useScans'
-import { useSearchParams } from 'react-router-dom';
-import { useCallback, useEffect } from 'react';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import { usePagination } from '@/hooks/usePagination';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import HistoryTableCell from './HistoryTableCell';
+import { useScans } from './useScans';
 
 export default function HistoryTable() {
 
-    const [_, setSearchParams] = useSearchParams();
     const { scans, currentPage, totalPages, totalScans, start, end, isLoading } = useScans()
 
     // handle pagination
-
-    // helper function to update the page number
-    // useCallback is used to prevent unnecessary re-renders as this function is used in useEffect
-    const updateParams = useCallback((page) => {
-        setSearchParams(prev => {
-            const params = new URLSearchParams(prev);
-            params.set("page", page);
-            return params
-        })
-    }, [setSearchParams]);
-
-
-    // get the previous page and update the url
-    const handlePrevPage = () => {
-        if (currentPage > 1) {
-            updateParams(currentPage - 1);
-        }
-    }
-
-    // get the next page and update the url (update the search params)
-    const handleNextPage = () => {
-        if (currentPage < totalPages) {
-            updateParams(currentPage + 1);
-        }
-    }
-
-    // handle if current page is greater than total pages
-    useEffect(() => {
-        if (currentPage > totalPages) {
-            updateParams(totalPages);
-        }
-    }, [currentPage, totalPages, updateParams]);
+    const { handlePrevPage, handleNextPage } = usePagination({ currentPage, totalPages })
 
     // handle if loading
     if (isLoading) return (

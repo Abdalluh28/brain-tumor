@@ -22,6 +22,7 @@ import MriViewer from "./pages/MriViewer";
 import Patients from "./pages/Patients";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
+import AdminRoutes from "./components/AdminRoutes";
 
 
 const queryClient = new QueryClient({
@@ -77,14 +78,19 @@ export default function App() {
                             element: <MriViewer />
                         },
                         {
-                            path: '/patients',
-                            errorElement: <ErrorPage />,
-                            element: <Patients />
-                        },
-                        {
-                            path: '/doctors',
-                            errorElement: <ErrorPage />,
-                            element: <Doctors />
+                            element: <AdminRoutes />,
+                            children: [
+                                {
+                                    path: '/patients',
+                                    errorElement: <ErrorPage />,
+                                    element: <Patients />
+                                },
+                                {
+                                    path: '/doctors',
+                                    errorElement: <ErrorPage />,
+                                    element: <Doctors />
+                                },
+                            ]
                         },
                         {
                             path: '/doctors/invite',
