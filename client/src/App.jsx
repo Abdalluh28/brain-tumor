@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
@@ -7,18 +8,21 @@ import { DismissableToaster } from "./components/DismissableToaster";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import AuthRoutes from "./components/AuthRoutes";
 import Login from "./features/auth/Login";
+import RadiologyCenter from "./features/auth/RadiologyCenter";
 import Register from "./features/auth/Register";
 import ResetPassword from "./features/auth/ResetPassword";
 import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import Doctors from "./pages/Doctors";
+import DoctorsInvitation from "./pages/DoctorsInvitation";
+import ErrorFallback from "./pages/ErrorFallback";
+import ErrorPage from "./pages/ErrorPage";
 import History from "./pages/History";
 import MriViewer from "./pages/MriViewer";
+import Patients from "./pages/Patients";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
-import RadiologyCenter from "./features/auth/RadiologyCenter";
-import ErrorPage from "./pages/ErrorPage";
-import { ErrorBoundary } from "react-error-boundary";
-import ErrorFallback from "./pages/ErrorFallback";
+import AdminRoutes from "./components/AdminRoutes";
 
 
 const queryClient = new QueryClient({
@@ -72,6 +76,26 @@ export default function App() {
                             path: '/viewer',
                             errorElement: <ErrorPage />,
                             element: <MriViewer />
+                        },
+                        {
+                            element: <AdminRoutes />,
+                            children: [
+                                {
+                                    path: '/patients',
+                                    errorElement: <ErrorPage />,
+                                    element: <Patients />
+                                },
+                                {
+                                    path: '/doctors',
+                                    errorElement: <ErrorPage />,
+                                    element: <Doctors />
+                                },
+                            ]
+                        },
+                        {
+                            path: '/doctors/invite',
+                            errorElement: <ErrorPage />,
+                            element: <DoctorsInvitation />
                         },
                         {
                             path: '/history',

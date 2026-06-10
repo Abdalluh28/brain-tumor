@@ -6,7 +6,7 @@ const { verifyJWT } = require("../middleware/authMiddleware");
 
 router.route("/").get(verifyJWT, userController.getUser);
 
-router.route('/doctors').get(verifyJWT, userController.getDoctors);
+router.route("/doctors").get(verifyJWT, userController.getDoctors);
 
 router
     .route("/radiology-center")
@@ -15,5 +15,9 @@ router
 router.route("/profile").post(verifyJWT, userController.updateUserProfile);
 
 router.route("/:id").delete(verifyJWT, userController.deleteUser);
+
+router
+    .route("/create-radiology-center")
+    .post(verifyJWT, userController.createRadiologyCenter);
 
 module.exports = router;

@@ -8,22 +8,22 @@ const createTokens = require("../utils/createTokens.js");
 const buildUserInfo = require("../utils/buildUserInfo.js");
 
 const register = asyncHandler(async (req, res) => {
-    const { name, email, password, radiologyCenterId } = req.body;
-
+    const { name, email, password, role } = req.body;
     // check if all fields are filled
-    if (!name || !email || !password || !radiologyCenterId) {
+    if (!name || !email || !password || !role) {
         return res.status(400).json({ message: "All fields are required" });
     }
 
-    const center = await RadiologyCenter.findOne({ radiologyCenterId });
-    if (!center) {
-        return res.status(400).json({ message: "Radiology center not found" });
+    // check if email is valid
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email" });
     }
 
     // check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-        return res.status(401).json({ message: "User already exists" });
+        return res.status(409).json({ message: "User already exists" });
     }
 
     // hash password
@@ -34,8 +34,8 @@ const register = asyncHandler(async (req, res) => {
         name,
         email,
         password: hashedPassword,
+        role,
         lastLogin: new Date(),
-        radiologyCenter: center._id,
     });
 
     const { accessToken } = await createTokens(newUser, res);
@@ -139,40 +139,10 @@ const logout = asyncHandler(async (req, res) => {
     return res.json({ message: "Logout successful" });
 });
 
-const createRadiologyCenter = asyncHandler(async (req, res) => {
-    const { radiologyCenterId, name, address, city, zip, phone } = req.body;
-
-    if (!radiologyCenterId || !name || !address || !city || !zip || !phone) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const existingCenter = await RadiologyCenter.findOne({ radiologyCenterId });
-    if (existingCenter) {
-        return res
-            .status(400)
-            .json({ message: "Radiology center with this ID already exists" });
-    }
-
-    // Create new radiology center
-    const newRadiologyCenter = await RadiologyCenter.create({
-        radiologyCenterId,
-        name,
-        address,
-        city,
-        zip,
-        phone,
-    });
-
-    return res.json({
-        message: "Radiology center created",
-        radiologyCenter: newRadiologyCenter,
-    });
-});
 
 module.exports = {
     register,
     login,
     refresh,
     logout,
-    createRadiologyCenter,
 };

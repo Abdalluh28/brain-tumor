@@ -27,6 +27,8 @@ app.use("/api/user", require("./routes/userRoutes"));
 app.use("/api/password", require("./routes/passwordRoutes"));
 app.use("/api/scan", require("./routes/scanRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+app.use("/api/invitations", require("./routes/invitationRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 
 // Start server after MongoDB connection is established
 mongoose.connection.once("open", () => {

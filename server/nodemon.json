@@ -1,5 +1,6 @@
 {
-  "watch": ["server", "src"],
+  "watch": ["."],
+  "ext": "js,json",
   "ignore": [
     "uploads/",
     "uploads/cache/",

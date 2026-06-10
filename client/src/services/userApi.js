@@ -5,8 +5,10 @@ export async function getUserApi() {
     return res.data;
 }
 
-export async function getDoctorsApi() {
-    const res = await api.get("/user/doctors");
+export async function getDoctorsApi({ search, page, status }) {
+    const res = await api.get(
+        `/user/doctors?search=${search}&page=${page}&status=${status}`,
+    );
     return res.data;
 }
 
@@ -17,5 +19,10 @@ export async function updateUserApi(data) {
 
 export async function deleteUserApi(id) {
     const res = await api.delete(`/user/${id}`);
+    return res;
+}
+
+export async function createRadiologyCenterApi(data) {
+    const res = await api.post("/user/create-radiology-center", data);
     return res;
 }

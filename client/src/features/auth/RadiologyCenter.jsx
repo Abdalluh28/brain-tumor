@@ -4,7 +4,7 @@ import Spinner from '@/components/Spinner';
 import { Blend, Brain, CreditCard, Lock, Mail, MapPinHouse, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useRadiologyCenter } from './useRadiologyCenter';
+import { useRadiologyCenter } from '../dashboard/useRadiologyCenter';
 
 
 export default function RadiologyCenter() {

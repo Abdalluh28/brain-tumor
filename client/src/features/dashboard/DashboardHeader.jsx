@@ -1,10 +1,13 @@
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Tally3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import RadiologyCenter from './RadiologyCenter'
+import { useUser } from '../settings/useUser'
 
 export default function DashboardHeader() {
 
     const navigate = useNavigate()
+    const { user } = useUser();
 
     return (
         <div className='bg-white dark:bg-background dark:border-b dark:border-b-slate-600 flex justify-between items-center p-6 shadow-md flex-wrap gap-4'>
@@ -19,12 +22,14 @@ export default function DashboardHeader() {
                     <p className='text-slate-600 dark:text-slate-400'>Overview of your AI diagnostic system</p>
                 </div>
             </div>
-            <div>
+            {(user.role === 'admin' && !user.radiologyCenterId) ? (
+                <RadiologyCenter />
+            ) : (
                 <button className='bg-blue-600 hover:bg-blue-700 transition duration-300 hover:cursor-pointer text-white px-6 py-2 rounded-xl text-lg'
                     onClick={() => navigate('/scan')}>
                     Upload New Scan
                 </button>
-            </div>
+            )}
         </div>
     )
 }

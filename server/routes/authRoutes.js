@@ -7,6 +7,4 @@ router.route("/login").post(authController.login);
 router.route("/refresh").get(authController.refresh);
 router.route("/logout").post(authController.logout);
 
-router.route('/create-radiology-center').post(authController.createRadiologyCenter);
-
 module.exports = router;
