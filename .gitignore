@@ -19,6 +19,7 @@ samples/nifti/
 .venv/
 venv/
 myenv311/
+venv312/
 
 # Python cache
 __pycache__/

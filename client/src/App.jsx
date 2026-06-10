@@ -5,7 +5,7 @@ import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
 import { DismissableToaster } from "./components/DismissableToaster";
 import ProtectedRoutes from "./components/ProtectedRoutes";
-import AuthRoutes from "./components/authRoutes";
+import AuthRoutes from "./components/AuthRoutes";
 import Login from "./features/auth/Login";
 import Register from "./features/auth/Register";
 import ResetPassword from "./features/auth/ResetPassword";
