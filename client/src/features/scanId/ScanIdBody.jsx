@@ -58,6 +58,7 @@ export default function ScanIdBody() {
                         <ScanIdFullCase
                             fullCase={fullCase}
                             caseConfidence={displayConfidence}
+                            files={files}
                         />
                     ) : null}
                     {scanType !== '3D' ? (

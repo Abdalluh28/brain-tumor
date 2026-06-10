@@ -3,6 +3,7 @@ import { Layers } from 'lucide-react';
 import { PREDICTION_CONFIG } from '@/config/predictionConfig';
 import SegmentationStatsTable from './SegmentationStatsTable';
 import { getFullCaseTumorSliceRows } from './report/reportUtils';
+import TumorVolumeDialog from './volume3d/TumorVolumeDialog';
 
 const CASE_LABELS = {
     GLI: 'Glioma (GLI)',
@@ -28,7 +29,7 @@ const PREDICTION_DISPLAY = {
     Others: 'Others',
 };
 
-export default function ScanIdFullCase({ fullCase, caseConfidence }) {
+export default function ScanIdFullCase({ fullCase, caseConfidence, files }) {
     const sliceRows = useMemo(
         () => getFullCaseTumorSliceRows(fullCase),
         [fullCase],
@@ -85,14 +86,7 @@ export default function ScanIdFullCase({ fullCase, caseConfidence }) {
 
             {maskNiftiPath ? (
                 <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
-                    <a
-                        href={maskNiftiPath}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                        Download 3D segmentation mask (NIfTI)
-                    </a>
+                    <TumorVolumeDialog files={files} maskNiftiPath={maskNiftiPath} />
                 </div>
             ) : null}
 
