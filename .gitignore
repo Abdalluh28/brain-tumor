@@ -19,7 +19,8 @@ samples/nifti/
 .venv/
 venv/
 myenv311/
-
+model_api/venv312/
+model_api/venv/
 # Python cache
 __pycache__/
 *.pyc
