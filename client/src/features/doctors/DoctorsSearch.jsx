@@ -5,6 +5,7 @@ export default function DoctorsSearch() {
 
     const { searchValue, handleSearch } = useSearch();
 
+
     return (
         <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

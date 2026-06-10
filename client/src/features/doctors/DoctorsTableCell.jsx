@@ -5,70 +5,27 @@ import {
 } from "@/components/ui/tooltip";
 
 import { KeyRound, MessageCirclePlus, Pencil, Power, PowerOff, Trash } from "lucide-react";
+import { useSendInvitation } from "./services/useSendInvitation";
+import Spinner from "@/components/Spinner";
 
 
 export default function DoctorsTableCell({ doctor, invitePage }) {
 
-    const actions = invitePage ? [
-        {
-            icon: <MessageCirclePlus />,
-            tooltip: "Invite",
-            className:
-                "text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20",
-            onClick: () => handleInvite(doctor),
-        }
-    ] : [
-        {
-            icon: <Pencil />,
-            tooltip: "Edit",
-            className:
-                "text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20",
-            onClick: () => handleEdit(doctor),
-        },
-        {
-            icon: <KeyRound />,
-            tooltip: "Reset Password",
-            className:
-                "text-slate-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20",
-            onClick: () => handleResetPassword(doctor),
-        },
-        {
-            icon:
-                doctor?.status === "active" ? (
-                    <Power />
-                ) : (
-                    <PowerOff />
-                ),
-            tooltip:
-                doctor?.status === "active"
-                    ? "Deactivate"
-                    : "Activate",
-            className:
-                "text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20",
-            onClick: () => handleToggleStatus(doctor),
-        },
-        {
-            icon: <Trash />,
-            tooltip: "Delete",
-            className:
-                "text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20",
-            onClick: () => handleDelete(doctor),
-        },
-    ];
+    const { sendInvitation, isLoading } = useSendInvitation();
 
 
     return (
         <>
-            <td class="py-4 px-4">
-                <div class="flex items-center gap-3 ">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0  bg-blue-500">
+            <td className="py-4 px-4">
+                <div className="flex items-center gap-3 ">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0  bg-blue-500">
                         {doctor?.name[0]}
                     </div>
                     <div>
-                        <p class="text-sm text-slate-900 dark:text-white ">
+                        <p className="text-sm text-slate-900 dark:text-white ">
                             Dr. {doctor?.name}
                         </p>
-                        <p class="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500">
                             {doctor?.email}
                         </p>
                     </div>
@@ -94,24 +51,92 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
 
             <td className="px-4 py-4">
                 <div className="flex items-center gap-1">
-                    {actions.map((action, index) => (
-                        <Tooltip key={index}>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={action.onClick}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 ${action.className}`}
-                                >
-                                    {action.icon}
-                                </button>
-                            </TooltipTrigger>
+                    {invitePage ? (
+                        <>
+                            {doctor.invitationStatus === "pending" ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+                                    Pending
+                                </span>
+                            ) : (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => sendInvitation(doctor)}
+                                            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
+                                        >
+                                            {isLoading ? <Spinner /> : <MessageCirclePlus />}
+                                        </button>
+                                    </TooltipTrigger>
 
-                            <TooltipContent>
-                                <p>{action.tooltip}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
+                                    <TooltipContent>
+                                        <p>Invite</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        
+                                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
+                                    >
+                                        <Pencil />
+                                    </button>
+                                </TooltipTrigger>
+
+                                <TooltipContent>
+                                    <p>Edit</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        
+                                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                                    >
+                                        <KeyRound />
+                                    </button>
+                                </TooltipTrigger>
+
+                                <TooltipContent>
+                                    <p>Reset Password</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        
+                                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
+                                    >
+
+                                    </button>
+                                </TooltipTrigger>
+
+                                <TooltipContent>
+                                    <p>{doctor.status === "active" ? "Deactivate" : "Activate"}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        
+                                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20`}
+                                    >
+                                        <Trash />
+                                    </button>
+                                </TooltipTrigger>
+
+                                <TooltipContent>
+                                    <p>Delete</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </>
+                    )}
                 </div>
-            </td>
+            </td >
         </>
     )
 }
