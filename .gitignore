@@ -21,6 +21,8 @@ venv/
 myenv311/
 model_api/venv312/
 model_api/venv/
+venv312/
+
 # Python cache
 __pycache__/
 *.pyc
