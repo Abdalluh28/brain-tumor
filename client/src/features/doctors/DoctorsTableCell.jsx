@@ -10,6 +10,7 @@ import Spinner from "@/components/Spinner";
 import EditUser from "./components/EditUser";
 import ResetPassword from "./components/ResetPassword";
 import ActivateUser from "./components/ActivateUser";
+import DeleteUser from "./components/DeleteUser";
 
 
 export default function DoctorsTableCell({ doctor, invitePage }) {
@@ -84,20 +85,7 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                             <EditUser doctor={doctor} />
                             <ResetPassword doctor={doctor} />
                             <ActivateUser doctor={doctor} isActive={isActive} />
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => { }}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-300`}
-                                    >
-                                        <Trash />
-                                    </button>
-                                </TooltipTrigger>
-
-                                <TooltipContent>
-                                    <p>Delete</p>
-                                </TooltipContent>
-                            </Tooltip>
+                            <DeleteUser doctor={doctor} />
                         </>
                     )}
                 </div>
