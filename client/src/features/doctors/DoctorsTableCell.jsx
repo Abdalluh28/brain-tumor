@@ -23,7 +23,7 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
         <>
             <td className="py-4 px-4">
                 <div className="flex items-center gap-3 ">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0  bg-blue-500">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm shrink-0  bg-blue-500">
                         {doctor?.name[0]}
                     </div>
                     <div>

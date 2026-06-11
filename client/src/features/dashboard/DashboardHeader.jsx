@@ -1,8 +1,8 @@
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Tally3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import RadiologyCenter from './RadiologyCenter'
 import { useUser } from '../settings/useUser'
+import RadiologyCenter from './RadiologyCenter'
 
 export default function DashboardHeader() {
 

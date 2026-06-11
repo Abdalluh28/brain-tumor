@@ -1,6 +1,6 @@
 import { Tally3, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
-import Notifications from "./Notifications";
+import Notifications from "../notifications/Notifications";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DoctorsHeader({ invitePage = false }) {

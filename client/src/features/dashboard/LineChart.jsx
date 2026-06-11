@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Line } from 'react-chartjs-2'
-import { useMonthDistribution } from './useMonthDistribution';
+import { useMonthDistribution } from './services/useMonthDistribution';
 import SkeletonLoader from '@/components/SkeletonLoader';
 
 export default function LineChart() {

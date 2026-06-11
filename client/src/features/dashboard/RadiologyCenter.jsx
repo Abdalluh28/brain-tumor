@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Blend, Brain, Mail, MapPinHouse, User } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useRadiologyCenter } from "./useRadiologyCenter";
+import { useRadiologyCenter } from "./services/useRadiologyCenter";
 export default function RadiologyCenter() {
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm();

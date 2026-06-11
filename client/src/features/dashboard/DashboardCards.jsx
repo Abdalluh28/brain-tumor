@@ -1,6 +1,6 @@
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { Brain, TrendingUp } from 'lucide-react';
-import { useDashboardStats } from './useDashboardStats';
+import { useDashboardStats } from './services/useDashboardStats';
 
 export default function DashboardCards() {
 
