@@ -44,9 +44,9 @@ export default function EditUser({ doctor }) {
                             <button
                                 type="button"
                                 onClick={() => { }}
-                                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-300`}
                             >
-                                <Pencil />
+                                <Pencil className="w-4 h-4" />
                             </button>
                         </DialogTrigger>
                     </TooltipTrigger>
