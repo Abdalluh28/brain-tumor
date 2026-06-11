@@ -9,7 +9,6 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useDeleteUser } from "@/features/settings/useDeleteUser";
 import { Trash, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useDeleteUserByAdmin } from "../services/useDeleteUserByAdmin";
