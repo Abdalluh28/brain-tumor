@@ -16,3 +16,8 @@ export async function sendInvitationApi(data) {
     const res = await api.post("/invitations", data);
     return res.data;
 }
+
+export async function sendActivationRequestApi(data) {
+    const res = await api.post("/invitations/activate", data);
+    return res.data;
+}

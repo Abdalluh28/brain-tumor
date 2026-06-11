@@ -12,4 +12,6 @@ router.route("/sent").get(verifyJWT, invitationController.getSentInvitations);
 
 router.route("/").post(verifyJWT, invitationController.sendInvitation);
 
+router.route("/activate").post(verifyJWT, invitationController.sendActivationNotification);
+
 module.exports = router;

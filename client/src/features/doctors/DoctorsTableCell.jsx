@@ -9,11 +9,13 @@ import { useSendInvitation } from "./services/useSendInvitation";
 import Spinner from "@/components/Spinner";
 import EditUser from "./components/EditUser";
 import ResetPassword from "./components/ResetPassword";
+import ActivateUser from "./components/ActivateUser";
 
 
 export default function DoctorsTableCell({ doctor, invitePage }) {
 
     const { sendInvitation, isLoading } = useSendInvitation();
+    const isActive = doctor?.status === "active";
 
 
     return (
@@ -42,8 +44,8 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                 <>
                     <td className='py-3 px-6 text-sm text-slate-600 dark:text-white'>{doctor?.updatedAt.split('T')[0]}</td>
                     <td className='py-4 px-4'>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ${isActive ? ' bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
+                            <div className={`w-1.5 h-1.5 mt-0.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-slate-400'}`}></div>
                             {doctor?.status}
                         </span>
                     </td>
@@ -81,20 +83,7 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                         <>
                             <EditUser doctor={doctor} />
                             <ResetPassword doctor={doctor} />
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => { }}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors duration-300`}
-                                    >
-                                        {doctor.status === "active" ? <Power /> : <PowerOff />}
-                                    </button>
-                                </TooltipTrigger>
-
-                                <TooltipContent>
-                                    <p>{doctor.status === "active" ? "Deactivate" : "Activate"}</p>
-                                </TooltipContent>
-                            </Tooltip>
+                            <ActivateUser doctor={doctor} isActive={isActive} />
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button

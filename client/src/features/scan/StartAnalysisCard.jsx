@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import { useFormContext } from "react-hook-form";
 import { useCallback, useEffect, useRef } from "react";
 import Spinner from "@/components/Spinner";
+import { useUser } from "../settings/useUser";
+import ActivateAccount from "./ActivateAccount";
 
 export default function StartAnalysisCard({ patientData, autoRun }) {
   // trigger to validate form without submitting it
@@ -17,6 +19,10 @@ export default function StartAnalysisCard({ patientData, autoRun }) {
   const dispatch = useDispatch();
   const is3DScan = patientData.scanType === "3D";
   const autoRunRef = useRef(false);
+
+  // check if the user is active or not
+  const { user } = useUser();
+  const isActive = user?.status === "active";
 
   const handleCreateScan = useCallback(async () => {
     // validate required patient info fields based on whether we're creating a new patient
@@ -92,12 +98,13 @@ export default function StartAnalysisCard({ patientData, autoRun }) {
         </ul>
       </div>
       <button
-        className={`bg-primary rounded-xl p-4 text-white hover:bg-primary-hover transition duration-300 text-lg ${isLoading ? "cursor-not-allowed" : "cursor-pointer"}`}
+        className={`bg-primary rounded-xl p-4 text-white hover:bg-primary-hover transition duration-300 text-lg ${isLoading || !isActive ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
         onClick={handleCreateScan}
-        disabled={isLoading}
+        disabled={isLoading || !isActive}
       >
         {isLoading ? <Spinner color="white" /> : "Run Multi-Modality Classification Analysis"}
       </button>
+      {!isActive && <ActivateAccount />}
     </div>
   );
 }

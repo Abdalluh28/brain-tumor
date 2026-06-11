@@ -18,6 +18,7 @@ const getUser = asyncHandler(async (req, res) => {
         role: user.role,
         lastLogin: user.lastLogin,
         radiologyCenterId: user.radiologyCenterId,
+        status: user.status,
     });
 });
 
@@ -94,7 +95,7 @@ const getDoctors = asyncHandler(async (req, res) => {
     });
 });
 
-const updateUserData = async (user, data) => {
+const updateUserData = async (user, data, isAdmin = false) => {
     user.name = data.name ?? user.name;
 
     if (data.email) {
@@ -110,6 +111,10 @@ const updateUserData = async (user, data) => {
         }
 
         user.email = data.email;
+    }
+
+    if (isAdmin && data.status) {
+        user.status = data.status;
     }
 
     return user.save();
@@ -149,13 +154,15 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
     }
 
     // Ensure the user belongs to the admin's radiology center
-    if (user.radiologyCenterId.toString() !== admin.radiologyCenterId.toString()) {
+    if (
+        user.radiologyCenterId.toString() !== admin.radiologyCenterId.toString()
+    ) {
         return res.status(403).json({
             message: "You can only manage users in your radiology center",
         });
     }
 
-    const updatedUser = await updateUserData(user, req.body);
+    const updatedUser = await updateUserData(user, req.body, true);
 
     res.json({
         id: updatedUser._id,
