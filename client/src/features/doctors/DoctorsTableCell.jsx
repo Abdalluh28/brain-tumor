@@ -7,6 +7,7 @@ import {
 import { KeyRound, MessageCirclePlus, Pencil, Power, PowerOff, Trash } from "lucide-react";
 import { useSendInvitation } from "./services/useSendInvitation";
 import Spinner from "@/components/Spinner";
+import EditUser from "./components/EditUser";
 
 
 export default function DoctorsTableCell({ doctor, invitePage }) {
@@ -77,24 +78,11 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                         </>
                     ) : (
                         <>
+                            <EditUser doctor={doctor} />
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        
-                                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-                                    >
-                                        <Pencil />
-                                    </button>
-                                </TooltipTrigger>
-
-                                <TooltipContent>
-                                    <p>Edit</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        
+                                        onClick={() => { }}
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20`}
                                     >
                                         <KeyRound />
@@ -108,10 +96,10 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        
+                                        onClick={() => { }}
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20`}
                                     >
-
+                                        {doctor.status === "active" ? <Power /> : <PowerOff />}
                                     </button>
                                 </TooltipTrigger>
 
@@ -122,7 +110,7 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <button
-                                        
+                                        onClick={() => { }}
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20`}
                                     >
                                         <Trash />

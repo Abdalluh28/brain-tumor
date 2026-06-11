@@ -94,39 +94,74 @@ const getDoctors = asyncHandler(async (req, res) => {
     });
 });
 
+const updateUserData = async (user, data) => {
+    user.name = data.name ?? user.name;
+
+    if (data.email) {
+        const existingUser = await User.findOne({
+            email: data.email,
+        });
+
+        if (
+            existingUser &&
+            existingUser._id.toString() !== user._id.toString()
+        ) {
+            throw new Error("Email already in use");
+        }
+
+        user.email = data.email;
+    }
+
+    return user.save();
+};
+
 const updateUserProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) {
         return res.status(404).json({ message: "User not found" });
     }
 
-    // update user name
-    user.name = req.body.name || user.name;
-
-    // update user email
-    if (req.body.email) {
-        const existingUser = await User.findOne({ email: req.body.email });
-        if (
-            existingUser &&
-            existingUser._id.toString() !== user._id.toString()
-        ) {
-            return res.status(401).json({
-                message: "Email already in use",
-                id: existingUser._id,
-                name: existingUser.name,
-                email: existingUser.email,
-            });
-        }
-        user.email = req.body.email;
-    }
-
-    const updatedUser = await user.save();
+    const updatedUser = await updateUserData(user, req.body);
 
     return res.json({
         id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
         lastLogin: updatedUser.lastLogin,
+    });
+});
+
+const updateUserByAdmin = asyncHandler(async (req, res) => {
+    const admin = await User.findById(req.user.id);
+
+    if (!admin || admin.role !== "admin") {
+        return res.status(403).json({
+            message: "Not authorized",
+        });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+        return res.status(404).json({
+            message: "User not found",
+        });
+    }
+
+    // Ensure the user belongs to the admin's radiology center
+    if (user.radiologyCenterId.toString() !== admin.radiologyCenterId.toString()) {
+        return res.status(403).json({
+            message: "You can only manage users in your radiology center",
+        });
+    }
+
+    const updatedUser = await updateUserData(user, req.body);
+
+    res.json({
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
     });
 });
 
@@ -234,6 +269,7 @@ module.exports = {
     getUser,
     getDoctors,
     updateUserProfile,
+    updateUserByAdmin,
     deleteUser,
     createRadiologyCenter,
     joinRadiologyCenter,

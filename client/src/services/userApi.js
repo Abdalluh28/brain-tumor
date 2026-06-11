@@ -17,6 +17,11 @@ export async function updateUserApi(data) {
     return res.data;
 }
 
+export async function updateUserByAdminApi(data) {
+    const res = await api.post(`/user/${data.id}`, data);
+    return res.data;
+}
+
 export async function deleteUserApi(id) {
     const res = await api.delete(`/user/${id}`);
     return res;

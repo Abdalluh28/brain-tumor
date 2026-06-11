@@ -14,6 +14,8 @@ router
 
 router.route("/profile").post(verifyJWT, userController.updateUserProfile);
 
+router.route('/:id').post(verifyJWT, userController.updateUserByAdmin);
+
 router.route("/:id").delete(verifyJWT, userController.deleteUser);
 
 router

@@ -54,7 +54,7 @@ export default function DoctorsTable({ invitePage = false }) {
                                     </th>
                                     {invitePage ? (
                                         <>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden lg:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Experience
                                             </th>
                                             <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
@@ -63,13 +63,13 @@ export default function DoctorsTable({ invitePage = false }) {
                                         </>
                                     ) : (
                                         <>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden lg:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Joined Date
                                             </th>
                                             <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Status
                                             </th>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden sm:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Scan Count
                                             </th>
                                         </>
