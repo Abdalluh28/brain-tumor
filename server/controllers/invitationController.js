@@ -77,7 +77,7 @@ const getAvailableDoctors = asyncHandler(async (req, res) => {
     const total = await User.countDocuments(query);
 
     const doctors = await User.find(query)
-        .select("name email createdAt updatedAt radiologyCenterId")
+        .select("name email createdAt updatedAt radiologyCenterId status")
         .populate("radiologyCenterId", "name")
         .sort({ name: 1 })
         .skip(skip)
@@ -101,6 +101,7 @@ const getAvailableDoctors = asyncHandler(async (req, res) => {
             email: doctor.email,
             createdAt: doctor.createdAt,
             updatedAt: doctor.updatedAt,
+            status: doctor.status,
 
             experience: calculateExperience(doctor.createdAt),
 
@@ -230,8 +231,67 @@ const getSentInvitations = asyncHandler(async (req, res) => {
     );
 });
 
+const sendActivationNotification = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.status === "active") {
+        return res.status(400).json({ message: "User is already active" });
+    }
+
+    if (!user.radiologyCenterId) {
+        return res.status(400).json({
+            message: "You must be associated with a radiology center",
+        });
+    }
+
+    const center = await RadiologyCenter.findById(user.radiologyCenterId);
+    if (!center) {
+        return res.status(404).json({ message: "Radiology center not found" });
+    }
+
+    const admin = await User.findById(center.ownerId);
+    if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+    }
+
+    try {
+        const notification = await Notification.create({
+            recipientId: admin._id,
+            senderId: user._id,
+            type: "ACCOUNT_ACTIVATION_REQUEST",
+            title: `Activation request for ${center.name}`,
+            message: `${user.name} has requested activation for his account`,
+            data: { userId: user._id },
+            invitationStatus: "pending",
+        });
+
+        return res.status(201).json({
+            message: "Activation request sent successfully",
+            notification,
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({
+                message: "Activation request already exists, please wait",
+            });
+        }
+
+        throw error;
+    }
+});
+
 module.exports = {
     getAvailableDoctors,
     sendInvitation,
     getSentInvitations,
+    sendActivationNotification,
 };

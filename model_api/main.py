@@ -105,14 +105,13 @@ async def _resolve_patient_id(
     if patient_id:
         patient_filter = (
             {
-                "userId": user_id,
                 "$or": [
                     {"_id": ObjectId(patient_id)},
                     {"patientId": patient_id},
-                ],
+                ]
             }
             if ObjectId.is_valid(patient_id)
-            else {"userId": user_id, "patientId": patient_id}
+            else {"patientId": patient_id}
         )
         patient = await patients.find_one(patient_filter)
         if patient:

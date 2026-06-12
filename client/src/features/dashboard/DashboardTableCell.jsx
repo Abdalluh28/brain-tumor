@@ -1,5 +1,4 @@
 import { CircleAlert, CircleCheckBig, CircleEllipsis } from 'lucide-react';
-import React from 'react'
 
 export default function DashboardTableCell({ data }) {
 

@@ -9,15 +9,18 @@ router.route("/").get(verifyJWT, userController.getUser);
 router.route("/doctors").get(verifyJWT, userController.getDoctors);
 
 router
+    .route("/create-radiology-center")
+    .post(verifyJWT, userController.createRadiologyCenter);
+
+    router
     .route("/radiology-center")
     .post(verifyJWT, userController.joinRadiologyCenter);
 
 router.route("/profile").post(verifyJWT, userController.updateUserProfile);
 
+router.route('/:id').post(verifyJWT, userController.updateUserByAdmin);
+
 router.route("/:id").delete(verifyJWT, userController.deleteUser);
 
-router
-    .route("/create-radiology-center")
-    .post(verifyJWT, userController.createRadiologyCenter);
 
 module.exports = router;

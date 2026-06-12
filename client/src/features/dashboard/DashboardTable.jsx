@@ -1,8 +1,7 @@
-import Spinner from '@/components/Spinner';
+import SkeletonLoader from '@/components/SkeletonLoader';
 import { useNavigate } from 'react-router-dom';
 import DashboardTableCell from './DashboardTableCell';
-import { useRecentScans } from './useRecentScans';
-import SkeletonLoader from '@/components/SkeletonLoader';
+import { useRecentScans } from './services/useRecentScans';
 export default function DashboardTable() {
 
     const { data: recentData, isLoading } = useRecentScans();

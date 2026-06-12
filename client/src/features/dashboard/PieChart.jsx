@@ -1,8 +1,6 @@
-import React from 'react'
-import { Pie } from 'react-chartjs-2'
-import { useClassDistribution } from './useClassDistribution'
-import Spinner from '@/components/Spinner';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import { Pie } from 'react-chartjs-2';
+import { useClassDistribution } from './services/useClassDistribution';
 
 export default function PieChart() {
 

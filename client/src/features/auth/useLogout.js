@@ -17,9 +17,7 @@ export function useLogout() {
                 toast.success("Logout successful");
             }
 
-            queryClient.removeQueries({
-                queryKey: ["user"],
-            });
+            queryClient.clear();
             navigate("/login", { replace: true });
         },
 

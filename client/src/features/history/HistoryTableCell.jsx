@@ -6,14 +6,14 @@ import {
 } from "@/components/ui/tooltip";
 import { PREDICTION_CONFIG } from "@/config/predictionConfig";
 import { Eye, Trash } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
+import { useUser } from "../settings/useUser";
 import ExplanationBadges from "./ExplanationBadges";
 import { useDeleteScan } from "./useDeleteScan";
 
 export default function HistoryTableCell({ scan }) {
-    const [searchParams] = useSearchParams();
-    const doctorId = searchParams.get('doctor') ?? null;
+    const { user } = useUser();
 
     const navigate = useNavigate();
     const key = scan.prediction?.toLowerCase() || 'healthy';
@@ -74,7 +74,7 @@ export default function HistoryTableCell({ scan }) {
                         <p>View</p>
                     </TooltipContent>
                 </Tooltip>
-                {!doctorId && (
+                {user.id === scan.userId && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button className='cursor-pointer hover:text-red-500 transition duration-300'

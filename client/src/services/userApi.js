@@ -5,15 +5,26 @@ export async function getUserApi() {
     return res.data;
 }
 
-export async function getDoctorsApi({ search, page, status }) {
+export async function getDoctorsApi({
+    search = "",
+    page = 1,
+    status = "",
+} = {}) {
+
     const res = await api.get(
         `/user/doctors?search=${search}&page=${page}&status=${status}`,
     );
+
     return res.data;
 }
 
 export async function updateUserApi(data) {
     const res = await api.post("/user/profile", data);
+    return res.data;
+}
+
+export async function updateUserByAdminApi(data) {
+    const res = await api.post(`/user/${data.id}`, data);
     return res.data;
 }
 

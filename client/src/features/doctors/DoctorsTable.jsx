@@ -39,14 +39,14 @@ export default function DoctorsTable({ invitePage = false }) {
     const { handlePrevPage, handleNextPage } = usePagination({ currentPage, totalPages });
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="overflow-x-auto">
+        <div className="grid lg:grid-cols-3 grid-cols-1">
+            <div className="history lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
                 {isLoading ? (
                     <SkeletonLoader height={320} />
                 ) : (
                     <>
 
-                        <table className="w-full table-auto">
+                        <table className="w-full table-auto border-collapse">
                             <thead className="">
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                                     <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
@@ -54,7 +54,7 @@ export default function DoctorsTable({ invitePage = false }) {
                                     </th>
                                     {invitePage ? (
                                         <>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden lg:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Experience
                                             </th>
                                             <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
@@ -63,13 +63,13 @@ export default function DoctorsTable({ invitePage = false }) {
                                         </>
                                     ) : (
                                         <>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden lg:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Joined Date
                                             </th>
                                             <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Status
                                             </th>
-                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 hidden sm:table-cell text-left">
+                                            <th className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 text-left">
                                                 Scan Count
                                             </th>
                                         </>

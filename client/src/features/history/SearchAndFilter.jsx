@@ -1,17 +1,37 @@
-import { useState } from "react";
-import Filters from "./Filters";
-import SearchBar from "./SearchBar";
-import { Funnel, SlidersHorizontal } from "lucide-react";
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Funnel, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useUser } from "../settings/useUser";
+import Filters from "./Filters";
+import SearchBar from "./SearchBar";
+import { useGetDoctors } from "./useGetDoctors";
 export default function SearchAndFilter() {
 
     const [showFilters, setShowFilters] = useState(false);
     const [_, setSearchParams] = useSearchParams();
+
+    const { user } = useUser();
+    const { doctors } = useGetDoctors();
+
+    const doctorOptions = [
+        {
+            label: "All",
+            value: "all",
+        },
+        {
+            label: user?.name ? `${user.name} (Me)` : "My Scans",
+            value: "me",
+        },
+        ...(doctors ?? []).map((doctor) => ({
+            label: doctor.name,
+            value: String(doctor.id),
+        })),
+    ];
 
     const updateFilterVisibility = () => {
         setShowFilters(prev => !prev);
@@ -44,7 +64,7 @@ export default function SearchAndFilter() {
                     </Tooltip>
                 </div>
             </div>
-            {showFilters && <Filters />}
+            {showFilters && <Filters doctorOptions={doctorOptions} />}
         </div>
     )
 }

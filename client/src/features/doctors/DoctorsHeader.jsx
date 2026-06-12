@@ -1,10 +1,16 @@
-import { UserPlus } from "lucide-react";
+import { Tally3, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
-import Notifications from "./Notifications";
+import Notifications from "../notifications/Notifications";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DoctorsHeader({ invitePage = false }) {
     return (
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 py-5 pt-16 lg:pt-5">
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 py-5 pt-5">
+            <div className="md:hidden -translate-x-2">
+                    <SidebarTrigger>
+                        <Tally3 className="h-5! w-5! rotate-90" />
+                    </SidebarTrigger>
+                </div>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-1">

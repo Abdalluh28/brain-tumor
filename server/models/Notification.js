@@ -15,7 +15,12 @@ const notificationSchema = new mongoose.Schema(
 
         type: {
             type: String,
-            enum: ["CENTER_INVITATION", "SCAN_FINISHED", "SCAN_FAILED"],
+            enum: [
+                "CENTER_INVITATION",
+                "SCAN_FINISHED",
+                "SCAN_FAILED",
+                "ACCOUNT_ACTIVATION_REQUEST",
+            ],
             required: true,
         },
 
@@ -32,6 +37,11 @@ const notificationSchema = new mongoose.Schema(
             scanId: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "Scan",
+            },
+
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
             },
         },
 
@@ -64,6 +74,50 @@ notificationSchema.index(
         unique: true,
         partialFilterExpression: {
             type: "CENTER_INVITATION",
+            invitationStatus: "pending",
+        },
+    },
+);
+
+notificationSchema.index(
+    {
+        type: 1,
+        recipientId: 1,
+        "data.scanId": 1,
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            type: "SCAN_FINISHED",
+        },
+    },
+);
+
+notificationSchema.index(
+    {
+        type: 1,
+        recipientId: 1,
+        "data.scanId": 1,
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            type: "SCAN_FAILED",
+        },
+    },
+);
+
+notificationSchema.index(
+    {
+        type: 1,
+        recipientId: 1,
+        "data.userId": 1,
+        invitationStatus: 1,
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            type: "ACCOUNT_ACTIVATION_REQUEST",
             invitationStatus: "pending",
         },
     },
