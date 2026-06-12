@@ -215,7 +215,6 @@ const createScan = asyncHandler(async (req, res) => {
         }
 
         try {
-
             // ------------------
             // Validate User
             // ------------------
@@ -224,8 +223,10 @@ const createScan = asyncHandler(async (req, res) => {
                 return res.status(404).json({ message: "User not found" });
             }
 
-            if (user.status === 'inactive') {
-                return res.status(403).json({ message: "Your account is inactive" });
+            if (user.status === "inactive") {
+                return res
+                    .status(403)
+                    .json({ message: "Your account is inactive" });
             }
 
             // ------------------
@@ -372,7 +373,8 @@ const getPublicBaseUrl = (req) => {
         return configured;
     }
 
-    const proto = req?.headers?.["x-forwarded-proto"] || req?.protocol || "http";
+    const proto =
+        req?.headers?.["x-forwarded-proto"] || req?.protocol || "http";
     const host = req?.headers?.["x-forwarded-host"] || req?.get?.("host");
     if (host) {
         return `${proto}://${host}`;
@@ -394,7 +396,9 @@ const toPublicUrl = (rawPath, baseUrl) => {
     }
 
     if (!relative) {
-        const localMarker = path.join(__dirname, "..", "uploads").replace(/\\/g, "/");
+        const localMarker = path
+            .join(__dirname, "..", "uploads")
+            .replace(/\\/g, "/");
         if (normalized.includes(localMarker)) {
             relative = normalized.split(localMarker)[1]?.replace(/^\//, "");
         }
@@ -413,7 +417,8 @@ const toPublicUrl = (rawPath, baseUrl) => {
 };
 
 const filePublicUrl = (file, baseUrl) =>
-    toPublicUrl(file?.storagePath, baseUrl) ?? toPublicUrl(file?.rawPath, baseUrl);
+    toPublicUrl(file?.storagePath, baseUrl) ??
+    toPublicUrl(file?.rawPath, baseUrl);
 
 // ------------------
 // Get All Scans
@@ -440,8 +445,24 @@ const getScans = asyncHandler(async (req, res) => {
 
     // One doctor at a time: default = logged-in user; otherwise a center colleague
     if (!doctor || doctor === "me") {
+        // Current doctor only
         filter.userId = req.user.id;
+    } else if (doctor === "all") {
+        // All doctors in the same radiology center
+        if (req.user.radiologyCenterId) {
+            const centerDoctors = await User.find({
+                radiologyCenterId: req.user.radiologyCenterId,
+            }).select("_id");
+
+            filter.userId = {
+                $in: centerDoctors.map((doctor) => doctor._id),
+            };
+        } else {
+            // User has no center, fallback to own scans
+            filter.userId = req.user.id;
+        }
     } else {
+        // Specific doctor
         const selectedDoctor = await User.findOne({
             _id: doctor,
             radiologyCenterId: req.user.radiologyCenterId,
@@ -466,9 +487,39 @@ const getScans = asyncHandler(async (req, res) => {
         confidenceTo &&
         confidenceTo !== "All"
     ) {
-        filter.confidence = {
-            $gte: Number(confidenceFrom),
-            $lte: Number(confidenceTo),
+        const getDisplayConfidence = {
+            $switch: {
+                branches: [
+                    {
+                        case: { $eq: ["$prediction", "HGG"] },
+                        then: "$confidenceScores.HGG",
+                    },
+                    {
+                        case: { $eq: ["$prediction", "LGG"] },
+                        then: "$confidenceScores.LGG",
+                    },
+                    {
+                        case: { $eq: ["$prediction", "Metastasis"] },
+                        then: "$confidenceScores.Metastasis",
+                    },
+                    {
+                        case: { $eq: ["$prediction", "Healthy"] },
+                        then: "$confidenceScores.Healthy",
+                    },
+                    {
+                        case: { $eq: ["$prediction", "Others"] },
+                        then: "$confidenceScores.Others",
+                    },
+                ],
+                default: "$confidence",
+            },
+        };
+
+        filter.$expr = {
+            $and: [
+                { $gte: [getDisplayConfidence, Number(confidenceFrom)] },
+                { $lte: [getDisplayConfidence, Number(confidenceTo)] },
+            ],
         };
     }
 
@@ -505,12 +556,12 @@ const getScans = asyncHandler(async (req, res) => {
                 radiologyCenterId: req.user.radiologyCenterId,
             }).select("_id");
             const centerUserIds = centerUsers.map((u) => u._id);
-            
+
             centerCondition = {
                 $or: [
                     { radiologyCenterId: req.user.radiologyCenterId },
                     { userId: { $in: centerUserIds } },
-                ]
+                ],
             };
         }
 
@@ -582,8 +633,8 @@ const getScanById = asyncHandler(async (req, res) => {
     }));
     if (scanObject.gradCamPath) {
         scanObject.gradCamPath =
-            toPublicUrl(scanObject.gradCamPath, publicBaseUrl)
-            ?? scanObject.gradCamPath;
+            toPublicUrl(scanObject.gradCamPath, publicBaseUrl) ??
+            scanObject.gradCamPath;
     }
     if (scanObject.xai) {
         scanObject.xai = normalizeXaiDocument(scanObject.xai);

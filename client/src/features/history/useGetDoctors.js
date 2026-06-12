@@ -13,7 +13,7 @@ export const useGetDoctors = () => {
     });
 
     return {
-        doctors: data ?? [],
+        doctors: data?.doctors ?? [],
         isLoading: isUserLoading || isPending,
         error,
         hasRadiologyCenter: Boolean(user?.radiologyCenterId),

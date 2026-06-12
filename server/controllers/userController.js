@@ -39,7 +39,6 @@ const getDoctors = asyncHandler(async (req, res) => {
 
     const query = {
         radiologyCenterId: req.user.radiologyCenterId,
-        role: "doctor",
         _id: { $ne: req.user.id },
     };
 

@@ -45,7 +45,6 @@ export const useScans = () => {
         ],
         retry: false,
         // placeholder data to display previous data while loading new data
-        placeholderData: (prev) => prev,
     });
 
     const {
