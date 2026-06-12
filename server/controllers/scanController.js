@@ -155,8 +155,11 @@ const saveNewPatient = async (patientPayload, userId) => {
         return patientPayload.patient;
     }
 
+    const user = await User.findById(userId).select("radiologyCenterId");
+
     const createPayload = {
         userId,
+        radiologyCenterId: user?.radiologyCenterId,
         name: patientData.patientName,
         age: patientData.patientAge,
         gender: patientData.patientGender,
@@ -325,7 +328,7 @@ const createScan = asyncHandler(async (req, res) => {
                     // Files
                     files,
 
-                    radiologist: req.body.name,
+                    radiologist: req.user.name || "Unknown Radiologist",
 
                     backendPublicUrl:
                         process.env.BACKEND_PUBLIC_URL ||
@@ -495,8 +498,24 @@ const getScans = asyncHandler(async (req, res) => {
 
     // SEARCH by doctor name or patient name
     if (search && search.trim() !== "") {
+        let centerCondition = { userId: req.user.id };
+
+        if (req.user.radiologyCenterId) {
+            const centerUsers = await User.find({
+                radiologyCenterId: req.user.radiologyCenterId,
+            }).select("_id");
+            const centerUserIds = centerUsers.map((u) => u._id);
+            
+            centerCondition = {
+                $or: [
+                    { radiologyCenterId: req.user.radiologyCenterId },
+                    { userId: { $in: centerUserIds } },
+                ]
+            };
+        }
+
         const matchingPatients = await Patient.find({
-            userId: req.user.id,
+            ...centerCondition,
             name: { $regex: search, $options: "i" },
         }).select("_id");
 

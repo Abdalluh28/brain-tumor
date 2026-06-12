@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Patient = require("../../models/Patient");
+const User = require("../../models/User");
 
 const normalizeOptionalString = (value) => {
     if (value === undefined || value === null) {
@@ -56,14 +57,30 @@ const getOrCreatePatient = async (reqBody, userId) => {
             patientConditions.unshift({ _id: patientId });
         }
 
-        const patientFilter = isMongoObjectId
-            ? {
-                  userId,
-                  $or: patientConditions,
-              }
-            : { userId, $or: patientConditions };
+        const currentUser =
+            await User.findById(userId).select("radiologyCenterId");
 
-        const patient = await Patient.findOne(patientFilter);
+        let centerUserIds = [userId];
+        let centerCondition = { userId: userId };
+
+        if (currentUser.radiologyCenterId) {
+            const centerUsers = await User.find({
+                radiologyCenterId: currentUser.radiologyCenterId,
+            }).select("_id");
+            centerUserIds = centerUsers.map((u) => u._id);
+            
+            centerCondition = {
+                $or: [
+                    { radiologyCenterId: currentUser.radiologyCenterId },
+                    { userId: { $in: centerUserIds } },
+                ]
+            };
+        }
+
+        const patient = await Patient.findOne({
+            ...centerCondition,
+            $and: [{ $or: patientConditions }],
+        });
 
         if (patient) {
             return {
