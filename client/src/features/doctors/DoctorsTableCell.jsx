@@ -1,21 +1,13 @@
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 
-import { KeyRound, MessageCirclePlus, Pencil, Power, PowerOff, Trash } from "lucide-react";
-import { useSendInvitation } from "./services/useSendInvitation";
-import Spinner from "@/components/Spinner";
-import EditUser from "./components/EditUser";
-import ResetPassword from "./components/ResetPassword";
 import ActivateUser from "./components/ActivateUser";
 import DeleteUser from "./components/DeleteUser";
+import EditUser from "./components/EditUser";
+import InviteUser from "./components/InviteUser";
+import ResetPassword from "./components/ResetPassword";
 
 
 export default function DoctorsTableCell({ doctor, invitePage }) {
 
-    const { sendInvitation, isLoading } = useSendInvitation();
     const isActive = doctor?.status === "active";
 
 
@@ -57,29 +49,7 @@ export default function DoctorsTableCell({ doctor, invitePage }) {
             <td className="px-4 py-4">
                 <div className="flex items-center gap-1">
                     {invitePage ? (
-                        <>
-                            {doctor.invitationStatus === "pending" ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                                    Pending
-                                </span>
-                            ) : (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            onClick={() => sendInvitation(doctor)}
-                                            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-                                        >
-                                            {isLoading ? <Spinner /> : <MessageCirclePlus />}
-                                        </button>
-                                    </TooltipTrigger>
-
-                                    <TooltipContent>
-                                        <p>Invite</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            )}
-                        </>
+                        <InviteUser doctor={doctor} />
                     ) : (
                         <>
                             <EditUser doctor={doctor} />

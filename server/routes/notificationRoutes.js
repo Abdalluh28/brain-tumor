@@ -14,6 +14,10 @@ router
     .route("/:id/reject")
     .post(verifyJWT, notificationController.rejectInvitation);
 
+router
+    .route("/activation-request/:notificationId")
+    .patch(verifyJWT, notificationController.respondToActivationRequest);
+
 router.route("/:id/read").patch(verifyJWT, notificationController.markAsRead);
 router.route("/read-all").patch(verifyJWT, notificationController.markAllAsRead);
 

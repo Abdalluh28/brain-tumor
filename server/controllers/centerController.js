@@ -227,8 +227,13 @@ const respondToJoinCenterRequest = asyncHandler(async (req, res) => {
 
     if (action === "reject") {
         notification.invitationStatus = "rejected";
+        notification.isRead = true;
+        notification.readAt = new Date();
         await notification.save();
-        return res.json({ message: "Join request rejected successfully" });
+        return res.json({
+            message: "Join request rejected successfully",
+            action: "reject",
+        });
     }
 
     if (action === "accept") {
@@ -241,9 +246,28 @@ const respondToJoinCenterRequest = asyncHandler(async (req, res) => {
         await doctor.save();
 
         notification.invitationStatus = "accepted";
+        notification.isRead = true;
+        notification.readAt = new Date();
         await notification.save();
 
-        return res.json({ message: "Join request accepted successfully" });
+        await Notification.updateMany(
+            {
+                senderId: notification.senderId,
+                type: "JOIN_CENTER_REQUEST",
+                invitationStatus: "pending",
+            },
+            {
+                $set: {
+                    invitationStatus: "rejected",
+                },
+            },
+        );
+
+        return res.json({
+            message: "Join request accepted successfully",
+            action: "accept",
+            name: doctor.name,
+        });
     }
 
     return res.status(400).json({ message: "Invalid action" });

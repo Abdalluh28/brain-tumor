@@ -2,6 +2,7 @@ import MriViewerPanel from '@/features/mri-viewer/MriViewerPanel';
 import { Eye } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Tally3 } from 'lucide-react';
+import Notifications from '@/features/notifications/Notifications';
 
 export default function MriViewer() {
     return (
@@ -24,6 +25,10 @@ export default function MriViewer() {
                         </p>
                     </div>
                 </div>
+                <div className="flex items-center gap-4">
+                    <Notifications />
+                </div>
+
             </div>
 
             {/* Content */}

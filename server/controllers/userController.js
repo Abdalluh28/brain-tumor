@@ -161,7 +161,18 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
         });
     }
 
+    const previousStatus = user.status;
+
     const updatedUser = await updateUserData(user, req.body, true);
+
+    // if the admin activate the user, delete all pending activation requests
+    if (previousStatus !== "active" && updatedUser.status === "active") {
+        await Notification.deleteMany({
+            type: "ACCOUNT_ACTIVATION_REQUEST",
+            "data.userId": updatedUser._id,
+            invitationStatus: "pending",
+        });
+    }
 
     res.json({
         id: updatedUser._id,

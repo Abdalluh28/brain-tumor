@@ -9,12 +9,12 @@ export async function getCentersApi({ search, location, admin, page }) {
 
 export async function createRadiologyCenterApi(data) {
     const res = await api.post("/centers/create", data);
-    return res;
+    return res.data
 }
 
 export async function sendJoinCenterRequestApi(id) {
     const res = await api.post(`/centers/${id}/join-request`);
-    return res;
+    return res.data
 }
 
 export async function getJoinCenterRequestsApi() {
@@ -24,5 +24,5 @@ export async function getJoinCenterRequestsApi() {
 
 export async function respondToJoinCenterRequestApi(data) {
     const res = await api.patch(`/centers/${data.notificationId}`, data);
-    return res;
+    return res.data
 }

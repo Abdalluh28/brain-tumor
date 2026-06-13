@@ -64,6 +64,7 @@ export default function TableCell({ center }) {
                         <TooltipTrigger asChild>
                             <button
                                 onClick={handleSendRequest}
+                                disabled={isLoading}
                                 className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20`}
                             >
                                 {isLoading ? <Spinner color="white" /> : <MessageCirclePlus />}

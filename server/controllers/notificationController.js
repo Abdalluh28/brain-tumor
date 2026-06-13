@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 const RadiologyCenter = require("../models/RadiologyCenter");
 const asyncHandler = require("../middleware/asyncHandler");
+const { getAdminCenter } = require("./invitationController");
 
 const formatNotification = (notification) => ({
     id: notification._id,
@@ -30,6 +31,23 @@ const formatNotification = (notification) => ({
 const getNotifications = asyncHandler(async (req, res) => {
     const notifications = await Notification.find({
         recipientId: req.user.id,
+        $or: [
+            {
+                type: {
+                    $in: [
+                        "CENTER_INVITATION",
+                        "ACCOUNT_ACTIVATION_REQUEST",
+                        "JOIN_CENTER_REQUEST",
+                    ],
+                },
+                invitationStatus: "pending",
+            },
+            {
+                type: {
+                    $in: ["SCAN_FINISHED", "SCAN_FAILED"],
+                },
+            },
+        ],
     })
         .populate("senderId", "name email")
         .populate("data.centerId", "name")
@@ -76,7 +94,7 @@ const markAllAsRead = asyncHandler(async (req, res) => {
                 isRead: true,
                 readAt: new Date(),
             },
-        }
+        },
     );
 
     return res.json({
@@ -168,6 +186,80 @@ const rejectInvitation = asyncHandler(async (req, res) => {
     return res.json({ message: "Invitation rejected" });
 });
 
+const respondToActivationRequest = asyncHandler(async (req, res) => {
+    const { notificationId } = req.params;
+    const { action } = req.body;
+
+    const { center, error } = await getAdminCenter(req.user);
+    if (error) {
+        return res.status(error.status).json({ message: error.message });
+    }
+
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+    }
+
+    if (notification.type !== "ACCOUNT_ACTIVATION_REQUEST") {
+        return res.status(400).json({ message: "Invalid notification type" });
+    }
+
+    if (notification.invitationStatus !== "pending") {
+        return res
+            .status(400)
+            .json({ message: "Request is no longer pending" });
+    }
+
+    if (notification.recipientId.toString() !== req.user.id) {
+        return res.status(403).json({
+            message: "You are not authorized to respond to this request",
+        });
+    }
+
+    if (action === "reject") {
+        notification.invitationStatus = "rejected";
+        notification.isRead = true;
+        notification.readAt = new Date();
+        await notification.save();
+        return res.json({
+            message: "Activation request rejected successfully",
+            action: "reject",
+        });
+    }
+
+    if (action === "accept") {
+        const user = await User.findById(notification.data.userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (
+            !user.radiologyCenterId ||
+            user.radiologyCenterId.toString() !== center._id.toString()
+        ) {
+            return res.status(403).json({
+                message: "User does not belong to your radiology center",
+            });
+        }
+
+        user.status = "active";
+        await user.save();
+
+        notification.invitationStatus = "accepted";
+        notification.isRead = true;
+        notification.readAt = new Date();
+        await notification.save();
+
+        return res.json({
+            message: "Activation request accepted successfully",
+            action: "accept",
+            name: user.name,
+        });
+    }
+
+    return res.status(400).json({ message: "Invalid action" });
+});
+
 module.exports = {
     getNotifications,
     getUnreadCount,
@@ -175,4 +267,5 @@ module.exports = {
     markAllAsRead,
     acceptInvitation,
     rejectInvitation,
+    respondToActivationRequest,
 };
