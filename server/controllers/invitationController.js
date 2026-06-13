@@ -90,8 +90,21 @@ const getAvailableDoctors = asyncHandler(async (req, res) => {
         invitationStatus: "pending",
     }).select("recipientId");
 
+    const pendingJoinRequests = await Notification.find({
+        type: "JOIN_CENTER_REQUEST",
+        "data.centerId": center._id,
+        invitationStatus: "pending",
+    }).select("senderId _id");
+
     const invitedDoctorIds = new Set(
         pendingInvites.map((invite) => invite.recipientId.toString()),
+    );
+
+    const joinRequestMap = new Map(
+        pendingJoinRequests.map((n) => [
+            n.senderId.toString(),
+            n._id.toString(),
+        ]),
     );
 
     return res.json({
@@ -115,6 +128,13 @@ const getAvailableDoctors = asyncHandler(async (req, res) => {
             invitationStatus: invitedDoctorIds.has(doctor._id.toString())
                 ? "pending"
                 : null,
+
+            joinRequestStatus: joinRequestMap.has(doctor._id.toString())
+                ? "pending"
+                : null,
+
+            joinRequestNotificationId:
+                joinRequestMap.get(doctor._id.toString()) || null,
         })),
 
         currentPage: page,
@@ -290,6 +310,7 @@ const sendActivationNotification = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+    getAdminCenter,
     getAvailableDoctors,
     sendInvitation,
     getSentInvitations,

@@ -8,7 +8,6 @@ import { DismissableToaster } from "./components/DismissableToaster";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import AuthRoutes from "./components/AuthRoutes";
 import Login from "./features/auth/Login";
-import RadiologyCenter from "./features/auth/RadiologyCenter";
 import Register from "./features/auth/Register";
 import ResetPassword from "./features/auth/ResetPassword";
 import AppLayout from "./layouts/AppLayout";
@@ -23,6 +22,7 @@ import Patients from "./pages/Patients";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
 import AdminRoutes from "./components/AdminRoutes";
+import RadiologyCenter from "./pages/RadiologyCenter";
 
 
 const queryClient = new QueryClient({
@@ -101,6 +101,11 @@ export default function App() {
                             path: '/history',
                             errorElement: <ErrorPage />,
                             element: <History />
+                        }, 
+                        {
+                            path: 'radiology-centers',
+                            errorElement: <ErrorPage />,
+                            element: <RadiologyCenter />
                         }
                     ]
                 }
@@ -117,10 +122,6 @@ export default function App() {
                 {
                     path: 'register',
                     element: <Register />
-                },
-                {
-                    path: 'radiologyCenter',
-                    element: <RadiologyCenter />
                 },
                 {
                     path: 'password/reset/:id/:accessToken',

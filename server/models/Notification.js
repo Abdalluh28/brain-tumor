@@ -20,6 +20,7 @@ const notificationSchema = new mongoose.Schema(
                 "SCAN_FINISHED",
                 "SCAN_FAILED",
                 "ACCOUNT_ACTIVATION_REQUEST",
+                "JOIN_CENTER_REQUEST",
             ],
             required: true,
         },
@@ -118,6 +119,23 @@ notificationSchema.index(
         unique: true,
         partialFilterExpression: {
             type: "ACCOUNT_ACTIVATION_REQUEST",
+            invitationStatus: "pending",
+        },
+    },
+);
+
+notificationSchema.index(
+    {
+        type: 1,
+        recipientId: 1,
+        senderId: 1,
+        "data.centerId": 1,
+        invitationStatus: 1,
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            type: "JOIN_CENTER_REQUEST",
             invitationStatus: "pending",
         },
     },

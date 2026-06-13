@@ -11,6 +11,9 @@ export function useMarkAllAsRead() {
             queryClient.invalidateQueries({
                 queryKey: ["notifications"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["unreadCount"],
+            });
         },
         onError: (error) => {
             const message =

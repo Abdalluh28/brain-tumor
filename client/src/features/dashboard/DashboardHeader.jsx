@@ -3,6 +3,7 @@ import { Tally3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../settings/useUser'
 import RadiologyCenter from './RadiologyCenter'
+import Notifications from '../notifications/Notifications'
 
 export default function DashboardHeader() {
 
@@ -25,10 +26,13 @@ export default function DashboardHeader() {
             {(user.role === 'admin' && !user.radiologyCenterId) ? (
                 <RadiologyCenter />
             ) : (
-                <button className='bg-blue-600 hover:bg-blue-700 transition duration-300 hover:cursor-pointer text-white px-6 py-2 rounded-xl text-lg'
-                    onClick={() => navigate('/scan')}>
-                    Upload New Scan
-                </button>
+                <div className="flex items-center gap-4">
+                    <Notifications />
+                    <button className='bg-blue-600 hover:bg-blue-700 transition duration-300 hover:cursor-pointer text-white px-6 py-2 rounded-xl text-lg'
+                        onClick={() => navigate('/scan')}>
+                        Upload New Scan
+                    </button>
+                </div>
             )}
         </div>
     )

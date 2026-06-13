@@ -9,6 +9,7 @@ import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { ScanReportPrintView } from "./ScanReportPrintView";
 import { preloadReportImages, waitForImages } from "./reportUtils";
+import Notifications from "@/features/notifications/Notifications";
 
 export default function ScanReportActions({ scan, scanId, date, time }) {
     const printRef = useRef(null);
@@ -70,7 +71,8 @@ export default function ScanReportActions({ scan, scanId, date, time }) {
 
     return (
         <>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
+                <Notifications />
                 <Button
                     type="button"
                     disabled={busy}

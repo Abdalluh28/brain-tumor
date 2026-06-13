@@ -1,14 +1,14 @@
 import { getUnreadCountApi } from "@/services/notificationApi";
 import { useQuery } from "@tanstack/react-query";
 
-export function useGetAvailableDoctors() {
+export function useGetUnreadCount() {
     const { data, isPending } = useQuery({
         queryFn: () => getUnreadCountApi(),
-        queryKey: ["availableDoctors"],
+        queryKey: ["unreadCount"],
     });
 
     return {
-        notifications: data ?? [],
+        unreadCount: data?.count ?? 0,
         isLoading: isPending,
     };
 }

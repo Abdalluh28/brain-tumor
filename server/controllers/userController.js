@@ -161,7 +161,18 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
         });
     }
 
+    const previousStatus = user.status;
+
     const updatedUser = await updateUserData(user, req.body, true);
+
+    // if the admin activate the user, delete all pending activation requests
+    if (previousStatus !== "active" && updatedUser.status === "active") {
+        await Notification.deleteMany({
+            type: "ACCOUNT_ACTIVATION_REQUEST",
+            "data.userId": updatedUser._id,
+            invitationStatus: "pending",
+        });
+    }
 
     res.json({
         id: updatedUser._id,
@@ -183,57 +194,6 @@ const deleteUser = asyncHandler(async (req, res) => {
     await User.deleteOne({ _id: user._id });
 
     return res.status(200).json({ message: "User deleted" });
-});
-
-const createRadiologyCenter = asyncHandler(async (req, res) => {
-    const { name, address, city, state, zip, phone } = req.body;
-    const userId = req.user.id;
-
-    if (!name || !address || !city || !state || !zip || !phone) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const user = await User.findById(userId);
-
-    // only admin can create a radiology center
-    if (user.role !== "admin") {
-        return res.status(403).json({
-            message: "You are not authorized to create a radiology center",
-        });
-    }
-
-    // admin can create a radiology center only if they are not already associated with a radiology center
-    if (user.radiologyCenterId) {
-        return res.status(403).json({
-            message: "You are already associated with a radiology center",
-        });
-    }
-
-    const radiologyCenter = await RadiologyCenter.create({
-        name,
-        address,
-        city,
-        state,
-        zip,
-        phone,
-        ownerId: userId,
-    });
-
-    // update user's radiology center id
-    user.radiologyCenterId = radiologyCenter._id;
-    await user.save();
-
-    return res.status(201).json({
-        message: "Radiology center created successfully",
-        id: radiologyCenter._id,
-        name: radiologyCenter.name,
-        address: radiologyCenter.address,
-        city: radiologyCenter.city,
-        state: radiologyCenter.state,
-        zip: radiologyCenter.zip,
-        phone: radiologyCenter.phone,
-        ownerId: radiologyCenter.ownerId,
-    });
 });
 
 const joinRadiologyCenter = asyncHandler(async (req, res) => {
@@ -277,6 +237,5 @@ module.exports = {
     updateUserProfile,
     updateUserByAdmin,
     deleteUser,
-    createRadiologyCenter,
     joinRadiologyCenter,
 };

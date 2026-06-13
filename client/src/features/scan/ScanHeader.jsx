@@ -1,5 +1,6 @@
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Tally3 } from 'lucide-react'
+import Notifications from '../notifications/Notifications'
 
 export default function ScanHeader() {
     return (
@@ -14,6 +15,9 @@ export default function ScanHeader() {
                     <h1 className='text-3xl font-semibold'>Upload MRI Scan</h1>
                     <p className='text-slate-600 dark:text-slate-400'>Upload a brain MRI scan for AI-powered tumor classification</p>
                 </div>
+            </div>
+            <div className="flex items-center gap-4">
+                <Notifications />
             </div>
         </div>
     )

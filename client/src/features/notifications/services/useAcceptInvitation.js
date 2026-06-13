@@ -1,12 +1,20 @@
 import { acceptInvitationApi } from "@/services/notificationApi";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 export function useAcceptInvitation() {
+
+    const queryClient = useQueryClient();
+
     const { mutate, isPending } = useMutation({
         mutationFn: (id) => acceptInvitationApi(id),
         onSuccess: (data) => {
-            console.log(data);
+            queryClient.invalidateQueries({
+                queryKey: ["notifications"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["user"],
+            });
             toast.success(`You have joined ${data?.radiologyCenterName}`);
         },
         onError: (error) => {

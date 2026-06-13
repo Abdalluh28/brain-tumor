@@ -2,6 +2,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Tally3 } from 'lucide-react'
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import Notifications from '../notifications/Notifications'
 
 export default function HistoryHeader() {
 
@@ -20,10 +21,13 @@ export default function HistoryHeader() {
                     <p className=' text-slate-600 dark:text-slate-400'>View and manage all previous MRI scans and classifications</p>
                 </div>
             </div>
-            <button className='bg-primary px-6 py-2 rounded-lg text-white text-lg cursor-pointer hover:bg-primary-hover transition duration-300'
-                onClick={() => navigate('/scan')}>
-                Upload New Scan
-            </button>
+            <div className="flex items-center gap-4">
+                <Notifications />
+                <button className='bg-primary px-6 py-2 rounded-lg text-white text-lg cursor-pointer hover:bg-primary-hover transition duration-300'
+                    onClick={() => navigate('/scan')}>
+                    Upload New Scan
+                </button>
+            </div>
         </div>
     )
 }
