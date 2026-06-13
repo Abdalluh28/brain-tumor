@@ -8,10 +8,6 @@ router.route("/").get(verifyJWT, userController.getUser);
 
 router.route("/doctors").get(verifyJWT, userController.getDoctors);
 
-router
-    .route("/create-radiology-center")
-    .post(verifyJWT, userController.createRadiologyCenter);
-
     router
     .route("/radiology-center")
     .post(verifyJWT, userController.joinRadiologyCenter);

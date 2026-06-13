@@ -1,4 +1,4 @@
-import { createRadiologyCenterApi } from "@/services/userApi";
+import { createRadiologyCenterApi } from "@/services/centers";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 

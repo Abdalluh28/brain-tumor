@@ -290,6 +290,7 @@ const sendActivationNotification = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+    getAdminCenter,
     getAvailableDoctors,
     sendInvitation,
     getSentInvitations,

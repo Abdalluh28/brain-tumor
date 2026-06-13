@@ -33,7 +33,3 @@ export async function deleteUserApi(id) {
     return res;
 }
 
-export async function createRadiologyCenterApi(data) {
-    const res = await api.post("/user/create-radiology-center", data);
-    return res;
-}

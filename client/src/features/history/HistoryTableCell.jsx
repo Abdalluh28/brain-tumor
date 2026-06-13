@@ -74,7 +74,7 @@ export default function HistoryTableCell({ scan }) {
                         <p>View</p>
                     </TooltipContent>
                 </Tooltip>
-                {user.id === scan.userId && (
+                {((user.id === scan.userId) || (user.role === 'admin')) && (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button className='cursor-pointer hover:text-red-500 transition duration-300'

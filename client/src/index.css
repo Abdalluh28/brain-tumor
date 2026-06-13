@@ -201,7 +201,8 @@
 .dark .scan,
 .dark .history,
 .dark .doctors,
-.dark .patients {
+.dark .patients,
+.dark .centers {
     --upload-label-bg: #151f33;
     --upload-icon-bg: #172445;
 
