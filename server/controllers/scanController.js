@@ -16,6 +16,7 @@ const {
     normalizeXaiDocument,
     pickXaiPreviewPath,
 } = require("../helpers/xaiCache");
+const Notification = require("../models/Notification");
 
 // ------------------
 // Multer Local Storage (Better for ML processing)
@@ -350,9 +351,20 @@ const createScan = asyncHandler(async (req, res) => {
                 });
             }
 
+            const notification = await Notification.create({
+                recipientId: req.user.id,
+                data: {
+                    scanId: scan._id,
+                },
+                type: "SCAN_FINISHED",
+                message: `Scan ${scan._id} uploaded and analyzed successfully`,
+                isRead: false,
+            })
+
             res.status(201).json({
                 message: "Scan uploaded and analyzed successfully",
                 scan,
+                notification
             });
         } catch (error) {
             removeUploadedFiles(req.files);
