@@ -90,18 +90,18 @@ export default function App() {
                                     errorElement: <ErrorPage />,
                                     element: <Doctors />
                                 },
+                                {
+                                    path: '/doctors/invite',
+                                    errorElement: <ErrorPage />,
+                                    element: <DoctorsInvitation />
+                                },
                             ]
-                        },
-                        {
-                            path: '/doctors/invite',
-                            errorElement: <ErrorPage />,
-                            element: <DoctorsInvitation />
                         },
                         {
                             path: '/history',
                             errorElement: <ErrorPage />,
                             element: <History />
-                        }, 
+                        },
                         {
                             path: 'radiology-centers',
                             errorElement: <ErrorPage />,

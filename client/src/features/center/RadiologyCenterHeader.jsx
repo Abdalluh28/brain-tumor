@@ -1,5 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tally3 } from "lucide-react";
+import Notifications from "../notifications/Notifications";
 
 export default function RadiologyCenterHeader() {
     return (
@@ -15,6 +16,7 @@ export default function RadiologyCenterHeader() {
                     <p className=' text-slate-600 dark:text-slate-400'>View all radiology centers</p>
                 </div>
             </div>
+            <Notifications />
         </div>
     )
 }

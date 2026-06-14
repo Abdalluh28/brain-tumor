@@ -154,6 +154,15 @@ const acceptInvitation = asyncHandler(async (req, res) => {
         { invitationStatus: "rejected", isRead: true, readAt: new Date() },
     );
 
+    await Notification.updateMany(
+        {
+            senderId: user._id,
+            type: "JOIN_CENTER_REQUEST",
+            invitationStatus: "pending",
+        },
+        { invitationStatus: "rejected", isRead: true, readAt: new Date() },
+    );
+
     return res.json({
         message: "Invitation accepted",
         radiologyCenterId: center._id,

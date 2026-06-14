@@ -12,6 +12,9 @@ export function useRespondToActivationRequest() {
                 queryKey: ["notifications"],
             });
             queryClient.invalidateQueries({
+                queryKey: ["unreadCount"],
+            })
+            queryClient.invalidateQueries({
                 queryKey: ["myDoctors"],
             });
             if (data.action === "accept") {
