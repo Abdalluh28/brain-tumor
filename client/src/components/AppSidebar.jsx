@@ -33,7 +33,6 @@ export default function AppSidebar() {
         { name: 'Dashboard', path: '/', icon: LayoutDashboard },
         { name: 'Upload Scan', path: '/scan', icon: Upload },
         { name: 'MRI Viewer', path: '/viewer', icon: Eye },
-        { name: 'patients', path: '/patients', icon: Users },
         { name: 'Doctors', path: '/doctors', icon: UserRoundCog },
         { name: 'History', path: '/history', icon: History },
     ] : user.radiologyCenterId ? [

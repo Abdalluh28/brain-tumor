@@ -347,7 +347,7 @@ const createScan = asyncHandler(async (req, res) => {
                 // Ensure RadiologyCenterId is saved with the scan for fast authorization lookups
                 if (user.radiologyCenterId) {
                     await Scan.findByIdAndUpdate(scan._id, {
-                        $set: { RadiologyCenterId: user.radiologyCenterId }
+                        $set: { RadiologyCenterId: user.radiologyCenterId },
                     });
                     scan.RadiologyCenterId = user.radiologyCenterId;
                 }
@@ -367,12 +367,12 @@ const createScan = asyncHandler(async (req, res) => {
                 type: "SCAN_FINISHED",
                 message: `Scan ${scan._id} uploaded and analyzed successfully`,
                 isRead: false,
-            })
+            });
 
             res.status(201).json({
                 message: "Scan uploaded and analyzed successfully",
                 scan,
-                notification
+                notification,
             });
         } catch (error) {
             removeUploadedFiles(req.files);
@@ -588,7 +588,10 @@ const getScans = asyncHandler(async (req, res) => {
 
         const matchingPatients = await Patient.find({
             ...centerCondition,
-            name: { $regex: search, $options: "i" },
+            $or: [
+                { name: { $regex: search, $options: "i" } },
+                { patientId: { $regex: search, $options: "i" } },
+            ],
         }).select("_id");
 
         const searchConditions = [
@@ -665,7 +668,9 @@ const getScanById = asyncHandler(async (req, res) => {
 
     // Fallback for legacy scans without RadiologyCenterId
     if (!scanCenterId && scan.userId) {
-        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        const uploader = await User.findById(scan.userId)
+            .select("radiologyCenterId")
+            .lean();
         scanCenterId = uploader ? uploader.radiologyCenterId : null;
     }
 
@@ -720,13 +725,16 @@ const runScanXai = asyncHandler(async (req, res) => {
 
     let scanCenterId = scan.RadiologyCenterId;
     if (!scanCenterId && scan.userId) {
-        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        const uploader = await User.findById(scan.userId)
+            .select("radiologyCenterId")
+            .lean();
         scanCenterId = uploader ? uploader.radiologyCenterId : null;
     }
 
     if (!scanCenterId || String(scanCenterId) !== String(userCenterId)) {
         return res.status(403).json({
-            message: "Forbidden: You do not have access to run XAI on this scan.",
+            message:
+                "Forbidden: You do not have access to run XAI on this scan.",
         });
     }
 
@@ -812,7 +820,9 @@ const deleteScan = asyncHandler(async (req, res) => {
 
     let scanCenterId = scan.RadiologyCenterId;
     if (!scanCenterId && scan.userId) {
-        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        const uploader = await User.findById(scan.userId)
+            .select("radiologyCenterId")
+            .lean();
         scanCenterId = uploader ? uploader.radiologyCenterId : null;
     }
 
