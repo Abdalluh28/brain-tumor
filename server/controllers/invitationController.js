@@ -151,7 +151,7 @@ const sendInvitation = asyncHandler(async (req, res) => {
         return res.status(error.status).json({ message: error.message });
     }
 
-    const { doctorId, email } = req.body;
+    const { id: doctorId, email } = req.body;
     if (!doctorId && !email) {
         return res
             .status(400)
@@ -163,7 +163,7 @@ const sendInvitation = asyncHandler(async (req, res) => {
         doctor = await User.findById(doctorId);
     } else {
         doctor = await User.findOne({
-            email: email.toLowerCase().trim(),
+            email: email.trim(),
         });
     }
 

@@ -12,6 +12,9 @@ export function useRejectInvitation() {
             queryClient.invalidateQueries({
                 queryKey: ["notifications"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["unreadCount"],
+            })
             toast.success(
                 `You have rejected ${data?.radiologyCenterName} invitation`,
             );

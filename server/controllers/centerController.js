@@ -30,23 +30,47 @@ const getRadiologyCenters = asyncHandler(async (req, res) => {
         query.ownerId = admin;
     }
 
-    let centers = await RadiologyCenter.find(query)
+    const centers = await RadiologyCenter.find(query)
         .populate("ownerId", "name email")
         .sort({ createdAt: -1 });
 
-    let requestStatusMap = new Map();
+    let joinRequestMap = new Map();
+    let invitationMap = new Map();
+    let notificationIds = new Map();
 
-    // Add join request status only for doctors
     if (req.user?.role === "doctor") {
-        const requests = await Notification.find({
+        // Requests sent by doctor
+        const joinRequests = await Notification.find({
             senderId: req.user.id,
             type: "JOIN_CENTER_REQUEST",
         }).select("data.centerId invitationStatus");
 
-        requestStatusMap = new Map(
-            requests.map((r) => [
-                r.data.centerId.toString(),
-                r.invitationStatus,
+        joinRequestMap = new Map(
+            joinRequests.map((request) => [
+                request.data.centerId.toString(),
+                request.invitationStatus,
+            ]),
+        );
+
+        // Invitations received by doctor
+        const invitations = await Notification.find({
+            recipientId: req.user.id,
+            type: "CENTER_INVITATION",
+        }).select("data.centerId invitationStatus");
+
+        // map centerId -> invitationStatus
+        invitationMap = new Map(
+            invitations.map((invitation) => [
+                invitation.data.centerId.toString(),
+                invitation.invitationStatus,
+            ]),
+        );
+
+        // map centerId -> notificationId
+        notificationIds = new Map(
+            invitations.map((invitation) => [
+                invitation.data.centerId.toString(),
+                invitation._id,
             ]),
         );
     }
@@ -58,8 +82,15 @@ const getRadiologyCenters = asyncHandler(async (req, res) => {
         .map((center) => ({
             ...center.toObject(),
 
+            // Doctor -> Center
             joinRequestStatus:
-                requestStatusMap.get(center._id.toString()) || null,
+                joinRequestMap.get(center._id.toString()) || null,
+
+            // Center -> Doctor
+            invitationStatus: invitationMap.get(center._id.toString()) || null,
+
+            // Center -> Doctor
+            notificationId: notificationIds.get(center._id.toString()),
         }));
 
     const locations = await RadiologyCenter.distinct("city");
@@ -165,6 +196,22 @@ const sendJoinCenterRequest = asyncHandler(async (req, res) => {
     const admin = await User.findById(center.ownerId);
     if (!admin) {
         return res.status(404).json({ message: "Center owner not found" });
+    }
+
+    // Check if center already invited this doctor
+    const existingInvitation = await Notification.findOne({
+        recipientId: doctor._id,
+        senderId: admin._id,
+        type: "CENTER_INVITATION",
+        "data.centerId": center._id,
+        invitationStatus: "pending",
+    });
+
+    if (existingInvitation) {
+        return res.status(400).json({
+            message:
+                "This center has already invited you. Please respond to the invitation instead.",
+        });
     }
 
     try {

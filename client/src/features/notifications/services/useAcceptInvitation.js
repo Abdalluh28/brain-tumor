@@ -13,7 +13,13 @@ export function useAcceptInvitation() {
                 queryKey: ["notifications"],
             });
             queryClient.invalidateQueries({
+                queryKey: ["unreadCount"],
+            })
+            queryClient.invalidateQueries({
                 queryKey: ["user"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["centers"],
             });
             toast.success(`You have joined ${data?.radiologyCenterName}`);
         },

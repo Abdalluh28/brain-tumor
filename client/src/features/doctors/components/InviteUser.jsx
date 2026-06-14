@@ -39,7 +39,7 @@ export default function InviteUser({ doctor }) {
                 <>
                     {doctor.joinRequestStatus === 'pending' ? (
                         <div className="grid grid-cols-2 gap-2">
-                            <button className="text-sm text-white bg-primary px-3 py-1 rounded-xl text-center hover:bg-primary-hover transition duration-300 cursor-pointer"
+                            <button className="text-sm text-white bg-green-600 px-3 py-1 rounded-xl text-center hover:bg-green-700 transition duration-300 cursor-pointer"
                                 onClick={() => {
                                     setAction("accept");
                                     handleRespond("accept");

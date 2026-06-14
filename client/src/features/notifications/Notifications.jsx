@@ -6,11 +6,13 @@ import JoinRequestNotification from "./JoinRequestNotification";
 import ActivationNotification from "./ActivationNotification";
 import InvitationNotification from "./InvitationNotification";
 import ScanNotification from "./ScanNotification";
+import { useMarkAllAsRead } from "./services/useMarkAllAsRead";
 
 export default function Notifications() {
     const { notifications, isLoading } = useGetNotifications();
     const { unreadCount, isLoading: unreadCountLoading } = useGetUnreadCount();
-console.log(unreadCount)
+    const { markAllAsRead, isLoading: markAllAsReadLoading } = useMarkAllAsRead();
+
     return (
         <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -33,8 +35,15 @@ console.log(unreadCount)
                                text-slate-800 dark:text-slate-100 p-2"
                 >
                     {/* Header */}
-                    <div className="border-b border-slate-200 dark:border-slate-700 px-3 py-2 font-semibold">
-                        Notifications
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                        <span className="text-sm text-slate-900 dark:text-white">Notifications</span>
+                        <button
+                            type="button"
+                            className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer"
+                            onClick={() => markAllAsRead()}
+                            disabled={markAllAsReadLoading}>
+                            {markAllAsReadLoading ? "Marking..." : "Mark all as read"}
+                        </button>
                     </div>
 
                     {/* Content */}

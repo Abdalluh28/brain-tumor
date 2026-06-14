@@ -18,6 +18,12 @@ export function useCreateScan() {
             queryClient.invalidateQueries({
                 queryKey: ["scans"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["notifications"],
+            })
+            queryClient.invalidateQueries({
+                queryKey: ["unreadCount"],
+            })
             dispatch(setNewPatient(false));
             navigate(`/scan/${data.scan._id}`, { replace: true });
         },

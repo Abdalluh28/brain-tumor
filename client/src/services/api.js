@@ -4,6 +4,7 @@ import {
     clearAccessToken,
 } from "@/utils/tokenManager";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 export const api = axios.create({
     baseURL: import.meta.env.VITE_BACK_URL,
@@ -26,6 +27,29 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+        const errorMessage = error.response?.data?.message || error.response?.data?.error;
+
+        // Resource-level 403 handling (no token refresh needed)
+        if (
+            error.response?.status === 403 &&
+            typeof errorMessage === "string" &&
+            errorMessage.startsWith("Forbidden:")
+        ) {
+            toast.error(errorMessage);
+            if (window.location.pathname !== "/") {
+                window.location.href = "/";
+            }
+            return Promise.reject(error);
+        }
+
+        // Global 404 handling
+        if (error.response?.status === 404) {
+            toast.error(errorMessage || "Resource not found.");
+            if (window.location.pathname !== "/") {
+                window.location.href = "/";
+            }
+            return Promise.reject(error);
+        }
 
         // Try refresh on 401 (no token) or 403 (expired/invalid token)
         if (
@@ -48,6 +72,10 @@ api.interceptors.response.use(
                 return api(originalRequest);
             } catch (err) {
                 clearAccessToken();
+                // Optionally navigate to login on refresh failure
+                if (window.location.pathname !== "/auth/login") {
+                    window.location.href = "/auth/login";
+                }
                 return Promise.reject(err);
             }
         }

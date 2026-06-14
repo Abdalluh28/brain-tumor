@@ -4,9 +4,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import { useSelector } from "react-redux";
 import { RouterProvider } from "react-router";
 import { createBrowserRouter } from "react-router-dom";
+import AdminRoutes from "./components/AdminRoutes";
+import AuthRoutes from "./components/AuthRoutes";
 import { DismissableToaster } from "./components/DismissableToaster";
 import ProtectedRoutes from "./components/ProtectedRoutes";
-import AuthRoutes from "./components/AuthRoutes";
 import Login from "./features/auth/Login";
 import Register from "./features/auth/Register";
 import ResetPassword from "./features/auth/ResetPassword";
@@ -18,11 +19,9 @@ import ErrorFallback from "./pages/ErrorFallback";
 import ErrorPage from "./pages/ErrorPage";
 import History from "./pages/History";
 import MriViewer from "./pages/MriViewer";
-import Patients from "./pages/Patients";
+import RadiologyCenter from "./pages/RadiologyCenter";
 import Scan from "./pages/Scan";
 import ScanId from "./pages/ScanId";
-import AdminRoutes from "./components/AdminRoutes";
-import RadiologyCenter from "./pages/RadiologyCenter";
 
 
 const queryClient = new QueryClient({
@@ -81,27 +80,22 @@ export default function App() {
                             element: <AdminRoutes />,
                             children: [
                                 {
-                                    path: '/patients',
-                                    errorElement: <ErrorPage />,
-                                    element: <Patients />
-                                },
-                                {
                                     path: '/doctors',
                                     errorElement: <ErrorPage />,
                                     element: <Doctors />
                                 },
+                                {
+                                    path: '/doctors/invite',
+                                    errorElement: <ErrorPage />,
+                                    element: <DoctorsInvitation />
+                                },
                             ]
-                        },
-                        {
-                            path: '/doctors/invite',
-                            errorElement: <ErrorPage />,
-                            element: <DoctorsInvitation />
                         },
                         {
                             path: '/history',
                             errorElement: <ErrorPage />,
                             element: <History />
-                        }, 
+                        },
                         {
                             path: 'radiology-centers',
                             errorElement: <ErrorPage />,

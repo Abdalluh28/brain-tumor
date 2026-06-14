@@ -31,6 +31,6 @@ export async function rejectInvitationApi(id) {
 }
 
 export async function respondToActivationRequestApi(data) {
-    const res = await api.patch(`/activation-request/${data.notificationId}`, data);
+    const res = await api.patch(`/notifications/activation-request/${data.notificationId}`, data);
     return res.data;
 }

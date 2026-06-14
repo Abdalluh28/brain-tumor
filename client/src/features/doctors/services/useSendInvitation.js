@@ -12,7 +12,7 @@ export function useSendInvitation() {
             queryClient.invalidateQueries({
                 queryKey: ["availableDoctors"],
             })
-            toast.success(`Invitation sent to doctor ${data?.name}`);
+            toast.success(`Invitation sent to doctor ${data?.invitation?.recipientName}`);
         },
         onError: (error) => {
             const message =
