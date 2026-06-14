@@ -343,6 +343,14 @@ const createScan = asyncHandler(async (req, res) => {
                     patientPayload,
                     req.user.id,
                 );
+
+                // Ensure RadiologyCenterId is saved with the scan for fast authorization lookups
+                if (user.radiologyCenterId) {
+                    await Scan.findByIdAndUpdate(scan._id, {
+                        $set: { RadiologyCenterId: user.radiologyCenterId }
+                    });
+                    scan.RadiologyCenterId = user.radiologyCenterId;
+                }
             } catch (error) {
                 removeUploadedFiles(req.files);
 
@@ -466,9 +474,10 @@ const getScans = asyncHandler(async (req, res) => {
                 radiologyCenterId: req.user.radiologyCenterId,
             }).select("_id");
 
-            filter.userId = {
-                $in: centerDoctors.map((doctor) => doctor._id),
-            };
+            filter.$or = [
+                { RadiologyCenterId: req.user.radiologyCenterId },
+                { userId: { $in: centerDoctors.map((doctor) => doctor._id) } },
+            ];
         } else {
             // User has no center, fallback to own scans
             filter.userId = req.user.id;
@@ -631,10 +640,39 @@ const getScans = asyncHandler(async (req, res) => {
 // Get Single Scan
 // ------------------
 const getScanById = asyncHandler(async (req, res) => {
-    const scan = await Scan.findById(req.params.id).populate("patient");
+    let scan;
+    try {
+        scan = await Scan.findById(req.params.id).populate("patient");
+    } catch (error) {
+        if (error.name === "CastError") {
+            return res.status(404).json({ message: "Scan not found" });
+        }
+        throw error;
+    }
 
     if (!scan) {
         return res.status(404).json({ message: "Scan not found" });
+    }
+
+    const userCenterId = req.user.radiologyCenterId;
+    if (!userCenterId) {
+        return res.status(403).json({
+            message: "Forbidden: You are not assigned to a radiology center",
+        });
+    }
+
+    let scanCenterId = scan.RadiologyCenterId;
+
+    // Fallback for legacy scans without RadiologyCenterId
+    if (!scanCenterId && scan.userId) {
+        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        scanCenterId = uploader ? uploader.radiologyCenterId : null;
+    }
+
+    if (!scanCenterId || String(scanCenterId) !== String(userCenterId)) {
+        return res.status(403).json({
+            message: "Forbidden: You do not have access to this scan.",
+        });
     }
 
     const scanObject = scan.toObject({ virtuals: true });
@@ -659,10 +697,37 @@ const getScanById = asyncHandler(async (req, res) => {
 // Re-run XAI (no segmentation)
 // ------------------
 const runScanXai = asyncHandler(async (req, res) => {
-    const scan = await Scan.findById(req.params.id);
+    let scan;
+    try {
+        scan = await Scan.findById(req.params.id);
+    } catch (error) {
+        if (error.name === "CastError") {
+            return res.status(404).json({ message: "Scan not found" });
+        }
+        throw error;
+    }
 
     if (!scan) {
         return res.status(404).json({ message: "Scan not found" });
+    }
+
+    const userCenterId = req.user.radiologyCenterId;
+    if (!userCenterId) {
+        return res.status(403).json({
+            message: "Forbidden: You are not assigned to a radiology center",
+        });
+    }
+
+    let scanCenterId = scan.RadiologyCenterId;
+    if (!scanCenterId && scan.userId) {
+        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        scanCenterId = uploader ? uploader.radiologyCenterId : null;
+    }
+
+    if (!scanCenterId || String(scanCenterId) !== String(userCenterId)) {
+        return res.status(403).json({
+            message: "Forbidden: You do not have access to run XAI on this scan.",
+        });
     }
 
     const methodId = req.body.xaiMethod || "gradcam++";
@@ -724,10 +789,37 @@ const runScanXai = asyncHandler(async (req, res) => {
 // Delete Scan
 // ------------------
 const deleteScan = asyncHandler(async (req, res) => {
-    const scan = await Scan.findById(req.params.id);
+    let scan;
+    try {
+        scan = await Scan.findById(req.params.id);
+    } catch (error) {
+        if (error.name === "CastError") {
+            return res.status(404).json({ message: "Scan not found" });
+        }
+        throw error;
+    }
 
     if (!scan) {
         return res.status(404).json({ message: "Scan not found" });
+    }
+
+    const userCenterId = req.user.radiologyCenterId;
+    if (!userCenterId) {
+        return res.status(403).json({
+            message: "Forbidden: You are not assigned to a radiology center",
+        });
+    }
+
+    let scanCenterId = scan.RadiologyCenterId;
+    if (!scanCenterId && scan.userId) {
+        const uploader = await User.findById(scan.userId).select("radiologyCenterId").lean();
+        scanCenterId = uploader ? uploader.radiologyCenterId : null;
+    }
+
+    if (!scanCenterId || String(scanCenterId) !== String(userCenterId)) {
+        return res.status(403).json({
+            message: "Forbidden: You do not have access to delete this scan.",
+        });
     }
 
     const pathsToDelete = [
