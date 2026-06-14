@@ -73,8 +73,8 @@ api.interceptors.response.use(
             } catch (err) {
                 clearAccessToken();
                 // Optionally navigate to login on refresh failure
-                if (window.location.pathname !== "/auth/login") {
-                    window.location.href = "/auth/login";
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
                 }
                 return Promise.reject(err);
             }
